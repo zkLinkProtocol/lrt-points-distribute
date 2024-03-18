@@ -22,9 +22,7 @@ export class AppService implements OnModuleInit, OnModuleDestroy {
   }
 
   public onModuleInit() {
-    runMigrations(this.dataSource, this.logger).then(() => {
-      this.startWorkers();
-    });
+    this.startWorkers();
   }
 
   public onModuleDestroy() {

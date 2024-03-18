@@ -26,7 +26,7 @@ export class TokenPointsDto {
   public readonly totalPoints: string;
 
   @ApiProperty({
-    type: Array<PointsDto>,
+    type: [PointsDto],
     description: 'user point',
     nullable: true,
   })
