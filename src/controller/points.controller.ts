@@ -223,7 +223,6 @@ export class PointsController {
             token: this.puffPointsTokenAddress,
           },
         });
-        cache.set(ALL_PUFFER_POINTS_CACHE_KEY, allPoints);
         allPoints.forEach((p) => {
           totalPoints += p.points;
         });
@@ -234,7 +233,7 @@ export class PointsController {
 
       cache.set(REAL_PUFFFER_POINTS_CACHE_KEY, realPufferPoints);
       cache.set(TOTAL_PUFFER_POINTS_CACHE_KEY, totalPoints.toString());
-      cache.set(TOTAL_PUFFER_POINTS_CACHE_KEY, totalPoints.toString());
+      cache.set(ALL_PUFFER_POINTS_CACHE_KEY, allPoints);
     }
 
     return [allPoints, totalPoints, realPufferPoints];
