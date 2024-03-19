@@ -182,7 +182,7 @@ export class PointsController {
     let totalPoints = BigInt(
       (cache.get(TOTAL_PUFFER_POINTS_CACHE_KEY) as string) || 0,
     );
-    if (!allPoints || !realPufferPoints) {
+    if (!allPoints || !realPufferPoints || !totalPoints) {
       try {
         const realData = await fetch(
           'https://quest-api.puffer.fi/puffer-quest/third/query_zklink_pufpoint',
@@ -213,7 +213,6 @@ export class PointsController {
           realPufferPoints = pufReadData.data.pufeth_points_detail[
             'latest_points'
           ] as string;
-          cache.set(REAL_PUFFFER_POINTS_CACHE_KEY, realPufferPoints);
         } else {
           this.logger.error('Failed to get real puffer points');
           throw new NotFoundException();
@@ -228,17 +227,13 @@ export class PointsController {
         allPoints.forEach((p) => {
           totalPoints += p.points;
         });
-        cache.set(TOTAL_PUFFER_POINTS_CACHE_KEY, totalPoints.toString());
       } catch (e) {
         this.logger.error(e);
         throw new NotFoundException();
       }
-    }
 
-    if (!totalPoints) {
-      allPoints.forEach((p) => {
-        totalPoints += p.points;
-      });
+      cache.set(REAL_PUFFFER_POINTS_CACHE_KEY, realPufferPoints);
+      cache.set(TOTAL_PUFFER_POINTS_CACHE_KEY, totalPoints.toString());
       cache.set(TOTAL_PUFFER_POINTS_CACHE_KEY, totalPoints.toString());
     }
 
