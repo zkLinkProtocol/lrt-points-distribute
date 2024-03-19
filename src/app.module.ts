@@ -14,6 +14,8 @@ import { MetricsModule } from './metrics';
 import { UnitOfWorkModule } from './unitOfWork';
 import { PointsHistoryRepository } from './repositories/pointsHistory.repository';
 import { PointsController } from './controller/points.controller';
+import { ExplorerService } from './explorer/explorer.service';
+import { RenzoService } from './renzo/renzo.service';
 
 @Module({
   imports: [
@@ -33,7 +35,7 @@ import { PointsController } from './controller/points.controller';
     MetricsModule,
     UnitOfWorkModule,
   ],
-  controllers: [AppController,PointsController],
+  controllers: [AppController, PointsController],
   providers: [
     AppService,
     Points,
@@ -42,6 +44,8 @@ import { PointsController } from './controller/points.controller';
     PuffPointsProcessor,
     PointsRepository,
     PointsHistoryRepository,
+    ExplorerService,
+    RenzoService,
   ],
 })
 export class AppModule {}

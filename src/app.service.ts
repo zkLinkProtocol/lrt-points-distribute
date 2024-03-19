@@ -8,6 +8,7 @@ import { ConfigService } from '@nestjs/config';
 import { DataSource } from 'typeorm';
 import runMigrations from './utils/runMigrations';
 import { PuffPointsService } from './puffPoints/puffPoints.service';
+import { RenzoService } from './renzo/renzo.service';
 
 @Injectable()
 export class AppService implements OnModuleInit, OnModuleDestroy {
@@ -15,6 +16,7 @@ export class AppService implements OnModuleInit, OnModuleDestroy {
 
   public constructor(
     private readonly puffPointsService: PuffPointsService,
+    private readonly renzoService: RenzoService,
     private readonly dataSource: DataSource,
     private readonly configService: ConfigService,
   ) {
@@ -30,10 +32,20 @@ export class AppService implements OnModuleInit, OnModuleDestroy {
   }
 
   private startWorkers() {
-    return Promise.all([this.puffPointsService.start()]);
+    const tasks = [];
+    if (this.configService.get<boolean>('enablePuff')) {
+      tasks.push(this.puffPointsService.start());
+    }
+    if (this.configService.get<boolean>('enableRenzo')) {
+      tasks.push(this.renzoService.start());
+    }
+    return Promise.all(tasks);
   }
 
   private stopWorkers() {
-    return Promise.all([this.puffPointsService.stop()]);
+    return Promise.all([
+      this.puffPointsService.stop(),
+      this.renzoService.stop(),
+    ]);
   }
 }

@@ -19,6 +19,14 @@ export default async () => {
     PUFF_POINTS_UNIT_POINTS,
     PUFF_POINTS_UNIT_INTERVAL,
     WAIT_FOR_PUFF_RETRY,
+    ENABLE_PUFF,
+
+    RENZO_WAIT_FOR_RETRY,
+    RENZO_WAIT_FOR_INTERVAL,
+    RENZO_TOKEN_ADDRESS,
+    RENZO_UNIT_POINTS,
+    RENZO_UNIT_INTERVAL,
+    ENABLE_RENZO,
   } = process.env;
 
   return {
@@ -47,6 +55,18 @@ export default async () => {
       unitPoints: BigInt(PUFF_POINTS_UNIT_POINTS || '0') || 30n,
       unitInterval: parseInt(PUFF_POINTS_UNIT_INTERVAL, 10) || 3600_000,
     },
+    renzo: {
+      waitForRetry: parseInt(RENZO_WAIT_FOR_RETRY, 10) || 10_000,
+      waitForInterval: parseInt(RENZO_WAIT_FOR_INTERVAL, 10) || 10_000,
+      tokenAddress: (
+        RENZO_TOKEN_ADDRESS ||
+        '0x3FDB1939daB8e2d4F7a04212F142469Cd52d6402,0xdA7Fa837112511F6E353091D7e388A4c45Ce7D6C'
+      ).split(','),
+      unitPoints: BigInt(RENZO_UNIT_POINTS || '0') || 1n,
+      unitInterval: parseInt(RENZO_UNIT_INTERVAL, 10) || 3600_000,
+    },
+    enablePuff: ENABLE_PUFF === 'true',
+    enableRenzo: ENABLE_RENZO === 'true',
     explorerApiUrl: EXPLORER_API_URL || 'http://localhost:3020',
   };
 };
