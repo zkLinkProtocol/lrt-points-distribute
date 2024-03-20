@@ -46,7 +46,7 @@ export class RenzoService extends Worker {
   public async getAllPoints() {
     let result: Points[] = [];
     let page: number = 1;
-    const pageSize = 200;
+    const pageSize = 300;
     while (true) {
       const points = await this.pointsRepository.find({
         where: {

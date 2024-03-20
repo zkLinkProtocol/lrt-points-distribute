@@ -60,7 +60,12 @@ export class PointsController {
   }
 
   @Get('renzo/points')
-  @ApiOperation({ summary: 'renzo personal points' })
+  @ApiParam({
+    name: 'address',
+    schema: { pattern: ADDRESS_REGEX_PATTERN },
+    description: 'Valid hex address',
+  })
+  @ApiOperation({ summary: 'get renzo personal points' })
   public async getRenzoPoints(
     @Query('address', new ParseAddressPipe()) address: string,
   ) {
@@ -69,7 +74,18 @@ export class PointsController {
   }
 
   @Get('renzo/all/points')
-  @ApiOperation({ summary: 'renzo' })
+  @ApiOperation({
+    summary:
+      'Get renzo point for all users, point are based on user token dimension',
+  })
+  @ApiOkResponse({
+    description:
+      "Return all users' RenzoPoints. The rule is to add 1 points per hour.\nTiming starts from the user's first deposit, with each user having an independent timer.",
+    type: TokenPointsWithoutDecimalsDto,
+  })
+  @ApiBadRequestResponse({
+    description: '{ "message": "Not Found", "statusCode": 404 }',
+  })
   public async getAllRenzoPoints(): Promise<TokenPointsWithoutDecimalsDto> {
     const allPoints = cache.get(
       RENZO_ALL_POINTS_CACHE_KEY,
@@ -277,11 +293,7 @@ export class PointsController {
           throw new NotFoundException();
         }
 
-        allPoints = await this.pointsRepository.find({
-          where: {
-            token: this.puffPointsTokenAddress,
-          },
-        });
+        allPoints = await this.getAllPufferPoints();
         allPoints.forEach((p) => {
           totalPoints += p.points;
         });
@@ -296,5 +308,29 @@ export class PointsController {
     }
 
     return [allPoints, totalPoints, realPufferPoints];
+  }
+
+  public async getAllPufferPoints() {
+    let result: Points[] = [];
+    let page: number = 1;
+    const pageSize = 300;
+    while (true) {
+      const points = await this.pointsRepository.find({
+        where: {
+          token: this.puffPointsTokenAddress,
+        },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      });
+
+      result.push(...points);
+      if (points.length < pageSize) {
+        break;
+      }
+
+      ++page;
+    }
+
+    return result;
   }
 }
