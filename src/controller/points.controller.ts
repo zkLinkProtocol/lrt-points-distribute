@@ -4,12 +4,14 @@ import {
   Logger,
   NotFoundException,
   Param,
+  Query,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   ApiBadRequestResponse,
   ApiExcludeController,
   ApiOkResponse,
+  ApiOperation,
   ApiParam,
   ApiTags,
 } from '@nestjs/swagger';
@@ -24,6 +26,7 @@ import {
 import { TokenPointsWithoutDecimalsDto } from './tokenPointsWithoutDecimals.dto';
 import { BigNumber } from 'bignumber.js';
 import { PointsWithoutDecimalsDto } from './pointsWithoutDecimals.dto';
+import { RenzoService } from 'src/renzo/renzo.service';
 
 const options = {
   // how long to live in ms
@@ -37,6 +40,7 @@ const cache = new LRUCache(options);
 const ALL_PUFFER_POINTS_CACHE_KEY = 'allPufferPoints';
 const TOTAL_PUFFER_POINTS_CACHE_KEY = 'totalPufferPoints';
 const REAL_PUFFFER_POINTS_CACHE_KEY = 'realPufferPoints';
+const RENZO_ALL_POINTS_CACHE_KEY = 'allRenzoPoints';
 
 @ApiTags('points')
 @ApiExcludeController(false)
@@ -47,12 +51,67 @@ export class PointsController {
 
   constructor(
     private readonly pointsRepository: PointsRepository,
+    private readonly renzoService: RenzoService,
     private configService: ConfigService,
   ) {
     this.puffPointsTokenAddress = configService.get<string>(
       'puffPoints.tokenAddress',
     );
   }
+
+  @Get('renzo/points')
+  @ApiOperation({ summary: 'renzo personal points' })
+  public async getRenzoPoints(
+    @Query('address', new ParseAddressPipe()) address: string,
+  ) {
+    const points = await this.renzoService.getPoints(address);
+    return points;
+  }
+
+  @Get('renzo/all/points')
+  @ApiOperation({ summary: 'renzo' })
+  public async getAllRenzoPoints(): Promise<TokenPointsWithoutDecimalsDto> {
+    const allPoints = cache.get(
+      RENZO_ALL_POINTS_CACHE_KEY,
+    ) as TokenPointsWithoutDecimalsDto;
+    if (allPoints) {
+      return allPoints;
+    }
+
+    try {
+      const points = await this.renzoService.getAllPoints();
+      let result: PointsWithoutDecimalsDto[] = [];
+      let totalPoints = 0n;
+      for (const point of points) {
+        const dto: PointsWithoutDecimalsDto = {
+          address: point.address,
+          tokenAddress: point.token,
+          points: point.points.toString(),
+          updated_at: point.updatedAt.getTime() / 1000,
+        };
+        result.push(dto);
+        totalPoints += point.points;
+      }
+
+      const cachePoints: TokenPointsWithoutDecimalsDto = {
+        errno: 0,
+        errmsg: 'no error',
+        total_points: totalPoints.toString(),
+        data: result,
+      };
+      cache.set(RENZO_ALL_POINTS_CACHE_KEY, cachePoints);
+      return cachePoints;
+    } catch (err) {
+      this.logger.error('Get renzo all points failed', err);
+      return {
+        errno: 1,
+        errmsg: 'Not Found',
+        total_points: '0',
+        data: [],
+      };
+    }
+  }
+
   @Get(':address/pufferpoints')
   @ApiParam({
     name: 'address',

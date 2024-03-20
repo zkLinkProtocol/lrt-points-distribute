@@ -18,6 +18,14 @@ export class PointsWithoutDecimalsDto {
   public readonly points?: string;
 
   @ApiProperty({
+    type: String,
+    description: 'token address',
+    example: '0xd754Ff5e8a6f257E162F72578A4bB0493c0681d8',
+    required: false,
+  })
+  public readonly tokenAddress?: string;
+
+  @ApiProperty({
     type: Number,
     description: 'The timestamp when the points was updated',
     example: 1710834827,

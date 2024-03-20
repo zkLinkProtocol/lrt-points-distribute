@@ -8,6 +8,7 @@ import { PointsRepository } from 'src/repositories/points.repository';
 import { Points } from 'src/entities/points.entity';
 import { formatEther } from 'ethers';
 import { ExplorerService } from 'src/explorer/explorer.service';
+import { In } from 'typeorm';
 
 @Injectable()
 export class RenzoService extends Worker {
@@ -30,6 +31,40 @@ export class RenzoService extends Worker {
     this.logger = new Logger(RenzoService.name);
     this.unitPoints = configService.get<bigint>('renzo.unitPoints');
     this.unitInterval = configService.get<number>('renzo.unitInterval');
+  }
+
+  public async getPoints(address: string) {
+    const points = await this.pointsRepository.find({
+      where: {
+        address,
+        token: In(this.renzoTokenAddress),
+      },
+    });
+    return points;
+  }
+
+  public async getAllPoints() {
+    let result: Points[] = [];
+    let page: number = 1;
+    const pageSize = 200;
+    while (true) {
+      const points = await this.pointsRepository.find({
+        where: {
+          token: In(this.renzoTokenAddress),
+        },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      });
+
+      result.push(...points);
+      if (points.length < pageSize) {
+        break;
+      }
+
+      ++page;
+    }
+
+    return result;
   }
 
   protected async runProcess(): Promise<void> {
