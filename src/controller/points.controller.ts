@@ -121,7 +121,7 @@ export class PointsController {
       this.logger.error('Get renzo all points failed', err);
       return {
         errno: 1,
-        errmsg: 'Not Found',
+        errmsg: 'Service exception',
         total_points: '0',
         data: [],
       };
@@ -173,7 +173,7 @@ export class PointsController {
     } catch (e) {
       res = {
         errno: 1,
-        errmsg: 'Not Found',
+        errmsg: 'Service exception',
         total_points: '0',
         data: [] as PointsWithoutDecimalsDto[],
       };
