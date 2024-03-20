@@ -10,6 +10,14 @@ export class PointsDto {
 
   @ApiProperty({
     type: String,
+    description: 'token address',
+    example: '0xd754Ff5e8a6f257E162F72578A4bB0493c0681d8',
+    required: false,
+  })
+  public readonly tokenAddress?: string;
+
+  @ApiProperty({
+    type: String,
     description: 'user point',
     example: '1000000000000000000',
     examples: ['1000000000000000000', null],

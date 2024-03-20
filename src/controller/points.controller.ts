@@ -27,6 +27,7 @@ import { TokenPointsWithoutDecimalsDto } from './tokenPointsWithoutDecimals.dto'
 import { BigNumber } from 'bignumber.js';
 import { PointsWithoutDecimalsDto } from './pointsWithoutDecimals.dto';
 import { RenzoService } from 'src/renzo/renzo.service';
+import { PointsDto } from './points.dto';
 
 const options = {
   // how long to live in ms
@@ -60,17 +61,21 @@ export class PointsController {
   }
 
   @Get('renzo/points')
-  @ApiParam({
-    name: 'address',
-    schema: { pattern: ADDRESS_REGEX_PATTERN },
-    description: 'Valid hex address',
-  })
   @ApiOperation({ summary: 'Get renzo personal points' })
   public async getRenzoPoints(
     @Query('address', new ParseAddressPipe()) address: string,
-  ) {
+  ): Promise<PointsDto[]> {
     const points = await this.renzoService.getPoints(address);
-    return points;
+    const result = points.map((point: Points) => {
+      const dto: PointsDto = {
+        address: point.address,
+        updatedAt: point.updatedAt,
+        points: BigNumber(point.points.toString()).toFixed(6),
+        tokenAddress: point.token,
+      };
+      return dto;
+    });
+    return result;
   }
 
   @Get('renzo/all/points')
@@ -102,7 +107,7 @@ export class PointsController {
         const dto: PointsWithoutDecimalsDto = {
           address: point.address,
           tokenAddress: point.token,
-          points: point.points.toString(),
+          points: BigNumber(point.points.toString()).toFixed(6),
           updated_at: point.updatedAt.getTime() / 1000,
         };
         result.push(dto);
@@ -112,7 +117,7 @@ export class PointsController {
       const cachePoints: TokenPointsWithoutDecimalsDto = {
         errno: 0,
         errmsg: 'no error',
-        total_points: totalPoints.toString(),
+        total_points: BigNumber(totalPoints.toString()).toFixed(6),
         data: result,
       };
       cache.set(RENZO_ALL_POINTS_CACHE_KEY, cachePoints);
@@ -222,6 +227,24 @@ export class PointsController {
     }
 
     return res;
+  }
+
+  @Get('forward/puffer/zklink_point')
+  public async getForwardPuffer(
+    @Query('address', new ParseAddressPipe()) address: string,
+  ) {
+    const realData = await fetch(
+      `https://quest-api.puffer.fi/puffer-quest/third/query_zklink_point?address=${address}`,
+      {
+        method: 'get',
+        headers: {
+          'Content-Type': 'application/json',
+          'client-id': '08879426f59a4b038b7755b274bc19dc',
+        },
+      },
+    );
+    const pufReadData = await realData.json();
+    return pufReadData;
   }
 
   @Get('/allpufferpoints')
