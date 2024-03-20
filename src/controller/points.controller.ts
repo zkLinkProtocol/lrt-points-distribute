@@ -65,7 +65,7 @@ export class PointsController {
     schema: { pattern: ADDRESS_REGEX_PATTERN },
     description: 'Valid hex address',
   })
-  @ApiOperation({ summary: 'get renzo personal points' })
+  @ApiOperation({ summary: 'Get renzo personal points' })
   public async getRenzoPoints(
     @Query('address', new ParseAddressPipe()) address: string,
   ) {
@@ -80,7 +80,7 @@ export class PointsController {
   })
   @ApiOkResponse({
     description:
-      "Return all users' RenzoPoints. The rule is to add 1 points per hour.\nTiming starts from the user's first deposit, with each user having an independent timer.",
+      "Return all users' RenzoPoints. The rule is to add 1 points per hour. Timing starts from the user's first deposit, with each user having an independent timer.",
     type: TokenPointsWithoutDecimalsDto,
   })
   @ApiBadRequestResponse({
