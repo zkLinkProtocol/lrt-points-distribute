@@ -73,7 +73,6 @@ export class RenzoService extends Worker {
       const allBalances = await this.explorerService.getAllBalance(
         this.renzoTokenAddress,
       );
-      console.log(allBalances);
       this.logger.log(`LOAD RENZO BALANCE ${allBalances.length} users`);
       for (const balance of allBalances) {
         const address = balance.address;
@@ -95,7 +94,6 @@ export class RenzoService extends Worker {
         }
       }
     } catch (error) {
-      console.error(error);
       nextIterationDelay = this.waitForRetry;
       this.logger.error(
         `Error on processing next block range, waiting ${nextIterationDelay} ms to retry`,
