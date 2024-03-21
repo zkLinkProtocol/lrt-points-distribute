@@ -78,7 +78,7 @@ export class PuffPointsProcessor {
     };
     // update points and timestamp
     this.logger.log(
-      `UPDATE PUFFER ${address} add:${formatEther(addPointsNumber)} total:${formatEther(pufPoint.points + addPointsNumber)}`,
+      `UPDATE PUFFER ${address} add:${formatEther(addPointsNumber)} total:${formatEther(pufPoint.points + addPointsNumber)} tokenAddress:${tokenAddress}`,
     );
     return [newPoints, addPointsNumber];
   }
