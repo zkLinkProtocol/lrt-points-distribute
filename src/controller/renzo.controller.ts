@@ -16,7 +16,6 @@ import { BigNumber } from 'bignumber.js';
 import { RenzoPointsWithoutDecimalsDto } from './pointsWithoutDecimals.dto';
 import { RenzoService } from 'src/renzo/renzo.service';
 import { RenzoApiService } from 'src/explorer/renzoapi.service';
-import { Type } from 'typescript';
 
 const options = {
   // how long to live in ms
@@ -54,22 +53,15 @@ export class RenzoController {
   public async getRenzoPoints(
     @Query('address', new ParseAddressPipe()) address: string,
   ): Promise<{ data: RenzoPointsWithoutDecimalsDto[] } | ExceptionResponse> {
-    let data: RenzoPointsWithoutDecimalsDto[];
-    try {
-      const allPoints = await this.getAllRenzoPoints();
-      data = allPoints.data;
-      if (data) {
-        return {
-          errno: 0,
-          errmsg: 'no error',
-          data: data.filter(
-            (point) => point.address.toLowerCase() === address.toLowerCase(),
-          ),
-        };
-      }
-    } catch (err) {
-      this.logger.error('Get renzo all points failed', err);
-      return SERVICE_EXCEPTION;
+    const allPoints = await this.getAllRenzoPoints();
+    if (Array.isArray(allPoints.data)) {
+      return {
+        errno: 0,
+        errmsg: 'no error',
+        data: allPoints.data.filter(
+          (point) => point.address.toLowerCase() === address.toLowerCase(),
+        ),
+      };
     }
   }
 
