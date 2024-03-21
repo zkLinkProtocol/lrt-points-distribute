@@ -107,13 +107,13 @@ export class PuffPointsService extends Worker {
       },
     );
     const firstDeposit: Transfer = await checkDeposit.json();
-    firstDeposit.timestamp = new Date(firstDeposit.timestamp);
     if (!firstDeposit || !firstDeposit.timestamp) {
-      this.logger.error(
+      this.logger.log(
         `No first deposit for address: ${address} tokenAddress: ${tokenAddress}`,
       );
       return null;
     }
+    firstDeposit.timestamp = new Date(firstDeposit.timestamp);
     return firstDeposit;
   }
 
