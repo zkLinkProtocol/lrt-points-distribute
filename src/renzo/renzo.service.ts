@@ -26,7 +26,6 @@ export class RenzoService extends Worker {
     super();
     this.waitForInterval = configService.get<number>('renzo.waitForInterval');
     this.renzoTokenAddress = configService.get<string[]>('renzo.tokenAddress');
-    console.log(this.renzoTokenAddress);
     this.waitForRetry = configService.get<number>('renzo.waitForRetry');
     this.logger = new Logger(RenzoService.name);
     this.unitPoints = configService.get<bigint>('renzo.unitPoints');

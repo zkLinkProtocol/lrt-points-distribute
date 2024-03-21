@@ -16,6 +16,8 @@ import { PointsHistoryRepository } from './repositories/pointsHistory.repository
 import { PointsController } from './controller/points.controller';
 import { ExplorerService } from './explorer/explorer.service';
 import { RenzoService } from './renzo/renzo.service';
+import { RenzoApiService } from './explorer/renzoapi.service';
+import { RenzoController } from './controller/renzo.controller';
 
 @Module({
   imports: [
@@ -35,7 +37,7 @@ import { RenzoService } from './renzo/renzo.service';
     MetricsModule,
     UnitOfWorkModule,
   ],
-  controllers: [AppController, PointsController],
+  controllers: [AppController, PointsController, RenzoController],
   providers: [
     AppService,
     Points,
@@ -46,6 +48,7 @@ import { RenzoService } from './renzo/renzo.service';
     PointsHistoryRepository,
     ExplorerService,
     RenzoService,
+    RenzoApiService,
   ],
 })
 export class AppModule {}

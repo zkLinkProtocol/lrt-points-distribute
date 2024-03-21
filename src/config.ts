@@ -27,6 +27,9 @@ export default async () => {
     RENZO_UNIT_POINTS,
     RENZO_UNIT_INTERVAL,
     ENABLE_RENZO,
+
+    L1_ERC20_BRIDGE_ETHEREUM,
+    L1_ERC20_BRIDGE_ARBITRUM,
   } = process.env;
 
   return {
@@ -68,5 +71,8 @@ export default async () => {
     enablePuff: ENABLE_PUFF === 'true',
     enableRenzo: ENABLE_RENZO === 'true',
     explorerApiUrl: EXPLORER_API_URL || 'http://localhost:3020',
+
+    l1Erc20BridgeEthereum: L1_ERC20_BRIDGE_ETHEREUM || '',
+    l1Erc20BridgeArbitrum: L1_ERC20_BRIDGE_ARBITRUM || '',
   };
 };
