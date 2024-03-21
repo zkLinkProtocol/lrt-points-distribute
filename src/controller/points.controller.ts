@@ -70,7 +70,9 @@ export class PointsController {
       const dto: PointsDto = {
         address: point.address,
         updatedAt: point.updatedAt,
-        points: BigNumber(point.points.toString()).toFixed(6),
+        points: BigNumber(point.points.toString())
+          .div(Math.pow(10, 18))
+          .toFixed(6),
         tokenAddress: point.token,
       };
       return dto;
@@ -107,7 +109,9 @@ export class PointsController {
         const dto: PointsWithoutDecimalsDto = {
           address: point.address,
           tokenAddress: point.token,
-          points: BigNumber(point.points.toString()).toFixed(6),
+          points: BigNumber(point.points.toString())
+            .div(Math.pow(10, 18))
+            .toFixed(6),
           updated_at: point.updatedAt.getTime() / 1000,
         };
         result.push(dto);
@@ -117,7 +121,9 @@ export class PointsController {
       const cachePoints: TokenPointsWithoutDecimalsDto = {
         errno: 0,
         errmsg: 'no error',
-        total_points: BigNumber(totalPoints.toString()).toFixed(6),
+        total_points: BigNumber(totalPoints.toString())
+          .div(Math.pow(10, 18))
+          .toFixed(6),
         data: result,
       };
       cache.set(RENZO_ALL_POINTS_CACHE_KEY, cachePoints);
