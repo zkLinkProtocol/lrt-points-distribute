@@ -26,6 +26,12 @@ describe('RenzoApiService', () => {
       await renzoApiService._fetchRenzoPoints(
         configService.get<string>('l1Erc20BridgeArbitrum'),
       ),
+      await renzoApiService._fetchRenzoPoints(
+        configService.get<string>('l1Erc20BridgeLinea'),
+      ),
+      await renzoApiService._fetchRenzoPoints(
+        configService.get<string>('l1Erc20BridgeBlast'),
+      ),
     ]
       .flat()
       .reduce(

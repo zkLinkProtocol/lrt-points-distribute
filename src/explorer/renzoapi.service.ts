@@ -17,6 +17,8 @@ export class RenzoApiService {
     this.l1Erc20Bridges = [
       configService.get<string>('l1Erc20BridgeEthereum'),
       configService.get<string>('l1Erc20BridgeArbitrum'),
+      configService.get<string>('l1Erc20BridgeLinea'),
+      configService.get<string>('l1Erc20BridgeBlast'),
     ];
     if (!this.l1Erc20Bridges[0] || !this.l1Erc20Bridges[1]) {
       throw new Error('No l1Erc20Bridges');

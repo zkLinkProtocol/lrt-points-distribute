@@ -30,6 +30,8 @@ export default async () => {
 
     L1_ERC20_BRIDGE_ETHEREUM,
     L1_ERC20_BRIDGE_ARBITRUM,
+    L1_ERC20_BRIDGE_LINEA,
+    L1_ERC20_BRIDGE_BLAST,
   } = process.env;
 
   return {
@@ -74,5 +76,7 @@ export default async () => {
 
     l1Erc20BridgeEthereum: L1_ERC20_BRIDGE_ETHEREUM || '',
     l1Erc20BridgeArbitrum: L1_ERC20_BRIDGE_ARBITRUM || '',
+    l1Erc20BridgeLinea: L1_ERC20_BRIDGE_LINEA || '',
+    l1Erc20BridgeBlast: L1_ERC20_BRIDGE_BLAST || '',
   };
 };
