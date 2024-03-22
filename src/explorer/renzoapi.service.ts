@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { ParseAddressPipe } from 'src/common/pipes/parseAddress.pipe';
 
 export interface RenzoPoints {
   renzoPoints: number;
@@ -20,8 +21,19 @@ export class RenzoApiService {
       configService.get<string>('l1Erc20BridgeLinea'),
       configService.get<string>('l1Erc20BridgeBlast'),
     ];
-    if (!this.l1Erc20Bridges[0] || !this.l1Erc20Bridges[1]) {
+
+    if (
+      configService.get<string[]>(`renzo.tokenAddress`).length !==
+      this.l1Erc20Bridges.length
+    ) {
       throw new Error('No l1Erc20Bridges');
+    }
+    if (
+      !this.l1Erc20Bridges.every((address) =>
+        ParseAddressPipe.addressRegexp.test(address),
+      )
+    ) {
+      throw new Error('l1Erc20Bridges config error');
     }
   }
 

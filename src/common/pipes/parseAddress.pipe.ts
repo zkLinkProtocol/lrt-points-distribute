@@ -11,7 +11,7 @@ interface ParamOptions {
 
 @Injectable()
 export class ParseAddressPipe implements PipeTransform<string | string[]> {
-  private static addressRegexp = new RegExp(ADDRESS_REGEX_PATTERN);
+  public static addressRegexp = new RegExp(ADDRESS_REGEX_PATTERN);
   public readonly options: ParamOptions;
 
   constructor({ required = true, each = false, errorMessage = "Invalid Address format" }: ParamOptions = {}) {
