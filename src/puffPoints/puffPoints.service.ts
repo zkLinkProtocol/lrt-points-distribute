@@ -14,6 +14,7 @@ export class PuffPointsService extends Worker {
   private readonly waitForRetry: number;
   private readonly puffPointsTokenAddress: string;
   private readonly explorerApi: string;
+  private allUserBalance: UserBalances[] = [];
   public constructor(
     private readonly puffPointsProcessor: PuffPointsProcessor,
     private readonly pointsRepository: PointsRepository,
@@ -32,11 +33,18 @@ export class PuffPointsService extends Worker {
     this.explorerApi = configService.get<string>('explorerApiUrl');
   }
 
+  public findUserBalance(address: string): UserBalances {
+    return this.allUserBalance.find(
+      (balance) => balance.address.toLowerCase() === address.toLowerCase(),
+    );
+  }
+  
   protected async runProcess(): Promise<void> {
     let nextIterationDelay = this.waitForInterval;
 
     try {
       const allBalances = await this.getAllBalance(this.puffPointsTokenAddress);
+      this.allUserBalance = allBalances;
       this.logger.log(`LOAD PUFFER BALANCE ${allBalances.length} users`);
       for (const balance of allBalances) {
         const address = balance.address;

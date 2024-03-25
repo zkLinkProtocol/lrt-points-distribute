@@ -28,6 +28,8 @@ import { BigNumber } from 'bignumber.js';
 import { PointsWithoutDecimalsDto } from './pointsWithoutDecimals.dto';
 import { RenzoService } from 'src/renzo/renzo.service';
 import { PointsDto } from './points.dto';
+import { ethers } from 'ethers';
+import { PuffPointsService } from 'src/puffPoints/puffPoints.service';
 
 const options = {
   // how long to live in ms
@@ -52,6 +54,7 @@ export class PointsController {
 
   constructor(
     private readonly pointsRepository: PointsRepository,
+    private readonly puffPointsService: PuffPointsService,
     private readonly renzoService: RenzoService,
     private configService: ConfigService,
   ) {
@@ -215,6 +218,12 @@ export class PointsController {
         data: allPoints.map((p) => {
           return {
             address: p.address,
+            balance: ((item) => {
+              if (item && item.balance) {
+                return BigNumber(ethers.formatEther(item.balance)).toFixed(6);
+              }
+              return '0';
+            })(this.puffPointsService.findUserBalance(p.address)),
             updated_at: (p.updatedAt.getTime() / 1000) | 0,
             points: new BigNumber(p.points.toString())
               .multipliedBy(realPufferPoints)
