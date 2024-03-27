@@ -1,5 +1,3 @@
-import { parse } from 'path';
-
 export type NetworkKey = string;
 export default async () => {
   const {
@@ -32,6 +30,8 @@ export default async () => {
     L1_ERC20_BRIDGE_ARBITRUM,
     L1_ERC20_BRIDGE_LINEA,
     L1_ERC20_BRIDGE_BLAST,
+
+    NOVA_POINT_REDISTRIBUTE_GRAPH_API,
   } = process.env;
 
   return {
@@ -73,7 +73,8 @@ export default async () => {
     enablePuff: ENABLE_PUFF === 'true',
     enableRenzo: ENABLE_RENZO === 'true',
     explorerApiUrl: EXPLORER_API_URL || 'http://localhost:3020',
-
+    
+    novaPointRedistributeGraphApi: NOVA_POINT_REDISTRIBUTE_GRAPH_API || '',
     l1Erc20BridgeEthereum: L1_ERC20_BRIDGE_ETHEREUM || '',
     l1Erc20BridgeArbitrum: L1_ERC20_BRIDGE_ARBITRUM || '',
     l1Erc20BridgeLinea: L1_ERC20_BRIDGE_LINEA || '',
