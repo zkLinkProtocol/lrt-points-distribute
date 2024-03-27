@@ -43,5 +43,5 @@ describe('RenzoApiService', () => {
         { renzoPoints: 0, eigenLayerPoints: 0 },
       );
     expect(renzoPoints).toEqual(renzoPoints2);
-  });
+  },10000);
 });

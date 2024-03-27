@@ -34,6 +34,7 @@
     "bignumber.js": "^9.1.2",
     "dotenv": "^16.4.5",
     "ethers": "^6.11.1",
+    "jest-mock-extended": "^3.0.5",
     "lru-cache": "^10.2.0",
     "nest-winston": "^1.9.4",
     "pg": "^8.8.0",
