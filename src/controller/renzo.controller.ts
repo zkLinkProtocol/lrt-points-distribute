@@ -58,9 +58,10 @@ export class RenzoController {
       return {
         errno: 0,
         errmsg: 'no error',
-        data: allPoints.data.filter(
-          (point) => point.address.toLowerCase() === address.toLowerCase(),
-        ),
+        data:
+          allPoints.data.filter(
+            (point) => point.address.toLowerCase() === address.toLowerCase(),
+          ) ?? [],
       };
     }
     return SERVICE_EXCEPTION;
