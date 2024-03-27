@@ -16,6 +16,7 @@ import { BigNumber } from 'bignumber.js';
 import { RenzoPointsWithoutDecimalsDto } from './pointsWithoutDecimals.dto';
 import { RenzoService } from 'src/renzo/renzo.service';
 import { RenzoApiService } from 'src/explorer/renzoapi.service';
+import { ethers } from 'ethers';
 
 const options = {
   // how long to live in ms
@@ -117,6 +118,12 @@ export class RenzoController {
       const dto: RenzoPointsWithoutDecimalsDto = {
         address: point.address,
         tokenAddress: point.token,
+        balance: ((item) => {
+          if (item && item.balance) {
+            return BigNumber(ethers.formatEther(item.balance)).toFixed(6);
+          }
+          return '0';
+        })(this.renzoService.findUserBalance(point.address)),
         points: {
           renzoPoints: Number(
             new BigNumber(point.points.toString())
@@ -131,7 +138,7 @@ export class RenzoController {
               .toFixed(6),
           ),
         },
-        updatedAt: point.updatedAt.getTime() / 1000,
+        updatedAt: (point.updatedAt.getTime() / 1000) | 0,
       };
       data.push(dto);
     }

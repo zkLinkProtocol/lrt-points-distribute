@@ -18,6 +18,7 @@ export class RenzoService extends Worker {
   private readonly renzoTokenAddress: string[];
   private readonly unitPoints: bigint;
   private readonly unitInterval: number;
+  private allUserBalance: UserBalances[] = [];
   public constructor(
     private readonly pointsRepository: PointsRepository,
     private readonly explorerService: ExplorerService,
@@ -65,7 +66,11 @@ export class RenzoService extends Worker {
 
     return result;
   }
-
+  public findUserBalance(address: string): UserBalances {
+    return this.allUserBalance.find(
+      (balance) => balance.address.toLowerCase() === address.toLowerCase(),
+    );
+  }
   protected async runProcess(): Promise<void> {
     let nextIterationDelay = this.waitForInterval;
 
@@ -73,6 +78,7 @@ export class RenzoService extends Worker {
       const allBalances = await this.explorerService.getAllBalance(
         this.renzoTokenAddress,
       );
+      this.allUserBalance = allBalances;
       this.logger.log(`LOAD RENZO BALANCE ${allBalances.length} users`);
       for (const balance of allBalances) {
         const address = balance.address;

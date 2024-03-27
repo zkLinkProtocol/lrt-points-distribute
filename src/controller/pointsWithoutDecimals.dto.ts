@@ -67,6 +67,13 @@ export class RenzoPointsWithoutDecimalsDto {
   public readonly tokenAddress?: string;
 
   @ApiProperty({
+    type: String,
+    description: 'user balance',
+    example: '1759.589382',
+  })
+  public readonly balance: string;
+
+  @ApiProperty({
     type: Number,
     description: 'The timestamp when the points was updated',
     example: 1710834827,
