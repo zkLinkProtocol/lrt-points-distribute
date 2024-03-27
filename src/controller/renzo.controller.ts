@@ -63,6 +63,7 @@ export class RenzoController {
         ),
       };
     }
+    return SERVICE_EXCEPTION;
   }
 
   @Get('/all/points')
