@@ -18,6 +18,10 @@ import { ExplorerService } from './explorer/explorer.service';
 import { RenzoService } from './renzo/renzo.service';
 import { RenzoApiService } from './explorer/renzoapi.service';
 import { RenzoController } from './controller/renzo.controller';
+import { GraphQueryService } from './explorer/graphQuery.service';
+import { ProjectService } from './project/project.service';
+import { RsethController } from './controller/rseth.controller';
+import { MagpieController } from './controller/magpie.controller';
 
 @Module({
   imports: [
@@ -37,7 +41,7 @@ import { RenzoController } from './controller/renzo.controller';
     MetricsModule,
     UnitOfWorkModule,
   ],
-  controllers: [AppController, PointsController, RenzoController],
+  controllers: [AppController, PointsController, RenzoController, RsethController, MagpieController],
   providers: [
     AppService,
     Points,
@@ -49,6 +53,8 @@ import { RenzoController } from './controller/renzo.controller';
     ExplorerService,
     RenzoService,
     RenzoApiService,
+    GraphQueryService,
+    ProjectService,
   ],
 })
 export class AppModule {}

@@ -27,7 +27,7 @@ export class TokenPointsWithoutDecimalsDto {
     examples: ['437936.342254', null],
     required: false,
   })
-  public readonly total_points: string;
+  public readonly total_points?: string;
 
   @ApiProperty({
     type: [PointsWithoutDecimalsDto],
@@ -68,3 +68,13 @@ export class ExceptionResponse {
   })
   public readonly errmsg: string;
 }
+
+export const SERVICE_EXCEPTION: ExceptionResponse = {
+  errmsg: 'Service exception',
+  errno: 1,
+};
+
+export const NOT_FOUND_EXCEPTION: ExceptionResponse = {
+  errmsg: 'not found',
+  errno: 1,
+};
