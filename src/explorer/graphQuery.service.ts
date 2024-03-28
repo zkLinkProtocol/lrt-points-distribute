@@ -1,5 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { ethers } from 'ethers';
 export interface GraphPoint {
   address: string;
   balance: string;
@@ -9,21 +10,64 @@ export interface GraphPoint {
   project: string;
 }
 export interface GraphTotalPoint {
+  id: string;
   totalBalance: string;
   totalWeightBalance: string;
   totalTimeWeightAmountIn: string;
   totalTimeWeightAmountOut: string;
   project: string;
 }
+// Map<project_name,Map<tokenAddress,[project_id]>>
+
 @Injectable()
-export class GraphQueryService {
+export class GraphQueryService implements OnModuleInit {
   private readonly logger: Logger;
   private readonly novaPointRedistributeGraphApi: string;
+  private readonly projectTokenMap: Map<string, Map<string, string>> =
+    new Map();
   public constructor(configService: ConfigService) {
     this.logger = new Logger(GraphQueryService.name);
     this.novaPointRedistributeGraphApi = configService.get<string>(
       'novaPointRedistributeGraphApi',
     );
+  }
+
+  public async onModuleInit() {
+    this.logger.log('GraphQueryService has been initialized.');
+    //TODO
+    const query = `
+
+{
+  totalPoints{
+    id
+    project
+    totalBalance
+    totalWeightBalance
+    totalTimeWeightAmountIn
+    totalTimeWeightAmountOut
+  }
+}
+    `;
+    const data = await this.query(query);
+    if (data && data.data && Array.isArray(data.data.totalPoints)) {
+      const allPoints = data.data.totalPoints as GraphTotalPoint[];
+      allPoints.forEach((totalPoint) => {
+        const projectArr = totalPoint.project.split('-');
+        const projectName = projectArr[0];
+        const tokenAddress = projectArr[1];
+        if (!this.projectTokenMap.has(projectName)) {
+          this.projectTokenMap.set(projectName, new Map());
+        }
+        this.projectTokenMap
+          .get(projectName)
+          .set(tokenAddress, totalPoint.project);
+        // ethers.keccak256(ethers.toUtf8Bytes(totalPoint.project))
+      });
+    }
+  }
+
+  public getAllProjectIds(projectName: string): string[] {
+    return Array.from(this.projectTokenMap.get(projectName).values());
   }
 
   public static getPoints(points: GraphPoint, timestamp: number): bigint {
@@ -71,14 +115,14 @@ export class GraphQueryService {
      */
     const query = `
     {
-      totalPoint(id:"0x1ab07a4e9453f8a28ac1a900c0e356ed6322f51602531d99191ceb2bfeb1f8cb"){
+      totalPoint(id:"${projectId}"){
         project
         totalBalance
         totalWeightBalance
         totalTimeWeightAmountIn
         totalTimeWeightAmountOut
       }
-      points(where:{project:"puffer-0x1b49ecf1a8323db4abf48b2f5efaa33f7ddab3fc"}) {
+      points(where:{project: "puffer-0x1b49ecf1a8323db4abf48b2f5efaa33f7ddab3fc"}) {
         address
         balance
         weightBalance
@@ -111,7 +155,14 @@ export class GraphQueryService {
   ): Promise<[GraphPoint[], GraphTotalPoint]> {
     const query = `
     {
-      points(where: {project: "${projectId}", address: "${address}"}) {
+      totalPoint(id: "${projectId}") {
+        project
+        totalBalance
+        totalWeightBalance
+        totalTimeWeightAmountIn
+        totalTimeWeightAmountOut
+      }
+      points(where: {project inlcude : [] "${projectId}", address: "${address}"}) {
         address
         balance
         timeWeightAmountIn

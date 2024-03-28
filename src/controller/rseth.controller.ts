@@ -99,6 +99,30 @@ export class RsethController {
       totalPoints: GraphTotalPoint,
       cacheData: TokenPointsWithoutDecimalsDto;
 
+    const projectIds = this.graphQueryService.getAllProjectIds(
+      GRAPH_QUERY_PROJECT_ID,
+    );
+    //TODO 1. query all points by projectIds
+    //TODO 2. get total points
+    //TODO 3. get final data and sum all points
+
+    /**
+     *
+     * {
+     * "errno": 0,
+     * "errmsg": "no error",
+     * "total_points": "0.000000000000000000", // actually total points
+     * "data": [
+     *  {
+     *   "address": "0x"
+     *   "points": "0.000000000000000000",
+     *   --"tokenAddress": "0.000000000000000000",
+     *   --"balance": "0.000000000000000000",
+     *   "updated_at": 1630000000
+     * }
+     * ]
+     * }
+     */
     try {
       [points, totalPoints] =
         await this.graphQueryService.queryPointsRedistributed(
@@ -116,6 +140,10 @@ export class RsethController {
       return SERVICE_EXCEPTION;
     }
   }
+  //TODO
+  public async getAllRsethPointsWithBalance(): Promise<
+    Partial<TokenPointsWithoutDecimalsDto>
+  > {}
 
   private getFinalData(
     points: GraphPoint[],
