@@ -11,19 +11,18 @@ export interface GraphPoint {
 }
 export interface GraphTotalPoint {
   id: string;
+  project: string;
   totalBalance: string;
   totalWeightBalance: string;
   totalTimeWeightAmountIn: string;
   totalTimeWeightAmountOut: string;
-  project: string;
 }
-// Map<project_name,Map<tokenAddress,[project_id]>>
 
 @Injectable()
 export class GraphQueryService implements OnModuleInit {
   private readonly logger: Logger;
   private readonly novaPointRedistributeGraphApi: string;
-  private readonly projectTokenMap: Map<string, Map<string, string>> =
+  private projectTokenMap: Map<string, Map<string, string>> =
     new Map();
   public constructor(configService: ConfigService) {
     this.logger = new Logger(GraphQueryService.name);
@@ -34,9 +33,7 @@ export class GraphQueryService implements OnModuleInit {
 
   public async onModuleInit() {
     this.logger.log('GraphQueryService has been initialized.');
-    //TODO
     const query = `
-
 {
   totalPoints{
     id
@@ -61,7 +58,6 @@ export class GraphQueryService implements OnModuleInit {
         this.projectTokenMap
           .get(projectName)
           .set(tokenAddress, totalPoint.project);
-        // ethers.keccak256(ethers.toUtf8Bytes(totalPoint.project))
       });
     }
   }
@@ -103,47 +99,33 @@ export class GraphQueryService implements OnModuleInit {
 
   public async queryPointsRedistributed(
     projectId: string,
-  ): Promise<[GraphPoint[], GraphTotalPoint]> {
-    /**
-     *
-{
-  "data": {
-    "totalPoint": {},
-    "points": []
-  }
-}    
-     */
+    ): Promise<[GraphPoint[], GraphTotalPoint]> {
+    const id = ethers.keccak256(ethers.toUtf8Bytes(projectId));
     const query = `
-    {
-      totalPoint(id:"${projectId}"){
-        project
-        totalBalance
-        totalWeightBalance
-        totalTimeWeightAmountIn
-        totalTimeWeightAmountOut
-      }
-      points(where:{project: "puffer-0x1b49ecf1a8323db4abf48b2f5efaa33f7ddab3fc"}) {
-        address
-        balance
-        weightBalance
-        timeWeightAmountIn
-        timeWeightAmountOut
-        project
-      }
-    }
+{
+  totalPoint(id:"${id}"){
+    id
+    project
+    totalBalance
+    totalWeightBalance
+    totalTimeWeightAmountIn
+    totalTimeWeightAmountOut
+  }
+  points(where:{project: "${projectId}"}) {
+    address
+    balance
+    weightBalance
+    timeWeightAmountIn
+    timeWeightAmountOut
+    project
+  }
+}
     `;
     const data = await this.query(query);
-    if (data && data.data && Array.isArray(data.data.points)) {
+    if (data && data.data && data.data.totalPoint && Array.isArray(data.data.points)) {
       return [
         data.data.points as GraphPoint[],
-        //TODO
-        {
-          totalBalance: '0',
-          totalWeightBalance: '0',
-          totalTimeWeightAmountIn: '0',
-          totalTimeWeightAmountOut: '0',
-          project: projectId,
-        },
+        data.data.totalPoint as GraphTotalPoint,
       ];
     }
     return [[], undefined];
@@ -153,40 +135,36 @@ export class GraphQueryService implements OnModuleInit {
     address: string,
     projectId: string,
   ): Promise<[GraphPoint[], GraphTotalPoint]> {
+    const id = ethers.keccak256(ethers.toUtf8Bytes(projectId));
     const query = `
-    {
-      totalPoint(id: "${projectId}") {
-        project
-        totalBalance
-        totalWeightBalance
-        totalTimeWeightAmountIn
-        totalTimeWeightAmountOut
-      }
-      points(where: {project inlcude : [] "${projectId}", address: "${address}"}) {
-        address
-        balance
-        timeWeightAmountIn
-        timeWeightAmountOut
-        project
-      }
-    }
-      `;
+{
+  totalPoint(id: "${id}") {
+    project
+    totalBalance
+    totalWeightBalance
+    totalTimeWeightAmountIn
+    totalTimeWeightAmountOut
+  }
+  points(where: {project: "${projectId}", address: "${address}"}) {
+    address
+    balance
+    weightBalance
+    timeWeightAmountIn
+    timeWeightAmountOut
+    project
+  }
+}
+    `;
     const data = await this.query(query);
-    if (data && data.data && Array.isArray(data.data.points)) {
+    if (data && data.data && data.data.totalPoint && Array.isArray(data.data.points)) {
       return [
         data.data.points as GraphPoint[],
-        //TODO
-        {
-          totalBalance: '0',
-          totalWeightBalance: '0',
-          totalTimeWeightAmountIn: '0',
-          totalTimeWeightAmountOut: '0',
-          project: projectId,
-        },
+        data.data.totalPoint as GraphTotalPoint,
       ];
     }
     return [[], undefined];
   }
+
   private async query(query: string) {
     const body = {
       query: query,
