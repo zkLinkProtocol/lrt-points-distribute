@@ -25,27 +25,27 @@ const options = {
 };
 
 const cache = new LRUCache(options);
-const RSETH_ALL_POINTS_CACHE_KEY = 'allRsethPoints';
-const RSETH_ALL_POINTS_WITH_BALANCE_CACHE_KEY = 'allRsethPointsWithBalance';
-const GRAPH_QUERY_PROJECT_ID = 'rseth';
+const MAGPIE_ALL_POINTS_CACHE_KEY = 'allMagpiePoints';
+const MAGPIE_ALL_POINTS_WITH_BALANCE_CACHE_KEY = 'allMagpiePointsWithBalance';
+const GRAPH_QUERY_PROJECT_ID = 'magpie';
 
-@ApiTags('rseth')
+@ApiTags('magpie')
 @ApiExcludeController(false)
-@Controller('rseth')
-export class RsethController {
-  private readonly logger = new Logger(RsethController.name);
+@Controller('magpie')
+export class MagpieController {
+  private readonly logger = new Logger(MagpieController.name);
 
   constructor(private projectService: ProjectService) {}
 
   @Get('/points')
-  @ApiOperation({ summary: 'Get rsETH personal points' })
+  @ApiOperation({ summary: 'Get magpie personal points' })
   @ApiBadRequestResponse({
     description: '{ "errno": 1, "errmsg": "Service exception" }',
   })
   @ApiNotFoundResponse({
     description: '{ "errno": 1, "errmsg": "not found" }',
   })
-  public async getRsethPoints(
+  public async getMagpiePoints(
     @Query('address', new ParseAddressPipe()) address: string,
   ): Promise<TokenPointsWithoutDecimalsDto> {
     let finalPoints: any[], finalTotalPoints: string;
@@ -53,7 +53,7 @@ export class RsethController {
     try{
       [finalPoints, finalTotalPoints] = await this.projectService.getPoints(GRAPH_QUERY_PROJECT_ID, address);
     } catch (err) {
-      this.logger.error('Get rsETH all points failed', err);
+      this.logger.error('Get magpie all points failed', err);
       return SERVICE_EXCEPTION;
     }
 
@@ -72,10 +72,10 @@ export class RsethController {
   @Get('/all/points')
   @ApiOperation({
     summary:
-      'Get rsETH point for all users, point are based on user token dimension',
+      'Get magpie point for all users, point are based on user token dimension',
   })
   @ApiOkResponse({
-    description: "Return all users' rsETH points.",
+    description: "Return all users' magpie points.",
     type: TokenPointsWithoutDecimalsDto,
   })
   @ApiBadRequestResponse({
@@ -84,11 +84,11 @@ export class RsethController {
   @ApiNotFoundResponse({
     description: '{ "errno": 1, "errmsg": "not found" }',
   })
-  public async getAllRsethPoints(): Promise<
+  public async getAllMagpiePoints(): Promise<
     Partial<TokenPointsWithoutDecimalsDto>
   > {
     const allPoints = cache.get(
-      RSETH_ALL_POINTS_CACHE_KEY,
+      MAGPIE_ALL_POINTS_CACHE_KEY,
     ) as TokenPointsWithoutDecimalsDto;
     if (allPoints) {
       return allPoints;
@@ -98,7 +98,7 @@ export class RsethController {
     try{
       [finalPoints, finalTotalPoints] = await this.projectService.getAllPoints(GRAPH_QUERY_PROJECT_ID);
     } catch (err) {
-      this.logger.error('Get rsETH all points failed', err);
+      this.logger.error('Get magpie all points failed', err);
       return SERVICE_EXCEPTION;
     }
 
@@ -112,17 +112,17 @@ export class RsethController {
       total_points: finalTotalPoints,
       data: finalPoints
     };
-    cache.set(RSETH_ALL_POINTS_CACHE_KEY, cacheData);
+    cache.set(MAGPIE_ALL_POINTS_CACHE_KEY, cacheData);
     return cacheData;
   }
 
   @Get('/all/points-with-balance')
   @ApiOperation({
     summary:
-      'Get rsETH point for all users, point are based on user token dimension',
+      'Get magpie point for all users, point are based on user token dimension',
   })
   @ApiOkResponse({
-    description: "Return all users' rsETH points with balance.",
+    description: "Return all users' magpie points with balance.",
     type: TokenPointsWithoutDecimalsDto,
   })
   @ApiBadRequestResponse({
@@ -131,11 +131,11 @@ export class RsethController {
   @ApiNotFoundResponse({
     description: '{ "errno": 1, "errmsg": "not found" }',
   })
-  public async getAllRsethPointsWithBalance(): Promise<
+  public async getAllMagpiePointsWithBalance(): Promise<
     Partial<TokenPointsWithoutDecimalsDto>
   > {
     const allPoints = cache.get(
-      RSETH_ALL_POINTS_WITH_BALANCE_CACHE_KEY,
+      MAGPIE_ALL_POINTS_WITH_BALANCE_CACHE_KEY,
     ) as TokenPointsWithoutDecimalsDto;
     if (allPoints) {
       return allPoints;
@@ -145,7 +145,7 @@ export class RsethController {
     try{
       [finalPoints, finalTotalPoints] = await this.projectService.getAllPointsWithBalance(GRAPH_QUERY_PROJECT_ID);
     } catch (err) {
-      this.logger.error('Get rsETH all points failed', err);
+      this.logger.error('Get magpie all points failed', err);
       return SERVICE_EXCEPTION;
     }
 
@@ -159,7 +159,7 @@ export class RsethController {
       total_points: finalTotalPoints,
       data: finalPoints
     };
-    cache.set(RSETH_ALL_POINTS_WITH_BALANCE_CACHE_KEY, cacheData);
+    cache.set(MAGPIE_ALL_POINTS_WITH_BALANCE_CACHE_KEY, cacheData);
     return cacheData;
   }
 }
