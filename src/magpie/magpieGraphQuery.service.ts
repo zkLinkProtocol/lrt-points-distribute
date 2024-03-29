@@ -10,7 +10,7 @@ export interface MagpieGraphTotalPoint {
 @Injectable()
 export class MagpieGraphQueryService implements OnModuleInit {
   private readonly logger: Logger;
-  private readonly magpiePointRedistributeGraphApi: string;
+  private readonly magpiePointRedistributeGraphApi: string = "https://gateway-arbitrum.network.thegraph.com/api/db54be382da0a4d60b8ea908242dda0c/subgraphs/id/F2wKriMMFuc8sMtFxYd3Kew46DHvBGfGdTvhvvNAWg8x";
   private readonly magpieUserinfoId: string;
 
   private eigenpiePoints: bigint = BigInt(0);
@@ -19,10 +19,7 @@ export class MagpieGraphQueryService implements OnModuleInit {
   public constructor(configService: ConfigService) {
     this.logger = new Logger(MagpieGraphQueryService.name);
     this.magpieUserinfoId = configService.get<string>(
-      'magpie.magpieUserinfoId',
-    );
-    this.magpiePointRedistributeGraphApi = configService.get<string>(
-      'magpie.magpiePointRedistributeGraphApi',
+      'l1Erc20BridgeEthereum',
     );
   }
 

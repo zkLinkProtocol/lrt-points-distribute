@@ -26,9 +26,6 @@ export default async () => {
     RENZO_UNIT_INTERVAL,
     ENABLE_RENZO,
 
-    MAGPIE_USERINFO_ID,
-    MAGPIE_POINT_REDISTRIBUTE_GRAPH_API,
-
     L1_ERC20_BRIDGE_ETHEREUM,
     L1_ERC20_BRIDGE_ARBITRUM,
     L1_ERC20_BRIDGE_LINEA,
@@ -72,10 +69,6 @@ export default async () => {
       ).split(','),
       unitPoints: BigInt(RENZO_UNIT_POINTS || '0') || 1n,
       unitInterval: parseInt(RENZO_UNIT_INTERVAL, 10) || 3600_000,
-    },
-    magpie: {
-      magpieUserinfoId: MAGPIE_USERINFO_ID || '',
-      magpiePointRedistributeGraphApi: MAGPIE_POINT_REDISTRIBUTE_GRAPH_API || '',
     },
     enablePuff: ENABLE_PUFF === 'true',
     enableRenzo: ENABLE_RENZO === 'true',
