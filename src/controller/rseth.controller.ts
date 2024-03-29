@@ -149,7 +149,7 @@ export class RsethController {
   private getReturnData(
     finalPoints: any[],
     finnalTotalPoints: bigint,
-  ){
+  ): TokenPointsWithoutDecimalsDto{
     return {
       errno: 0,
       errmsg: 'no error',
@@ -158,6 +158,6 @@ export class RsethController {
         point.points = ethers.formatEther(point.points);
         return point;
       })
-    };
+    } as TokenPointsWithoutDecimalsDto;
   }
 }
