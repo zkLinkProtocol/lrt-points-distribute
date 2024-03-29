@@ -15,6 +15,7 @@ import {
   TokenPointsWithoutDecimalsDto,
 } from './tokenPointsWithoutDecimals.dto';
 import { ProjectService } from 'src/project/project.service';
+import { ethers } from 'ethers';
 
 const options = {
   // how long to live in ms
@@ -48,7 +49,7 @@ export class RsethController {
   public async getRsethPoints(
     @Query('address', new ParseAddressPipe()) address: string,
   ): Promise<TokenPointsWithoutDecimalsDto> {
-    let finalPoints: any[], finalTotalPoints: string;
+    let finalPoints: any[], finalTotalPoints: bigint;
 
     try{
       [finalPoints, finalTotalPoints] = await this.projectService.getPoints(GRAPH_QUERY_PROJECT_ID, address);
@@ -56,17 +57,11 @@ export class RsethController {
       this.logger.error('Get rsETH all points failed', err);
       return SERVICE_EXCEPTION;
     }
-
     if(!finalPoints || !finalTotalPoints){
       return NOT_FOUND_EXCEPTION
     }
 
-    return {
-      errno: 0,
-      errmsg: 'no error',
-      total_points: finalTotalPoints,
-      data: finalPoints
-    };
+    return this.getReturnData(finalPoints, finalTotalPoints);
   }
 
   @Get('/all/points')
@@ -93,25 +88,19 @@ export class RsethController {
     if (allPoints) {
       return allPoints;
     }
-    let cacheData: TokenPointsWithoutDecimalsDto, finalPoints: any[], finalTotalPoints: string;
 
+    let cacheData: TokenPointsWithoutDecimalsDto, finalPoints: any[], finalTotalPoints: bigint;
     try{
       [finalPoints, finalTotalPoints] = await this.projectService.getAllPoints(GRAPH_QUERY_PROJECT_ID);
     } catch (err) {
       this.logger.error('Get rsETH all points failed', err);
       return SERVICE_EXCEPTION;
     }
-
     if(!finalPoints || !finalTotalPoints){
       return NOT_FOUND_EXCEPTION
     }
 
-    cacheData = {
-      errno: 0,
-      errmsg: 'no error',
-      total_points: finalTotalPoints,
-      data: finalPoints
-    };
+    cacheData = this.getReturnData(finalPoints, finalTotalPoints);;
     cache.set(RSETH_ALL_POINTS_CACHE_KEY, cacheData);
     return cacheData;
   }
@@ -140,26 +129,35 @@ export class RsethController {
     if (allPoints) {
       return allPoints;
     }
-    let cacheData: TokenPointsWithoutDecimalsDto, finalPoints: any[], finalTotalPoints: string;
 
+    let cacheData: TokenPointsWithoutDecimalsDto, finalPoints: any[], finalTotalPoints: bigint;
     try{
       [finalPoints, finalTotalPoints] = await this.projectService.getAllPointsWithBalance(GRAPH_QUERY_PROJECT_ID);
     } catch (err) {
       this.logger.error('Get rsETH all points failed', err);
       return SERVICE_EXCEPTION;
     }
-
     if(!finalPoints || !finalTotalPoints){
       return NOT_FOUND_EXCEPTION
     }
 
-    cacheData = {
-      errno: 0,
-      errmsg: 'no error',
-      total_points: finalTotalPoints,
-      data: finalPoints
-    };
+    cacheData = this.getReturnData(finalPoints, finalTotalPoints);;
     cache.set(RSETH_ALL_POINTS_WITH_BALANCE_CACHE_KEY, cacheData);
     return cacheData;
+  }
+
+  private getReturnData(
+    finalPoints: any[],
+    finnalTotalPoints: bigint,
+  ){
+    return {
+      errno: 0,
+      errmsg: 'no error',
+      total_points: ethers.formatEther(finnalTotalPoints),
+      data: finalPoints.map(point => {
+        point.points = ethers.formatEther(point.points);
+        return point;
+      })
+    };
   }
 }
