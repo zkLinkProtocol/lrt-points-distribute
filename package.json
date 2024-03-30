@@ -21,7 +21,9 @@
     "typeorm": "typeorm-ts-node-commonjs",
     "migration:generate": "npm run typeorm migration:generate ./src/migrations/$npm_config_name -- -d ./src/typeorm.config.ts",
     "migration:run": "npm run typeorm migration:run -- -d ./src/typeorm.config.ts",
-    "migration:revert": "npm run typeorm migration:revert -- -d ./src/typeorm.config.ts"
+    "migration:revert": "npm run typeorm migration:revert -- -d ./src/typeorm.config.ts",
+
+    "getPuffPoints": "npx ts-node scripts/getPuffPoints.ts"
   },
   "dependencies": {
     "@nestjs/common": "^10.0.0",
