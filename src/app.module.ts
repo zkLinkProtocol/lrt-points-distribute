@@ -20,6 +20,7 @@ import { RenzoApiService } from './explorer/renzoapi.service';
 import { RenzoController } from './controller/renzo.controller';
 import { GraphQueryService } from './explorer/graphQuery.service';
 import { ProjectService } from './project/project.service';
+import { MagpieGraphQueryService } from './magpie/magpieGraphQuery.service';
 import { RsethController } from './controller/rseth.controller';
 import { MagpieController } from './controller/magpie.controller';
 
@@ -55,6 +56,7 @@ import { MagpieController } from './controller/magpie.controller';
     RenzoApiService,
     GraphQueryService,
     ProjectService,
+    MagpieGraphQueryService,
   ],
 })
 export class AppModule {}

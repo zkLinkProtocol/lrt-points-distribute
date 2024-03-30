@@ -12,9 +12,11 @@ import { ParseAddressPipe } from 'src/common/pipes/parseAddress.pipe';
 import {
   NOT_FOUND_EXCEPTION,
   SERVICE_EXCEPTION,
-  TokenPointsWithoutDecimalsDto,
 } from './tokenPointsWithoutDecimals.dto';
+import { MagiePointsWithoutDecimalsDto } from 'src/magpie/magiePointsWithoutDecimalsDto.dto';
 import { ProjectService } from 'src/project/project.service';
+import { MagpieGraphQueryService } from 'src/magpie/magpieGraphQuery.service';
+import { ethers } from 'ethers';
 
 const options = {
   // how long to live in ms
@@ -35,7 +37,10 @@ const GRAPH_QUERY_PROJECT_ID = 'magpie';
 export class MagpieController {
   private readonly logger = new Logger(MagpieController.name);
 
-  constructor(private projectService: ProjectService) {}
+  constructor(
+    private projectService: ProjectService, 
+    private magpieGraphQueryService: MagpieGraphQueryService
+  ) {}
 
   @Get('/points')
   @ApiOperation({ summary: 'Get magpie personal points' })
@@ -47,26 +52,22 @@ export class MagpieController {
   })
   public async getMagpiePoints(
     @Query('address', new ParseAddressPipe()) address: string,
-  ): Promise<TokenPointsWithoutDecimalsDto> {
-    let finalPoints: any[], finalTotalPoints: string;
-
+  ): Promise<MagiePointsWithoutDecimalsDto> {
+    let finalPoints: any[], finalTotalPoints: bigint;
     try{
       [finalPoints, finalTotalPoints] = await this.projectService.getPoints(GRAPH_QUERY_PROJECT_ID, address);
     } catch (err) {
       this.logger.error('Get magpie all points failed', err);
       return SERVICE_EXCEPTION;
     }
-
     if(!finalPoints || !finalTotalPoints){
       return NOT_FOUND_EXCEPTION
     }
 
-    return {
-      errno: 0,
-      errmsg: 'no error',
-      total_points: finalTotalPoints,
-      data: finalPoints
-    };
+    // Get real points.
+    const [eigenpiePoints, eigenLayerPoints] = this.magpieGraphQueryService.getTotalPoints();
+
+    return this.getReturnData(finalPoints, finalTotalPoints, eigenpiePoints, eigenLayerPoints);
   }
 
   @Get('/all/points')
@@ -76,7 +77,7 @@ export class MagpieController {
   })
   @ApiOkResponse({
     description: "Return all users' magpie points.",
-    type: TokenPointsWithoutDecimalsDto,
+    type: MagiePointsWithoutDecimalsDto,
   })
   @ApiBadRequestResponse({
     description: '{ "errno": 1, "errmsg": "Service exception" }',
@@ -85,33 +86,29 @@ export class MagpieController {
     description: '{ "errno": 1, "errmsg": "not found" }',
   })
   public async getAllMagpiePoints(): Promise<
-    Partial<TokenPointsWithoutDecimalsDto>
+    Partial<MagiePointsWithoutDecimalsDto>
   > {
     const allPoints = cache.get(
       MAGPIE_ALL_POINTS_CACHE_KEY,
-    ) as TokenPointsWithoutDecimalsDto;
+    ) as MagiePointsWithoutDecimalsDto;
     if (allPoints) {
       return allPoints;
     }
-    let cacheData: TokenPointsWithoutDecimalsDto, finalPoints: any[], finalTotalPoints: string;
 
+    let cacheData: MagiePointsWithoutDecimalsDto, finalPoints: any[], finalTotalPoints: bigint;
     try{
       [finalPoints, finalTotalPoints] = await this.projectService.getAllPoints(GRAPH_QUERY_PROJECT_ID);
     } catch (err) {
       this.logger.error('Get magpie all points failed', err);
       return SERVICE_EXCEPTION;
     }
-
     if(!finalPoints || !finalTotalPoints){
       return NOT_FOUND_EXCEPTION
     }
 
-    cacheData = {
-      errno: 0,
-      errmsg: 'no error',
-      total_points: finalTotalPoints,
-      data: finalPoints
-    };
+    // Get real points.
+    const [eigenpiePoints, eigenLayerPoints] = this.magpieGraphQueryService.getTotalPoints();
+    cacheData = this.getReturnData(finalPoints, finalTotalPoints, eigenpiePoints, eigenLayerPoints);
     cache.set(MAGPIE_ALL_POINTS_CACHE_KEY, cacheData);
     return cacheData;
   }
@@ -123,7 +120,7 @@ export class MagpieController {
   })
   @ApiOkResponse({
     description: "Return all users' magpie points with balance.",
-    type: TokenPointsWithoutDecimalsDto,
+    type: MagiePointsWithoutDecimalsDto,
   })
   @ApiBadRequestResponse({
     description: '{ "errno": 1, "errmsg": "Service exception" }',
@@ -132,34 +129,54 @@ export class MagpieController {
     description: '{ "errno": 1, "errmsg": "not found" }',
   })
   public async getAllMagpiePointsWithBalance(): Promise<
-    Partial<TokenPointsWithoutDecimalsDto>
+    Partial<MagiePointsWithoutDecimalsDto>
   > {
     const allPoints = cache.get(
       MAGPIE_ALL_POINTS_WITH_BALANCE_CACHE_KEY,
-    ) as TokenPointsWithoutDecimalsDto;
+    ) as MagiePointsWithoutDecimalsDto;
     if (allPoints) {
       return allPoints;
     }
-    let cacheData: TokenPointsWithoutDecimalsDto, finalPoints: any[], finalTotalPoints: string;
 
+    let cacheData: MagiePointsWithoutDecimalsDto, finalPoints: any[], finalTotalPoints: bigint;
     try{
       [finalPoints, finalTotalPoints] = await this.projectService.getAllPointsWithBalance(GRAPH_QUERY_PROJECT_ID);
     } catch (err) {
       this.logger.error('Get magpie all points failed', err);
       return SERVICE_EXCEPTION;
     }
-
     if(!finalPoints || !finalTotalPoints){
       return NOT_FOUND_EXCEPTION
     }
 
-    cacheData = {
-      errno: 0,
-      errmsg: 'no error',
-      total_points: finalTotalPoints,
-      data: finalPoints
-    };
+    // Get real points.
+    const [eigenpiePoints, eigenLayerPoints] = this.magpieGraphQueryService.getTotalPoints();
+    cacheData = this.getReturnData(finalPoints, finalTotalPoints, eigenpiePoints, eigenLayerPoints);
     cache.set(MAGPIE_ALL_POINTS_WITH_BALANCE_CACHE_KEY, cacheData);
     return cacheData;
+  }
+
+  private getReturnData(
+    finalPoints: any[],
+    finnalTotalPoints: bigint,
+    eigenpiePoints: bigint,
+    eigenLayerPoints: bigint,
+  ): MagiePointsWithoutDecimalsDto {
+    return {
+      errno: 0,
+      errmsg: 'no error',
+      totals: {
+        eigenpiePoints: ethers.formatEther(eigenpiePoints),
+        eigenLayerPoints: ethers.formatEther(eigenLayerPoints),
+      },
+      data: finalPoints.map(point => {
+        const tmpPoints = point.points;
+        point.points = {
+          eigenpiePoints: ethers.formatEther(this.projectService.getRealPoints(tmpPoints, finnalTotalPoints, eigenpiePoints)),
+          eigenLayerPoints: ethers.formatEther(this.projectService.getRealPoints(tmpPoints, finnalTotalPoints, eigenLayerPoints)),
+        };
+        return point;
+      })
+    } as MagiePointsWithoutDecimalsDto;
   }
 }
