@@ -105,6 +105,7 @@ export class RenzoController {
       cache.set(RENZO_ALL_POINTS_CACHE_KEY, cacheData);
       return cacheData;
     } catch (err) {
+      console.error(err);
       this.logger.error('Get renzo all points failed', err);
       return SERVICE_EXCEPTION;
     }
