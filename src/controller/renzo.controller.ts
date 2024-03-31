@@ -153,7 +153,10 @@ export class RenzoController {
   public async getLocalPointAndRealPoint() {
     const { renzoPoints, eigenLayerPoints } =
       await this.renzoApiService.fetchRenzoPoints();
+    this.logger.debug(`renzoPoints: ${renzoPoints}, eigenLayerPoints: ${eigenLayerPoints}`);
+    this.logger.debug('start get all points');
     const points = await this.renzoService.getAllPoints();
+    this.logger.debug('end get all points');
     const totalPoints = points.reduce((acc, point) => {
       return acc + point.points;
     }, 0n);

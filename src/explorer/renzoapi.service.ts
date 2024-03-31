@@ -54,12 +54,14 @@ export class RenzoApiService {
   }
 
   public async _fetchRenzoPoints(bridgeAddress: string): Promise<RenzoPoints> {
+    this.logger.debug(`start fetchRenzoPoints bridgeAddress: ${bridgeAddress}`);
     const realData = await fetch(`${this.renzoApiBaseurl}${bridgeAddress}`, {
       method: 'get',
       headers: {
         'Content-Type': 'application/json',
       },
     });
+    this.logger.debug(`end fetchRenzoPoints bridgeAddress: ${bridgeAddress}`);
     const pufReadData = await realData.json();
     if (!pufReadData || pufReadData.success !== true || !pufReadData.data) {
       this.logger.error(`No renzo points bridgeAddress: ${bridgeAddress}`);
