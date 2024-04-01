@@ -31,8 +31,12 @@ export class GraphQueryService implements OnModuleInit {
     );
   }
 
-  public async onModuleInit() {
+  public async onModuleInit(){
     this.logger.log('GraphQueryService has been initialized.');
+    this.loadGraphData();
+  }
+
+  private async loadGraphData() {
     const query = `
 {
   totalPoints{

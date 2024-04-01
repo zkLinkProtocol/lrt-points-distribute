@@ -25,10 +25,15 @@ export class MagpieGraphQueryService implements OnModuleInit {
 
   public async onModuleInit() {
     // setInterval will wait for 100s, so it's necessary to execute the loadMagpieData function once first.
-    this.loadMagpieData();
-    setInterval(() => {
-      this.loadMagpieData();
-    }, 100000);
+    const func = async () => {
+      try {
+        await this.loadMagpieData();
+      } catch (error) {
+        this.logger.error("MagpieGraphQueryService init failed", error);
+      }
+    };
+    await func();
+    setInterval(func, 1000 * 10);
   }
 
   public async loadMagpieData() {
@@ -58,17 +63,22 @@ export class MagpieGraphQueryService implements OnModuleInit {
   }
 
   private async query(query: string) {
-    const body = {
-      query: query,
-    };
+    try{
+      const body = {
+        query: query,
+      };
 
-    const response = await fetch(this.magpiePointRedistributeGraphApi, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
+      const response = await fetch(this.magpiePointRedistributeGraphApi, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
 
-    const data = await response.json();
-    return data;
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      this.logger.error("Fetch magpie graph query data faild", error);
+      return undefined;
+    }
   }
 }
