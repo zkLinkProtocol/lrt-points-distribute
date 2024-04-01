@@ -170,22 +170,17 @@ export class GraphQueryService implements OnModuleInit {
   }
 
   private async query(query: string) {
-    try{
-      const body = {
-        query: query,
-      };
+    const body = {
+      query: query,
+    };
 
-      const response = await fetch(this.novaPointRedistributeGraphApi, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
+    const response = await fetch(this.novaPointRedistributeGraphApi, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
 
-      const data = await response.json();
-      return data;
-    } catch (error) {
-      this.logger.error("Fetch graph query data faild", error);
-      return undefined;
-    }
+    const data = await response.json();
+    return data;
   }
 }
