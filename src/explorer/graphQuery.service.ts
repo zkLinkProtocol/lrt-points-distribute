@@ -32,12 +32,8 @@ export class GraphQueryService implements OnModuleInit {
   }
 
   public async onModuleInit(){
-    try {
-      this.logger.log('GraphQueryService has been initialized.');
-      this.loadGraphData();
-    } catch (error) {
-      this.logger.error("GraphQueryService init faild", error);
-    }
+    this.logger.log('GraphQueryService has been initialized.');
+    this.loadGraphData();
   }
 
   private async loadGraphData() {

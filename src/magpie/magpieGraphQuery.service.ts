@@ -24,15 +24,16 @@ export class MagpieGraphQueryService implements OnModuleInit {
   }
 
   public async onModuleInit() {
-    try {
-      // setInterval will wait for 100s, so it's necessary to execute the loadMagpieData function once first.
-      this.loadMagpieData();
-      setInterval(() => {
-        this.loadMagpieData();
-      }, 100000);
-    } catch (error) {
-      this.logger.error("MagpieGraphQueryService init faild", error);
-    }
+    // setInterval will wait for 100s, so it's necessary to execute the loadMagpieData function once first.
+    const func = async () => {
+      try {
+        await this.loadMagpieData();
+      } catch (error) {
+        this.logger.error("MagpieGraphQueryService init failed", error);
+      }
+    };
+    await func();
+    setInterval(func, 1000 * 10);
   }
 
   public async loadMagpieData() {

@@ -42,18 +42,20 @@ export class RenzoService extends Worker {
 
   public async onModuleInit() {
     this.logger.log("Init RenzoService onmoduleinit");
-    try {
-      // setInterval will wait for 100s, so it's necessary to execute the fetchApiData function once first.
-      await this.loadPointData();
-      setInterval(async () => {
+    // setInterval will wait for 100s, so it's necessary to execute the fetchApiData function once first.
+    const func = async () => {
+      try {
         await this.loadPointData();
-      }, 1000 * 10);
-    } catch (error) {
-      this.logger.error("RenzoService init faild", error);
-    }
+      } catch (error) {
+        this.logger.error("RenzoService init failed", error);
+      }
+    };
+    await func();
+    setInterval(func, 1000 * 10);
   }
 
   public async loadPointData() {
+    this.logger.log('loadRenzoData has been load.');
     const { renzoPoints, eigenLayerPoints, totalPoints, points } =
       await this.getLocalPointAndRealPoint();
     let data: RenzoPointsWithoutDecimalsDto[] = [];
