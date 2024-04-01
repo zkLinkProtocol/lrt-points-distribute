@@ -42,11 +42,15 @@ export class RenzoService extends Worker {
 
   public async onModuleInit() {
     this.logger.log("Init RenzoService onmoduleinit");
-    // setInterval will wait for 100s, so it's necessary to execute the fetchApiData function once first.
-    await this.loadPointData();
-    setInterval(async () => {
+    try {
+      // setInterval will wait for 100s, so it's necessary to execute the fetchApiData function once first.
       await this.loadPointData();
-    }, 1000 * 10);
+      setInterval(async () => {
+        await this.loadPointData();
+      }, 1000 * 10);
+    } catch (error) {
+      this.logger.error("RenzoService init faild", error);
+    }
   }
 
   public async loadPointData() {

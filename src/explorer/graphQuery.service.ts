@@ -31,8 +31,16 @@ export class GraphQueryService implements OnModuleInit {
     );
   }
 
-  public async onModuleInit() {
-    this.logger.log('GraphQueryService has been initialized.');
+  public async onModuleInit(){
+    try {
+      this.logger.log('GraphQueryService has been initialized.');
+      this.loadGraphData();
+    } catch (error) {
+      this.logger.error("GraphQueryService init faild", error);
+    }
+  }
+
+  private async loadGraphData() {
     const query = `
 {
   totalPoints{
@@ -166,17 +174,22 @@ export class GraphQueryService implements OnModuleInit {
   }
 
   private async query(query: string) {
-    const body = {
-      query: query,
-    };
+    try{
+      const body = {
+        query: query,
+      };
 
-    const response = await fetch(this.novaPointRedistributeGraphApi, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
+      const response = await fetch(this.novaPointRedistributeGraphApi, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
 
-    const data = await response.json();
-    return data;
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      this.logger.error("Fetch graph query data faild", error);
+      return undefined;
+    }
   }
 }
