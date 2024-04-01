@@ -10,8 +10,9 @@ import { ethers } from 'ethers';
 import { BigNumber } from 'bignumber.js';
 import { ExplorerService } from 'src/explorer/explorer.service';
 import { RenzoApiService } from 'src/explorer/renzoapi.service';
-import { RenzoPointsWithoutDecimalsDto } from 'src/Controller/pointsWithoutDecimals.dto';
+import { RenzoPointsWithoutDecimalsDto } from 'src/controller/pointsWithoutDecimals.dto';
 import { In } from 'typeorm';
+import { formatEther } from 'ethers';
 
 @Injectable()
 export class RenzoService extends Worker {
