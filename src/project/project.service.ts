@@ -4,7 +4,6 @@ import {
     GraphQueryService,
     GraphTotalPoint,
   } from 'src/explorer/graphQuery.service';
-  import { ethers } from 'ethers';
 
 @Injectable()
 export class ProjectService {

@@ -12,11 +12,9 @@ import {
   ExceptionResponse,
   RenzoTokenPointsWithoutDecimalsDto,
 } from './tokenPointsWithoutDecimals.dto';
-import { BigNumber } from 'bignumber.js';
 import { RenzoPointsWithoutDecimalsDto } from './pointsWithoutDecimals.dto';
 import { RenzoService } from 'src/renzo/renzo.service';
 import { RenzoApiService } from 'src/explorer/renzoapi.service';
-import { ethers } from 'ethers';
 
 const options = {
   // how long to live in ms
@@ -91,7 +89,10 @@ export class RenzoController {
       return allPoints;
     }
     try {
-      const { renzoPoints, eigenLayerPoints, data } = await this.getPointData();
+      const pointData = await this.renzoService.getPointData();
+      const renzoPoints = pointData.get("renzoPoints");
+      const eigenLayerPoints = pointData.get("eigenLayerPoints");
+      const data = pointData.get("data");
       const cacheData = {
         errno: 0,
         errmsg: 'no error',
@@ -109,62 +110,5 @@ export class RenzoController {
       this.logger.error('Get renzo all points failed', err);
       return SERVICE_EXCEPTION;
     }
-  }
-
-  public async getPointData() {
-    const { renzoPoints, eigenLayerPoints, totalPoints, points } =
-      await this.getLocalPointAndRealPoint();
-    let data: RenzoPointsWithoutDecimalsDto[] = [];
-    for (const point of points) {
-      const dto: RenzoPointsWithoutDecimalsDto = {
-        address: point.address,
-        tokenAddress: point.token,
-        balance: ((item) => {
-          if (item && item.balance) {
-            return BigNumber(ethers.formatEther(item.balance)).toFixed(6);
-          }
-          return '0';
-        })(this.renzoService.findUserBalance(point.address)),
-        points: {
-          renzoPoints: Number(
-            new BigNumber(point.points.toString())
-              .multipliedBy(renzoPoints)
-              .div(totalPoints.toString())
-              .toFixed(6),
-          ),
-          eigenLayerPoints: Number(
-            new BigNumber(point.points.toString())
-              .multipliedBy(eigenLayerPoints)
-              .div(totalPoints.toString())
-              .toFixed(6),
-          ),
-        },
-        updatedAt: (point.updatedAt.getTime() / 1000) | 0,
-      };
-      data.push(dto);
-    }
-    return {
-      renzoPoints,
-      eigenLayerPoints,
-      data,
-    };
-  }
-
-  public async getLocalPointAndRealPoint() {
-    const { renzoPoints, eigenLayerPoints } =
-      await this.renzoApiService.fetchRenzoPoints();
-    this.logger.debug(`renzoPoints: ${renzoPoints}, eigenLayerPoints: ${eigenLayerPoints}`);
-    this.logger.debug('start get all points');
-    const points = await this.renzoService.getAllPoints();
-    this.logger.debug('end get all points');
-    const totalPoints = points.reduce((acc, point) => {
-      return acc + point.points;
-    }, 0n);
-    return {
-      renzoPoints,
-      eigenLayerPoints,
-      totalPoints,
-      points,
-    };
   }
 }

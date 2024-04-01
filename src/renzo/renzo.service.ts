@@ -6,8 +6,11 @@ import { Transfer } from 'src/type/transfer';
 import { UserBalances } from 'src/type/userBalances';
 import { PointsRepository } from 'src/repositories/points.repository';
 import { Points } from 'src/entities/points.entity';
-import { formatEther } from 'ethers';
+import { ethers } from 'ethers';
+import { BigNumber } from 'bignumber.js';
 import { ExplorerService } from 'src/explorer/explorer.service';
+import { RenzoApiService } from 'src/explorer/renzoapi.service';
+import { RenzoPointsWithoutDecimalsDto } from 'src/Controller/pointsWithoutDecimals.dto';
 import { In } from 'typeorm';
 
 @Injectable()
@@ -19,9 +22,12 @@ export class RenzoService extends Worker {
   private readonly unitPoints: bigint;
   private readonly unitInterval: number;
   private allUserBalance: UserBalances[] = [];
+  private pointData: Map<string, string|number|RenzoPointsWithoutDecimalsDto[]> = new Map();
+
   public constructor(
     private readonly pointsRepository: PointsRepository,
     private readonly explorerService: ExplorerService,
+    private readonly renzoApiService: RenzoApiService,
     configService: ConfigService,
   ) {
     super();
@@ -31,6 +37,89 @@ export class RenzoService extends Worker {
     this.logger = new Logger(RenzoService.name);
     this.unitPoints = configService.get<bigint>('renzo.unitPoints');
     this.unitInterval = configService.get<number>('renzo.unitInterval');
+  }
+
+  public async onModuleInit() {
+    this.logger.log("Init RenzoService onmoduleinit");
+    // setInterval will wait for 100s, so it's necessary to execute the fetchApiData function once first.
+    await this.loadPointData();
+    setInterval(async () => {
+      await this.loadPointData();
+    }, 1000 * 10);
+  }
+
+  public async loadPointData() {
+    const { renzoPoints, eigenLayerPoints, totalPoints, points } =
+      await this.getLocalPointAndRealPoint();
+    let data: RenzoPointsWithoutDecimalsDto[] = [];
+    for (const point of points) {
+      const dto: RenzoPointsWithoutDecimalsDto = {
+        address: point.address,
+        tokenAddress: point.token,
+        balance: ((item) => {
+          if (item && item.balance) {
+            return BigNumber(ethers.formatEther(item.balance)).toFixed(6);
+          }
+          return '0';
+        })(this.findUserBalance(point.address)),
+        points: {
+          renzoPoints: Number(
+            new BigNumber(point.points.toString())
+              .multipliedBy(renzoPoints)
+              .div(totalPoints.toString())
+              .toFixed(6),
+          ),
+          eigenLayerPoints: Number(
+            new BigNumber(point.points.toString())
+              .multipliedBy(eigenLayerPoints)
+              .div(totalPoints.toString())
+              .toFixed(6),
+          ),
+        },
+        updatedAt: (point.updatedAt.getTime() / 1000) | 0,
+      };
+      data.push(dto);
+    }
+    this.pointData.set("renzoPoints", renzoPoints);
+    this.pointData.set("eigenLayerPoints", eigenLayerPoints);
+    this.pointData.set("data", data);
+  }
+
+  private async getLocalPointAndRealPoint() {
+    const { renzoPoints, eigenLayerPoints } =
+      await this.renzoApiService.fetchRenzoPoints();
+    this.logger.debug(`renzoPoints: ${renzoPoints}, eigenLayerPoints: ${eigenLayerPoints}`);
+    this.logger.debug('start get all points');
+    const points = await this.getAllPoints();
+    this.logger.debug('end get all points');
+    const totalPoints = points.reduce((acc, point) => {
+      return acc + point.points;
+    }, 0n);
+    return {
+      renzoPoints,
+      eigenLayerPoints,
+      totalPoints,
+      points,
+    };
+  }
+
+  public async getPointData(): Promise<any> {
+    const timeout = 15000; // 15 seconds in milliseconds
+    const startTime = Date.now();
+
+    return new Promise((resolve) => {
+      const checkRenzoPoints = () => {
+        if (this.pointData !== null && this.pointData.size > 0) {
+          resolve(this.pointData);
+        } else if (Date.now() - startTime > timeout) {
+          resolve(null);
+        } else {
+          setTimeout(checkRenzoPoints, 100); // Check again after 100 milliseconds
+        }
+      };
+
+      checkRenzoPoints();
+    });
   }
 
   public async getPoints(address: string) {
@@ -71,6 +160,7 @@ export class RenzoService extends Worker {
       (balance) => balance.address.toLowerCase() === address.toLowerCase(),
     );
   }
+
   protected async runProcess(): Promise<void> {
     let nextIterationDelay = this.waitForInterval;
 
