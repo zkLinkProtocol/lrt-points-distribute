@@ -1,0 +1,24 @@
+name: CI
+on: [push]
+
+jobs:
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set Node.js 18.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18.x
+
+      - name: Run install
+        uses: borales/actions-yarn@v5
+        with:
+          cmd: install # will run `yarn install` command
+
+      - name: Build production bundle
+        uses: borales/actions-yarn@v5
+        with:
+          cmd: build
