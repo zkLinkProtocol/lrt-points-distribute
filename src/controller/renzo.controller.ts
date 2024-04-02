@@ -11,10 +11,12 @@ import { ParseAddressPipe } from 'src/common/pipes/parseAddress.pipe';
 import {
   ExceptionResponse,
   RenzoTokenPointsWithoutDecimalsDto,
+  NOT_FOUND_EXCEPTION
 } from './tokenPointsWithoutDecimals.dto';
 import { RenzoPointsWithoutDecimalsDto } from './pointsWithoutDecimals.dto';
 import { RenzoService } from 'src/renzo/renzo.service';
 import { RenzoApiService } from 'src/explorer/renzoapi.service';
+import { NOTFOUND } from 'node:dns';
 
 const options = {
   // how long to live in ms
@@ -90,6 +92,9 @@ export class RenzoController {
     }
     try {
       const pointData = await this.renzoService.getPointData();
+      if(null == pointData){
+        return NOT_FOUND_EXCEPTION;
+      }
       const renzoPoints = pointData.get("renzoPoints");
       const eigenLayerPoints = pointData.get("eigenLayerPoints");
       const data = pointData.get("data");

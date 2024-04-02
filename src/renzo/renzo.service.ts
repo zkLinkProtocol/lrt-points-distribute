@@ -51,7 +51,7 @@ export class RenzoService extends Worker {
       }
     };
     await func();
-    setInterval(func, 1000 * 10);
+    setInterval(func, 1000 * 300);
   }
 
   public async loadPointData() {
@@ -111,21 +111,12 @@ export class RenzoService extends Worker {
   }
 
   public async getPointData(): Promise<any> {
-    const timeout = 15000; // 15 seconds in milliseconds
-    const startTime = Date.now();
-
     return new Promise((resolve) => {
-      const checkRenzoPoints = () => {
-        if (this.pointData !== null && this.pointData.size > 0) {
-          resolve(this.pointData);
-        } else if (Date.now() - startTime > timeout) {
-          resolve(null);
-        } else {
-          setTimeout(checkRenzoPoints, 100); // Check again after 100 milliseconds
-        }
-      };
-
-      checkRenzoPoints();
+      if (this.pointData !== null && this.pointData.size > 0) {
+        resolve(this.pointData);
+      } else {
+        resolve(null);
+      }
     });
   }
 
