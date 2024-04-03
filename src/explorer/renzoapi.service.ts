@@ -54,33 +54,28 @@ export class RenzoApiService {
   }
 
   public async _fetchRenzoPoints(bridgeAddress: string): Promise<RenzoPoints> {
-    try{
-      this.logger.debug(`start fetchRenzoPoints bridgeAddress: ${bridgeAddress}`);
-      const realData = await fetch(`${this.renzoApiBaseurl}${bridgeAddress}`, {
-        method: 'get',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-      this.logger.debug(`end fetchRenzoPoints bridgeAddress: ${bridgeAddress}`);
-      const pufReadData = await realData.json();
-      if (!pufReadData || pufReadData.success !== true || !pufReadData.data) {
-        this.logger.error(`No renzo points bridgeAddress: ${bridgeAddress}`);
-        return { renzoPoints: 0, eigenLayerPoints: 0 };
-      }
-      const totals = pufReadData.data.totals;
-      if (!totals || !totals.renzoPoints || !totals.eigenLayerPoints) {
-        this.logger.error(`No renzo points bridgeAddress: ${bridgeAddress}`);
-        return { renzoPoints: 0, eigenLayerPoints: 0 };
-      }
-
-      return {
-        renzoPoints: totals.renzoPoints,
-        eigenLayerPoints: totals.eigenLayerPoints,
-      };
-    }catch(error){
-      this.logger.error("fetchRenzoPoints faild", error);
+    this.logger.debug(`start fetchRenzoPoints bridgeAddress: ${bridgeAddress}`);
+    const realData = await fetch(`${this.renzoApiBaseurl}${bridgeAddress}`, {
+      method: 'get',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    this.logger.debug(`end fetchRenzoPoints bridgeAddress: ${bridgeAddress}`);
+    const pufReadData = await realData.json();
+    if (!pufReadData || pufReadData.success !== true || !pufReadData.data) {
+      this.logger.error(`No renzo points bridgeAddress: ${bridgeAddress}`);
       return { renzoPoints: 0, eigenLayerPoints: 0 };
     }
+    const totals = pufReadData.data.totals;
+    if (!totals || !totals.renzoPoints || !totals.eigenLayerPoints) {
+      this.logger.error(`No renzo points bridgeAddress: ${bridgeAddress}`);
+      return { renzoPoints: 0, eigenLayerPoints: 0 };
+    }
+
+    return {
+      renzoPoints: totals.renzoPoints,
+      eigenLayerPoints: totals.eigenLayerPoints,
+    };
   }
 }

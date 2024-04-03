@@ -23,7 +23,10 @@ export class RenzoService extends Worker {
   private readonly unitPoints: bigint;
   private readonly unitInterval: number;
   private allUserBalance: UserBalances[] = [];
-  private pointData: Map<string, string|number|RenzoPointsWithoutDecimalsDto[]> = new Map();
+  private pointData: Map<
+    string,
+    string | number | RenzoPointsWithoutDecimalsDto[]
+  > = new Map();
 
   public constructor(
     private readonly pointsRepository: PointsRepository,
@@ -41,13 +44,14 @@ export class RenzoService extends Worker {
   }
 
   public async onModuleInit() {
-    this.logger.log("Init RenzoService onmoduleinit");
+    this.logger.log('Init RenzoService onmoduleinit');
     // setInterval will wait for 100s, so it's necessary to execute the fetchApiData function once first.
     const func = async () => {
       try {
         await this.loadPointData();
       } catch (error) {
-        this.logger.error("RenzoService init failed", error);
+        this.logger.error('RenzoService init failed', error);
+        this.logger.error(error.message, error.stack);
       }
     };
     await func();
@@ -87,15 +91,17 @@ export class RenzoService extends Worker {
       };
       data.push(dto);
     }
-    this.pointData.set("renzoPoints", renzoPoints);
-    this.pointData.set("eigenLayerPoints", eigenLayerPoints);
-    this.pointData.set("data", data);
+    this.pointData.set('renzoPoints', renzoPoints);
+    this.pointData.set('eigenLayerPoints', eigenLayerPoints);
+    this.pointData.set('data', data);
   }
 
   private async getLocalPointAndRealPoint() {
     const { renzoPoints, eigenLayerPoints } =
       await this.renzoApiService.fetchRenzoPoints();
-    this.logger.debug(`renzoPoints: ${renzoPoints}, eigenLayerPoints: ${eigenLayerPoints}`);
+    this.logger.debug(
+      `renzoPoints: ${renzoPoints}, eigenLayerPoints: ${eigenLayerPoints}`,
+    );
     this.logger.debug('start get all points');
     const points = await this.getAllPoints();
     this.logger.debug('end get all points');
