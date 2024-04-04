@@ -116,14 +116,8 @@ export class RenzoService extends Worker {
     };
   }
 
-  public async getPointData(): Promise<any> {
-    return new Promise((resolve) => {
-      if (this.pointData !== null && this.pointData.size > 0) {
-        resolve(this.pointData);
-      } else {
-        resolve(null);
-      }
-    });
+  public getPointData(): Map<string,any> {
+    return this.pointData;
   }
 
   public async getPoints(address: string) {

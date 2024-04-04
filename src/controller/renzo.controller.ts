@@ -16,7 +16,6 @@ import {
 import { RenzoPointsWithoutDecimalsDto } from './pointsWithoutDecimals.dto';
 import { RenzoService } from 'src/renzo/renzo.service';
 import { RenzoApiService } from 'src/explorer/renzoapi.service';
-import { NOTFOUND } from 'node:dns';
 
 const options = {
   // how long to live in ms
@@ -53,7 +52,7 @@ export class RenzoController {
   public async getRenzoPoints(
     @Query('address', new ParseAddressPipe()) address: string,
   ): Promise<{ data: RenzoPointsWithoutDecimalsDto[] } | ExceptionResponse> {
-    const pointData = await this.renzoService.getPointData();
+    const pointData = this.renzoService.getPointData();
     if(null == pointData){
       return NOT_FOUND_EXCEPTION;
     }
@@ -94,7 +93,7 @@ export class RenzoController {
       return allPoints;
     }
     try {
-      const pointData = await this.renzoService.getPointData();
+      const pointData = this.renzoService.getPointData();
       if(null == pointData){
         return NOT_FOUND_EXCEPTION;
       }
