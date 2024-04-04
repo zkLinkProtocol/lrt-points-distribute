@@ -50,7 +50,7 @@ export class RenzoService extends Worker {
       try {
         await this.loadPointData();
       } catch (error) {
-        this.logger.error('RenzoService init failed', error);
+        this.logger.error('RenzoService init failed.', error);
         this.logger.error(error.message, error.stack);
       }
     };

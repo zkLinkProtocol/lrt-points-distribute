@@ -45,7 +45,6 @@ export class RenzoController {
     private readonly renzoApiService: RenzoApiService,
   ) {}
 
-  //TODO no found error's format is not ExceptionResponse
   @Get('/points')
   @ApiOperation({ summary: 'Get renzo personal points' })
   @ApiBadRequestResponse({
@@ -54,13 +53,17 @@ export class RenzoController {
   public async getRenzoPoints(
     @Query('address', new ParseAddressPipe()) address: string,
   ): Promise<{ data: RenzoPointsWithoutDecimalsDto[] } | ExceptionResponse> {
-    const allPoints = await this.getAllRenzoPoints();
-    if (Array.isArray(allPoints.data)) {
+    const pointData = await this.renzoService.getPointData();
+    if(null == pointData){
+      return NOT_FOUND_EXCEPTION;
+    }
+    const data = pointData.get("data");
+    if (Array.isArray(data)) {
       return {
         errno: 0,
         errmsg: 'no error',
         data:
-          allPoints.data.filter(
+          data.filter(
             (point) => point.address.toLowerCase() === address.toLowerCase(),
           ) ?? [],
       };
