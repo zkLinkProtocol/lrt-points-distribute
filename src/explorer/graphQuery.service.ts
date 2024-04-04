@@ -66,6 +66,10 @@ export class GraphQueryService implements OnModuleInit {
     }
   }
 
+  public getAllTokenAddresses(projectName: string): string[] {
+    return Array.from(this.projectTokenMap.get(projectName).keys());
+  }
+
   public getAllProjectIds(projectName: string): string[] {
     return Array.from(this.projectTokenMap.get(projectName).values());
   }
