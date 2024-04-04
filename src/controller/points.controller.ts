@@ -44,6 +44,7 @@ const ALL_PUFFER_POINTS_CACHE_KEY = 'allPufferPoints';
 const TOTAL_PUFFER_POINTS_CACHE_KEY = 'totalPufferPoints';
 const REAL_PUFFFER_POINTS_CACHE_KEY = 'realPufferPoints';
 const RENZO_ALL_POINTS_CACHE_KEY = 'allRenzoPoints';
+const PUFFER_ADDRESS_POINTS_FORWARD = 'pufferAddressPointsForward';
 
 @ApiTags('points')
 @ApiExcludeController(false)
@@ -248,6 +249,13 @@ export class PointsController {
   public async getForwardPuffer(
     @Query('address', new ParseAddressPipe()) address: string,
   ) {
+    const cacheKey = PUFFER_ADDRESS_POINTS_FORWARD+address;
+    const pufReadDataCache = cache.get(
+      cacheKey,
+    );
+    if (pufReadDataCache) {
+      return pufReadDataCache;
+    }
     const realData = await fetch(
       `https://quest-api.puffer.fi/puffer-quest/third/query_zklink_point?address=${address}`,
       {
@@ -259,6 +267,7 @@ export class PointsController {
       },
     );
     const pufReadData = await realData.json();
+    cache.set(cacheKey, pufReadData);
     return pufReadData;
   }
 
