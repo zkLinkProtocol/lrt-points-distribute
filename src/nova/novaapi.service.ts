@@ -1,5 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import {
+  GraphQueryService,
+} from 'src/explorer/graphQuery.service';
 
 export interface NovaPoints {
   novaPoint: number;
@@ -10,9 +12,38 @@ export interface NovaPoints {
 export class NovaApiService {
   private readonly logger: Logger;
   private readonly novaApiBaseurl: string = "https://app-api.zklink.io/points/addressTokenTvl/getAccountPoint?address=";
-  
-  public constructor() {
+  private readonly graphQueryService: GraphQueryService;
+  private readonly projectName: string = "nova";
+  private tokenNovaPoints: Map<String, NovaPoints> = new Map();
+
+  public constructor(graphQueryService: GraphQueryService) {
     this.logger = new Logger(NovaApiService.name);
+    this.graphQueryService = graphQueryService;
+  }
+
+  public async onModuleInit(){
+    this.logger.log('NovaApiService has been initialized.');
+    const func = async () => {
+      try {
+        await this.loadData();
+      } catch (error) {
+        this.logger.error("NovaApiService init failed", error);
+        this.logger.error(error.message, error.stack);
+      }
+    };
+    await func();
+    setInterval(func, 1000 * 10);
+  }
+
+  public async loadData(){
+    const tokenAddress = this.graphQueryService.getAllTokenAddresses(this.projectName);
+    for (const key in tokenAddress) {
+      this.tokenNovaPoints.set(tokenAddress[key], await this.fetchNovaPoints(tokenAddress[key]));
+    }
+  }
+
+  public getNovaPoint(tokenAddress: String): NovaPoints{
+    return this.tokenNovaPoints.get(tokenAddress);
   }
 
   public async fetchNovaPoints(tokenAddress: string): Promise<NovaPoints> {

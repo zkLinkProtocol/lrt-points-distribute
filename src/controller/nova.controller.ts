@@ -66,11 +66,14 @@ export class NovaController {
     // Get real points.
     let points: NovaPoints;
     try{
-      points = await this.novaApiService.fetchNovaPoints(tokenAddress);
+      points = await this.novaApiService.getNovaPoint(tokenAddress);
     } catch (err) {
       this.logger.error('Get nova real points failed', err);
       this.logger.error(err.message, err.stack);
       return SERVICE_EXCEPTION;
+    }
+    if(!points){
+      return NOT_FOUND_EXCEPTION;
     }
     return this.getReturnData(finalPoints, finalTotalPoints, points.novaPoint);
   }
@@ -116,11 +119,14 @@ export class NovaController {
     // Get real points.
     let points: NovaPoints;
     try{
-      points = await this.novaApiService.fetchNovaPoints(tokenAddress);
+      points = await this.novaApiService.getNovaPoint(tokenAddress);
     } catch (err) {
       this.logger.error('Get nova real points failed', err);
       this.logger.error(err.message, err.stack);
       return SERVICE_EXCEPTION;
+    }
+    if(!points){
+      return NOT_FOUND_EXCEPTION;
     }
     cacheData = this.getReturnData(finalPoints, finalTotalPoints, points.novaPoint);
     cache.set(cacheKey, cacheData);
@@ -167,11 +173,14 @@ export class NovaController {
     // Get real points.
     let points: NovaPoints;
     try{
-      points = await this.novaApiService.fetchNovaPoints(tokenAddress);
+      points = await this.novaApiService.getNovaPoint(tokenAddress);
     } catch (err) {
       this.logger.error('Get nova real points failed', err);
       this.logger.error(err.message, err.stack);
       return SERVICE_EXCEPTION;
+    }
+    if(!points){
+      return NOT_FOUND_EXCEPTION;
     }
     cacheData = this.getReturnData(finalPoints, finalTotalPoints, points.novaPoint);
     cache.set(cacheKey, cacheData);

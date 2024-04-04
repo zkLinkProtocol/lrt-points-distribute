@@ -33,7 +33,15 @@ export class GraphQueryService implements OnModuleInit {
 
   public async onModuleInit(){
     this.logger.log('GraphQueryService has been initialized.');
-    this.loadGraphData();
+    const func = async () => {
+      try {
+        await this.loadGraphData();
+      } catch (error) {
+        this.logger.error("GraphQueryService init failed", error);
+      }
+    };
+    await func();
+    setInterval(func, 1000 * 600);
   }
 
   private async loadGraphData() {
@@ -67,7 +75,8 @@ export class GraphQueryService implements OnModuleInit {
   }
 
   public getAllTokenAddresses(projectName: string): string[] {
-    return Array.from(this.projectTokenMap.get(projectName).keys());
+    const project = this.projectTokenMap.get(projectName);
+    return project ? Array.from(project.keys()) : [];
   }
 
   public getAllProjectIds(projectName: string): string[] {
