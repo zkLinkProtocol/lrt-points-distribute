@@ -23,6 +23,9 @@ import { ProjectService } from './project/project.service';
 import { MagpieGraphQueryService } from './magpie/magpieGraphQuery.service';
 import { RsethController } from './controller/rseth.controller';
 import { MagpieController } from './controller/magpie.controller';
+import { NovaApiService } from './nova/novaapi.service';
+import { NovaService } from './nova/nova.service';
+import { NovaController } from './controller/nova.controller';
 
 @Module({
   imports: [
@@ -42,7 +45,14 @@ import { MagpieController } from './controller/magpie.controller';
     MetricsModule,
     UnitOfWorkModule,
   ],
-  controllers: [AppController, PointsController, RenzoController, RsethController, MagpieController],
+  controllers: [
+    AppController, 
+    PointsController, 
+    RenzoController, 
+    RsethController, 
+    MagpieController,
+    NovaController
+  ],
   providers: [
     AppService,
     Points,
@@ -57,6 +67,8 @@ import { MagpieController } from './controller/magpie.controller';
     GraphQueryService,
     ProjectService,
     MagpieGraphQueryService,
+    NovaApiService,
+    NovaService
   ],
 })
 export class AppModule {}

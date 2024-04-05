@@ -30,6 +30,9 @@ import { RenzoService } from 'src/renzo/renzo.service';
 import { PointsDto } from './points.dto';
 import { ethers } from 'ethers';
 import { PuffPointsService } from 'src/puffPoints/puffPoints.service';
+import { GraphQueryService } from 'src/explorer/graphQuery.service';
+import { TokensDto } from './tokens.dto';
+import { ParseProjectNamePipe } from 'src/common/pipes/parseProjectName.pipe';
 
 const options = {
   // how long to live in ms
@@ -57,11 +60,25 @@ export class PointsController {
     private readonly pointsRepository: PointsRepository,
     private readonly puffPointsService: PuffPointsService,
     private readonly renzoService: RenzoService,
+    private readonly graphQueryService: GraphQueryService,
     private configService: ConfigService,
   ) {
     this.puffPointsTokenAddress = configService.get<string>(
       'puffPoints.tokenAddress',
     );
+  }
+
+  @Get('tokens')
+  @ApiOperation({ summary: 'Get all tokens' })
+  public async getTokens(
+    @Query('projectName', new ParseProjectNamePipe()) projectName: string,
+  ): Promise<TokensDto> {
+    const result = await this.graphQueryService.getAllTokenAddresses(projectName);
+    return {
+      errno: 0,
+      errmsg: 'no error',
+      data: result,
+    };
   }
 
   @Get('renzo/points')
