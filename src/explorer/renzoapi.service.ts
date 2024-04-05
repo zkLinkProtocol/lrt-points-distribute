@@ -38,11 +38,18 @@ export class RenzoApiService {
   }
 
   public async fetchRenzoPoints(): Promise<RenzoPoints> {
-    const allRenzoPoints = await Promise.all(
-      this.l1Erc20Bridges.map((bridgeAddress) =>
-        this._fetchRenzoPoints(bridgeAddress),
-      ),
-    );
+    // const allRenzoPoints = await Promise.all(
+    //   this.l1Erc20Bridges.map(async (bridgeAddress) =>
+    //     await this._fetchRenzoPoints(bridgeAddress),
+    //   ),
+    // );
+    const allRenzoPoints = [];
+
+    for (const bridgeAddress of this.l1Erc20Bridges) {
+      const renzoPoints = await this._fetchRenzoPoints(bridgeAddress);
+      allRenzoPoints.push(renzoPoints);
+      await new Promise(resolve => setTimeout(resolve, 3000)); // wait 3s
+    }
     return allRenzoPoints.reduce(
       (acc, renzoPoints) => {
         acc.renzoPoints += renzoPoints.renzoPoints;

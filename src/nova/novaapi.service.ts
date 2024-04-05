@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Module } from '@nestjs/common';
 import {
   GraphQueryService,
 } from 'src/explorer/graphQuery.service';
@@ -8,6 +8,9 @@ export interface NovaPoints {
   referPoint: number;
 }
 
+@Module({
+  imports: [GraphQueryService],
+})
 @Injectable()
 export class NovaApiService {
   private readonly logger: Logger;
@@ -37,8 +40,8 @@ export class NovaApiService {
 
   public async loadData(){
     const tokenAddress = this.graphQueryService.getAllTokenAddresses(this.projectName);
-    for (const key in tokenAddress) {
-      this.tokenNovaPoints.set(tokenAddress[key], await this.fetchNovaPoints(tokenAddress[key]));
+    for (const val of tokenAddress) {
+      this.tokenNovaPoints.set(val, await this.fetchNovaPoints(val));
     }
   }
 
