@@ -66,6 +66,8 @@ export class RenzoApiService {
       method: 'get',
       headers: {
         'Content-Type': 'application/json',
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36',
+        'Host': 'app.renzoprotocol.com',
       },
     });
     this.logger.debug(`end fetchRenzoPoints bridgeAddress: ${bridgeAddress}`);
@@ -79,6 +81,7 @@ export class RenzoApiService {
       this.logger.error(`No renzo points bridgeAddress: ${bridgeAddress}`);
       return { renzoPoints: 0, eigenLayerPoints: 0 };
     }
+    this.logger.debug(`success fetchRenzoPoints bridgeAddress: ${bridgeAddress}, renzoPoints:${totals.renzoPoints}, eigenLayerPoints:${totals.eigenLayerPoints} `);
 
     return {
       renzoPoints: totals.renzoPoints,
