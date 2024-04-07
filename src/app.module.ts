@@ -1,4 +1,5 @@
-import { Module } from '@nestjs/common';
+import { Module, ValidationPipe } from '@nestjs/common';
+import { APP_PIPE } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -54,6 +55,10 @@ import { NovaController } from './controller/nova.controller';
     NovaController
   ],
   providers: [
+    {
+      provide: APP_PIPE,
+      useClass: ValidationPipe,
+    },
     AppService,
     Points,
     PointsHistory,

@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { PagingMetaDto } from 'src/common/paging.dto';
 
 export interface Points {
   eigenpiePoints: string;
@@ -70,6 +71,13 @@ export class MagiePointsWithoutDecimalsDto {
     },
   })
   public readonly totals?: Points;
+
+  @ApiProperty({
+    type: PagingMetaDto,
+    description: 'page meta',
+    example: 0,
+  })
+  public readonly meta?: PagingMetaDto;
 
   @ApiProperty({
     type: [PointsWithoutDecimalsDto],

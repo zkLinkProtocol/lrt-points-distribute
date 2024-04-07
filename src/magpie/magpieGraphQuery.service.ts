@@ -28,8 +28,8 @@ export class MagpieGraphQueryService implements OnModuleInit {
     const func = async () => {
       try {
         await this.loadMagpieData();
-      } catch (error) {
-        this.logger.error("MagpieGraphQueryService init failed", error);
+      } catch (err) {
+        this.logger.error("MagpieGraphQueryService init failed", err.stack);
       }
     };
     await func();
@@ -76,8 +76,8 @@ export class MagpieGraphQueryService implements OnModuleInit {
 
       const data = await response.json();
       return data;
-    } catch (error) {
-      this.logger.error("Fetch magpie graph query data faild", error);
+    } catch (err) {
+      this.logger.error("Fetch magpie graph query data faild", err.stack);
       return undefined;
     }
   }

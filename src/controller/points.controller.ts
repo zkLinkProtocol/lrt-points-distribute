@@ -33,6 +33,9 @@ import { PuffPointsService } from 'src/puffPoints/puffPoints.service';
 import { GraphQueryService } from 'src/explorer/graphQuery.service';
 import { TokensDto } from './tokens.dto';
 import { ParseProjectNamePipe } from 'src/common/pipes/parseProjectName.pipe';
+import { PagingMetaDto } from 'src/common/paging.dto';
+import { PagingOptionsDto } from 'src/common/pagingOptionsDto.dto';
+import { PaginationUtil } from 'src/common/pagination.util';
 
 const options = {
   // how long to live in ms
@@ -149,7 +152,7 @@ export class PointsController {
       cache.set(RENZO_ALL_POINTS_CACHE_KEY, cachePoints);
       return cachePoints;
     } catch (err) {
-      this.logger.error('Get renzo all points failed', err);
+      this.logger.error('Get renzo all points failed', err.stack);
       return {
         errno: 1,
         errmsg: 'Service exception',
@@ -222,17 +225,23 @@ export class PointsController {
   @ApiBadRequestResponse({
     description: '{ "message": "Not Found", "statusCode": 404 }',
   })
-  public async allPufferPoints2(): Promise<TokenPointsWithoutDecimalsDto> {
+  public async allPufferPoints2(
+    @Query() pagingOptions: PagingOptionsDto
+  ): Promise<TokenPointsWithoutDecimalsDto> {
     let res: TokenPointsWithoutDecimalsDto;
     try {
       const [allPoints, totalPoints, realPufferPoints] =
         await this.getPointsAndTotalPoints();
 
+      const {page = 1, limit = 100} = pagingOptions;
+      const paging = PaginationUtil.paginate(allPoints, page, limit);
+
       res = {
         errno: 0,
         errmsg: 'no error',
         total_points: realPufferPoints,
-        data: allPoints.map((p) => {
+        meta: paging.meta,
+        data: paging.items.map((p) => {
           return {
             address: p.address,
             balance: ((item) => {
@@ -288,10 +297,15 @@ export class PointsController {
   @ApiBadRequestResponse({
     description: '{ "message": "Not Found", "statusCode": 404 }',
   })
-  public async allPufferPoints(): Promise<TokenPointsDto> {
+  public async allPufferPoints(
+    @Query() pagingOptions: PagingOptionsDto
+  ): Promise<TokenPointsDto> {
     this.logger.log('allPufferPoints');
     const [allPoints, totalPoints, _] = await this.getPointsAndTotalPoints();
-    const result = allPoints.map((p) => {
+
+    const {page = 1, limit = 100} = pagingOptions;
+    const paging = PaginationUtil.paginate(allPoints, page, limit);
+    const result = paging.items.map((p) => {
       return {
         address: p.address,
         updatedAt: p.updatedAt,
@@ -302,6 +316,7 @@ export class PointsController {
       decimals: 18,
       tokenAddress: this.puffPointsTokenAddress,
       totalPoints: totalPoints.toString(),
+      meta: paging.meta,
       result: result,
     };
   }

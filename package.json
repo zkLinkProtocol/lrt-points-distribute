@@ -22,7 +22,6 @@
     "migration:generate": "npm run typeorm migration:generate ./src/migrations/$npm_config_name -- -d ./src/typeorm.config.ts",
     "migration:run": "npm run typeorm migration:run -- -d ./src/typeorm.config.ts",
     "migration:revert": "npm run typeorm migration:revert -- -d ./src/typeorm.config.ts",
-
     "getPuffPoints": "npx ts-node scripts/getPuffPoints.ts"
   },
   "dependencies": {
@@ -34,6 +33,8 @@
     "@nestjs/typeorm": "^10.0.2",
     "@willsoto/nestjs-prometheus": "^6.0.0",
     "bignumber.js": "^9.1.2",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.1",
     "dotenv": "^16.4.5",
     "ethers": "^6.11.1",
     "jest-mock-extended": "^3.0.5",

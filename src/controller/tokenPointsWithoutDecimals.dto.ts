@@ -4,6 +4,7 @@ import {
   RenzoPointsWithoutDecimalsDto,
 } from './pointsWithoutDecimals.dto';
 import { RenzoPoints } from 'src/explorer/renzoapi.service';
+import { PagingMetaDto } from 'src/common/paging.dto';
 
 export class TokenPointsWithoutDecimalsDto {
   @ApiProperty({
@@ -12,7 +13,7 @@ export class TokenPointsWithoutDecimalsDto {
     example: 0,
   })
   public readonly errno: number;
-  //errmsg
+  
   @ApiProperty({
     type: String,
     description: 'error message',
@@ -30,6 +31,13 @@ export class TokenPointsWithoutDecimalsDto {
   public readonly total_points?: string;
 
   @ApiProperty({
+    type: PagingMetaDto,
+    description: 'page meta',
+    example: 0,
+  })
+  public readonly meta?: PagingMetaDto;
+
+  @ApiProperty({
     type: [PointsWithoutDecimalsDto],
     description: 'user points data',
     nullable: true,
@@ -38,6 +46,14 @@ export class TokenPointsWithoutDecimalsDto {
 }
 
 export class RenzoTokenPointsWithoutDecimalsDto {
+
+  @ApiProperty({
+    type: PagingMetaDto,
+    description: 'page meta',
+    example: 0,
+  })
+  public readonly meta?: PagingMetaDto;
+  
   @ApiProperty({
     type: [RenzoPointsWithoutDecimalsDto],
     description: 'user points data',

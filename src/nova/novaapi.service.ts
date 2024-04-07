@@ -29,9 +29,8 @@ export class NovaApiService {
     const func = async () => {
       try {
         await this.loadData();
-      } catch (error) {
-        this.logger.error("NovaApiService init failed", error);
-        this.logger.error(error.message, error.stack);
+      } catch (err) {
+        this.logger.error("NovaApiService init failed", err.stack);
       }
     };
     await func();

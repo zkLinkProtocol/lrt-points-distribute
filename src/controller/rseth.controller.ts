@@ -15,7 +15,11 @@ import {
   TokenPointsWithoutDecimalsDto,
 } from './tokenPointsWithoutDecimals.dto';
 import { ProjectService } from 'src/project/project.service';
+import { PagingOptionsDto } from 'src/common/pagingOptionsDto.dto';
+import { PaginationUtil } from 'src/common/pagination.util';
+import { PointData } from 'src/project/project.service';
 import { ethers } from 'ethers';
+import { PagingMetaDto } from 'src/common/paging.dto';
 
 const options = {
   // how long to live in ms
@@ -49,19 +53,19 @@ export class RsethController {
   public async getRsethPoints(
     @Query('address', new ParseAddressPipe()) address: string,
   ): Promise<TokenPointsWithoutDecimalsDto> {
-    let finalPoints: any[], finalTotalPoints: bigint;
+    let pointData: PointData;
 
     try{
-      [finalPoints, finalTotalPoints] = await this.projectService.getPoints(GRAPH_QUERY_PROJECT_ID, address);
+      pointData = await this.projectService.getPoints(GRAPH_QUERY_PROJECT_ID, address);
+      if(!pointData.finalPoints || !pointData.finalTotalPoints){
+        return NOT_FOUND_EXCEPTION
+      }
     } catch (err) {
-      this.logger.error('Get rsETH all points failed', err);
+      this.logger.error('Get rsETH all points failed', err.stack);
       return SERVICE_EXCEPTION;
     }
-    if(!finalPoints || !finalTotalPoints){
-      return NOT_FOUND_EXCEPTION
-    }
 
-    return this.getReturnData(finalPoints, finalTotalPoints);
+    return this.getReturnData(pointData, null);
   }
 
   @Get('/all/points')
@@ -79,30 +83,27 @@ export class RsethController {
   @ApiNotFoundResponse({
     description: '{ "errno": 1, "errmsg": "not found" }',
   })
-  public async getAllRsethPoints(): Promise<
+  public async getAllRsethPoints(
+    @Query() pagingOptions: PagingOptionsDto
+  ): Promise<
     Partial<TokenPointsWithoutDecimalsDto>
   > {
-    const allPoints = cache.get(
-      RSETH_ALL_POINTS_CACHE_KEY,
-    ) as TokenPointsWithoutDecimalsDto;
-    if (allPoints) {
-      return allPoints;
+    let pointData: PointData;
+    pointData = cache.get(RSETH_ALL_POINTS_CACHE_KEY) as PointData;
+    if (!pointData) {
+      try{
+        pointData = await this.projectService.getAllPoints(GRAPH_QUERY_PROJECT_ID);
+        if(!pointData.finalPoints || !pointData.finalTotalPoints){
+          return NOT_FOUND_EXCEPTION
+        }
+        cache.set(RSETH_ALL_POINTS_CACHE_KEY, pointData);
+      } catch (err) {
+        this.logger.error('Get rsETH all points failed', err.stack);
+        return SERVICE_EXCEPTION;
+      }
     }
 
-    let cacheData: TokenPointsWithoutDecimalsDto, finalPoints: any[], finalTotalPoints: bigint;
-    try{
-      [finalPoints, finalTotalPoints] = await this.projectService.getAllPoints(GRAPH_QUERY_PROJECT_ID);
-    } catch (err) {
-      this.logger.error('Get rsETH all points failed', err);
-      return SERVICE_EXCEPTION;
-    }
-    if(!finalPoints || !finalTotalPoints){
-      return NOT_FOUND_EXCEPTION
-    }
-
-    cacheData = this.getReturnData(finalPoints, finalTotalPoints);;
-    cache.set(RSETH_ALL_POINTS_CACHE_KEY, cacheData);
-    return cacheData;
+    return this.getReturnData(pointData, pagingOptions);
   }
 
   @Get('/all/points-with-balance')
@@ -120,43 +121,51 @@ export class RsethController {
   @ApiNotFoundResponse({
     description: '{ "errno": 1, "errmsg": "not found" }',
   })
-  public async getAllRsethPointsWithBalance(): Promise<
+  public async getAllRsethPointsWithBalance(
+    @Query() pagingOptions: PagingOptionsDto
+  ): Promise<
     Partial<TokenPointsWithoutDecimalsDto>
   > {
-    const allPoints = cache.get(
-      RSETH_ALL_POINTS_WITH_BALANCE_CACHE_KEY,
-    ) as TokenPointsWithoutDecimalsDto;
-    if (allPoints) {
-      return allPoints;
+    let pointData: PointData;
+    pointData = cache.get(RSETH_ALL_POINTS_WITH_BALANCE_CACHE_KEY) as PointData;
+    if (!pointData) {
+      try{
+        pointData = await this.projectService.getAllPointsWithBalance(GRAPH_QUERY_PROJECT_ID);
+        if(!pointData.finalPoints || !pointData.finalTotalPoints){
+          return NOT_FOUND_EXCEPTION
+        }
+        cache.set(RSETH_ALL_POINTS_WITH_BALANCE_CACHE_KEY, pointData);
+      } catch (err) {
+        this.logger.error('Get rsETH all points failed', err.stack);
+        return SERVICE_EXCEPTION;
+      }
     }
 
-    let cacheData: TokenPointsWithoutDecimalsDto, finalPoints: any[], finalTotalPoints: bigint;
-    try{
-      [finalPoints, finalTotalPoints] = await this.projectService.getAllPointsWithBalance(GRAPH_QUERY_PROJECT_ID);
-    } catch (err) {
-      this.logger.error('Get rsETH all points failed', err);
-      return SERVICE_EXCEPTION;
-    }
-    if(!finalPoints || !finalTotalPoints){
-      return NOT_FOUND_EXCEPTION
-    }
-
-    cacheData = this.getReturnData(finalPoints, finalTotalPoints);;
-    cache.set(RSETH_ALL_POINTS_WITH_BALANCE_CACHE_KEY, cacheData);
-    return cacheData;
+    return this.getReturnData(pointData, pagingOptions);
   }
 
   private getReturnData(
-    finalPoints: any[],
-    finnalTotalPoints: bigint,
+    pointData: PointData,
+    pagingOptions: PagingOptionsDto
   ): TokenPointsWithoutDecimalsDto{
+    let list = pointData.finalPoints;
+    let meta: PagingMetaDto;
+    if(null != pagingOptions){
+      const {page = 1, limit = 100} = pagingOptions;
+      const paging = PaginationUtil.paginate(list, page, limit);
+      list = paging.items;
+      meta = paging.meta;
+    }
+
     return {
       errno: 0,
       errmsg: 'no error',
-      total_points: ethers.formatEther(finnalTotalPoints),
-      data: finalPoints.map(point => {
-        point.points = ethers.formatEther(point.points);
-        return point;
+      total_points: ethers.formatEther(pointData.finalTotalPoints),
+      meta: meta,
+      data: list.map(point => {
+        let tmpPoint = { ...point }; 
+        tmpPoint.points = ethers.formatEther(tmpPoint.points);
+        return tmpPoint;
       })
     } as TokenPointsWithoutDecimalsDto;
   }

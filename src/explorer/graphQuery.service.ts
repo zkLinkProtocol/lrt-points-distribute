@@ -36,8 +36,8 @@ export class GraphQueryService implements OnModuleInit {
     const func = async () => {
       try {
         await this.loadGraphData();
-      } catch (error) {
-        this.logger.error("GraphQueryService init failed", error);
+      } catch (err) {
+        this.logger.error("GraphQueryService init failed", err.stack);
       }
     };
     await func();
