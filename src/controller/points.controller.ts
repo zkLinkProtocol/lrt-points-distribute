@@ -193,10 +193,17 @@ export class PointsController {
         data: [
           {
             address: point[0].address,
+            tokenAddress: point[0].token,
             points: new BigNumber(point[0].points.toString())
               .multipliedBy(realPufferPoints)
               .div(totalPoints.toString())
               .toFixed(6),
+            balance: ((item) => {
+              if (item && item.balance) {
+                return BigNumber(ethers.formatEther(item.balance)).toFixed(6);
+              }
+              return '0';
+            })(this.puffPointsService.findUserBalance(point[0].address)),
             updated_at: (point[0].updatedAt.getTime() / 1000) | 0,
           },
         ],
@@ -227,14 +234,17 @@ export class PointsController {
     try {
       const [allPoints, totalPoints, realPufferPoints] =
         await this.getPointsAndTotalPoints();
-
+      const allPointsFilter = allPoints.filter(
+        (p) => BigNumber(p.points.toString()).comparedTo(0) > 0,
+      );
       res = {
         errno: 0,
         errmsg: 'no error',
         total_points: realPufferPoints,
-        data: allPoints.map((p) => {
+        data: allPointsFilter.map((p) => {
           return {
             address: p.address,
+            tokenAddress: p.token,
             balance: ((item) => {
               if (item && item.balance) {
                 return BigNumber(ethers.formatEther(item.balance)).toFixed(6);
@@ -300,10 +310,14 @@ export class PointsController {
     this.logger.log('allPufferPoints');
     const [allPoints, totalPoints, _] = await this.getPointsAndTotalPoints();
     
-    const result = allPoints.map((p) => {
+    const allPointsFilter = allPoints.filter(
+      (p) => BigNumber(p.points.toString()).comparedTo(0) > 0,
+    );
+    const result = allPointsFilter.map((p) => {
       return {
         address: p.address,
         updatedAt: p.updatedAt,
+        tokenAddress: p.token,
         points: p.points.toString(),
       };
     });
@@ -329,13 +343,16 @@ export class PointsController {
   ): Promise<TokenPointsDto> {
     this.logger.log('allPufferPoints');
     const [allPoints, totalPoints, _] = await this.getPointsAndTotalPoints();
-
+    const allPointsFilter = allPoints.filter(
+      (p) => BigNumber(p.points.toString()).comparedTo(0) > 0,
+    );
     const {page = 1, limit = 100} = pagingOptions;
-    const paging = PaginationUtil.paginate(allPoints, page, limit);
+    const paging = PaginationUtil.paginate(allPointsFilter, page, limit);
     const result = paging.items.map((p) => {
       return {
         address: p.address,
         updatedAt: p.updatedAt,
+        tokenAddress: p.token,
         points: p.points.toString(),
       };
     });
@@ -366,10 +383,11 @@ export class PointsController {
     try {
       const [allPoints, totalPoints, realPufferPoints] =
         await this.getPointsAndTotalPoints();
-
+      const allPointsFilter = allPoints.filter(
+        (p) => BigNumber(p.points.toString()).comparedTo(0) > 0,
+      );
       const {page = 1, limit = 100} = pagingOptions;
-      const paging = PaginationUtil.paginate(allPoints, page, limit);
-
+      const paging = PaginationUtil.paginate(allPointsFilter, page, limit);
       res = {
         errno: 0,
         errmsg: 'no error',
@@ -378,6 +396,7 @@ export class PointsController {
         data: paging.items.map((p) => {
           return {
             address: p.address,
+            tokenAddress: p.token,
             balance: ((item) => {
               if (item && item.balance) {
                 return BigNumber(ethers.formatEther(item.balance)).toFixed(6);

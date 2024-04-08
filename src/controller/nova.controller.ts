@@ -8,6 +8,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { LRUCache } from 'lru-cache';
+import { ethers } from 'ethers';
 import { ParseAddressPipe } from 'src/common/pipes/parseAddress.pipe';
 import {
   NOT_FOUND_EXCEPTION,
@@ -16,6 +17,7 @@ import {
 import { NovaPointsWithoutDecimalsDto } from 'src/nova/novaPointsWithoutDecimalsDto.dto';
 import { NovaService } from 'src/nova/nova.service';
 import { NovaApiService, NovaPoints } from 'src/nova/novaapi.service';
+import { BigNumber } from 'bignumber.js';
 
 const options = {
   // how long to live in ms
@@ -49,6 +51,42 @@ export class NovaController {
     description: '{ "errno": 1, "errmsg": "not found" }',
   })
   public async getNovaPoints(
+    @Query('address', new ParseAddressPipe()) address: string
+  ): Promise<NovaPointsWithoutDecimalsDto> {
+    let finalPoints: any[], finalTotalPoints: bigint;
+    try{
+      const pointData = await this.novaService.getAllTokensPoints(address);
+      finalPoints = pointData.finalPoints;
+      finalTotalPoints = pointData.finalTotalPoints;
+    } catch (err) {
+      this.logger.error('Get nova all points failed', err.stack);
+      return SERVICE_EXCEPTION;
+    }
+    if(!finalPoints || !finalTotalPoints){
+      return NOT_FOUND_EXCEPTION
+    }
+
+    return {
+      errno: 0,
+      errmsg: 'no error',
+      total_points: finalTotalPoints.toString(),
+      data: finalPoints.map(point => {
+        point.points = BigNumber(ethers.formatEther(point.points)).toFixed(6);
+        point.balance = BigNumber(ethers.formatEther(point.balance)).toFixed(6);
+        return point;
+      }),
+    } as NovaPointsWithoutDecimalsDto;
+  }
+
+  @Get('/points/token')
+  @ApiOperation({ summary: 'Get all token personal points' })
+  @ApiBadRequestResponse({
+    description: '{ "errno": 1, "errmsg": "Service exception" }',
+  })
+  @ApiNotFoundResponse({
+    description: '{ "errno": 1, "errmsg": "not found" }',
+  })
+  public async getNovaTokenPoints(
     @Query('address', new ParseAddressPipe()) address: string,
     @Query('tokenAddress', new ParseAddressPipe()) tokenAddress: string,
   ): Promise<NovaPointsWithoutDecimalsDto> {
@@ -58,7 +96,7 @@ export class NovaController {
       finalPoints = pointData.finalPoints;
       finalTotalPoints = pointData.finalTotalPoints;
     } catch (err) {
-      this.logger.error('Get nova all points failed', err);
+      this.logger.error('Get nova all points failed', err.stack);
       return SERVICE_EXCEPTION;
     }
     if(!finalPoints || !finalTotalPoints){
@@ -70,8 +108,7 @@ export class NovaController {
     try{
       points = await this.novaApiService.getNovaPoint(tokenAddress);
     } catch (err) {
-      this.logger.error('Get nova real points failed', err);
-      this.logger.error(err.message, err.stack);
+      this.logger.error('Get nova real points failed', err.stack);
       return SERVICE_EXCEPTION;
     }
     if(!points){
@@ -169,7 +206,7 @@ export class NovaController {
       finalPoints = pointData.finalPoints;
       finalTotalPoints = pointData.finalTotalPoints;
     } catch (err) {
-      this.logger.error('Get nova all points failed', err);
+      this.logger.error('Get nova all points failed', err.stack);
       return SERVICE_EXCEPTION;
     }
     if(!finalPoints || !finalTotalPoints){

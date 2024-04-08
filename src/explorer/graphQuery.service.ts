@@ -182,6 +182,75 @@ export class GraphQueryService implements OnModuleInit {
     return [[], undefined];
   }
 
+  public async queryPointsRedistributedByProjectName(
+    projectName: string,
+    ): Promise<[GraphPoint[], GraphTotalPoint]> {
+    const query = `
+{
+  totalPoints(where:{project_contains: "${projectName}"}){
+    id
+    project
+    totalBalance
+    totalWeightBalance
+    totalTimeWeightAmountIn
+    totalTimeWeightAmountOut
+  }
+  points(where:{project_contains: "${projectName}"}) {
+    address
+    balance
+    weightBalance
+    timeWeightAmountIn
+    timeWeightAmountOut
+    project
+  }
+}
+    `;
+    const data = await this.query(query);
+    if (data && data.data && Array.isArray(data.data.totalPoints) && Array.isArray(data.data.points)) {
+      return [
+        data.data.points as GraphPoint[],
+        data.data.totalPoint as GraphTotalPoint,
+      ];
+    }
+    return [[], undefined];
+  }
+
+  public async queryPointsRedistributedByProjectNameAndAddress(
+    address: string,
+    projectName: string,
+  ): Promise<[GraphPoint[], GraphTotalPoint[]]> {
+    const query = `
+{
+  totalPoints(where:{project_contains: "${projectName}"}){
+    project
+    totalBalance
+    totalWeightBalance
+    totalTimeWeightAmountIn
+    totalTimeWeightAmountOut
+  }
+  points(where: {project_contains: "${projectName}", address: "${address}"}) {
+    address
+    balance
+    weightBalance
+    timeWeightAmountIn
+    timeWeightAmountOut
+    project
+  }
+}
+    `;
+    const data = await this.query(query);
+    this.logger.log(`graph query : ${query}`);
+    this.logger.log(`graph query result : ${data}`);
+    if (data && data.data && Array.isArray(data.data.totalPoints) && Array.isArray(data.data.points)) {
+      return [
+        data.data.points as GraphPoint[],
+        data.data.totalPoints as GraphTotalPoint[],
+      ];
+    }else{
+      throw new Error(`Exception in fetching GraphQL data, project is : ${projectName}.`);
+    }
+  }
+
   private async query(query: string) {
     const body = {
       query: query,
