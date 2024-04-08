@@ -79,18 +79,4 @@ export class RenzoPointsWithoutDecimalsDto {
     example: 1710834827,
   })
   public readonly updatedAt: number;
-
-  @ApiProperty({
-    type: Number,
-    description: 'The timestamp when the points was updated',
-    example: 1710834827,
-  })
-  public readonly orgPoint?: number;
-
-  @ApiProperty({
-    type: String,
-    description: 'The timestamp when the points was updated',
-    example: 1710834827,
-  })
-  public readonly totalPoint?: string;
 }

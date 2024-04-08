@@ -75,8 +75,6 @@ export class RenzoService extends Worker {
           }
           return '0';
         })(this.findUserBalance(point.address)),
-        orgPoint: Number(point.points),
-        totalPoint: totalPoints.toString(),
         points: {
           renzoPoints: Number(
             new BigNumber(point.points.toString())
