@@ -8,15 +8,12 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { LRUCache } from 'lru-cache';
+import { ethers } from 'ethers';
 import { ParseAddressPipe } from 'src/common/pipes/parseAddress.pipe';
-import {
-  NOT_FOUND_EXCEPTION,
-  SERVICE_EXCEPTION,
-} from './tokenPointsWithoutDecimals.dto';
+import { NOT_FOUND_EXCEPTION, SERVICE_EXCEPTION } from './tokenPointsWithoutDecimals.dto';
 import { MagiePointsWithoutDecimalsDto } from 'src/magpie/magiePointsWithoutDecimalsDto.dto';
 import { ProjectService } from 'src/project/project.service';
 import { MagpieGraphQueryService } from 'src/magpie/magpieGraphQuery.service';
-import { ethers } from 'ethers';
 
 const options = {
   // how long to live in ms
@@ -55,7 +52,9 @@ export class MagpieController {
   ): Promise<MagiePointsWithoutDecimalsDto> {
     let finalPoints: any[], finalTotalPoints: bigint;
     try{
-      [finalPoints, finalTotalPoints] = await this.projectService.getPoints(GRAPH_QUERY_PROJECT_ID, address);
+      const pointData = await this.projectService.getPoints(GRAPH_QUERY_PROJECT_ID, address);
+      finalPoints = pointData.finalPoints;
+      finalTotalPoints = pointData.finalTotalPoints;
     } catch (err) {
       this.logger.error('Get magpie all points failed', err);
       return SERVICE_EXCEPTION;
@@ -97,7 +96,9 @@ export class MagpieController {
 
     let cacheData: MagiePointsWithoutDecimalsDto, finalPoints: any[], finalTotalPoints: bigint;
     try{
-      [finalPoints, finalTotalPoints] = await this.projectService.getAllPoints(GRAPH_QUERY_PROJECT_ID);
+      const pointData = await this.projectService.getAllPoints(GRAPH_QUERY_PROJECT_ID);
+      finalPoints = pointData.finalPoints;
+      finalTotalPoints = pointData.finalTotalPoints;
     } catch (err) {
       this.logger.error('Get magpie all points failed', err);
       return SERVICE_EXCEPTION;
@@ -140,7 +141,9 @@ export class MagpieController {
 
     let cacheData: MagiePointsWithoutDecimalsDto, finalPoints: any[], finalTotalPoints: bigint;
     try{
-      [finalPoints, finalTotalPoints] = await this.projectService.getAllPointsWithBalance(GRAPH_QUERY_PROJECT_ID);
+      const pointData = await this.projectService.getAllPointsWithBalance(GRAPH_QUERY_PROJECT_ID);
+      finalPoints = pointData.finalPoints;
+      finalTotalPoints = pointData.finalTotalPoints;
     } catch (err) {
       this.logger.error('Get magpie all points failed', err);
       return SERVICE_EXCEPTION;

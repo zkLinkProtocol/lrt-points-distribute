@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { PointsDto } from './points.dto';
+import { PagingMetaDto } from 'src/common/paging.dto';
 
 export class TokenPointsDto {
   @ApiProperty({
@@ -24,6 +25,13 @@ export class TokenPointsDto {
     required: false,
   })
   public readonly totalPoints: string;
+
+  @ApiProperty({
+    type: PagingMetaDto,
+    description: 'page meta',
+    example: 0,
+  })
+  public readonly meta?: PagingMetaDto;
 
   @ApiProperty({
     type: [PointsDto],

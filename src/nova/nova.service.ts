@@ -1,10 +1,15 @@
 import { Injectable, Logger } from '@nestjs/common';
 import {
-    GraphPoint,
-    GraphQueryService,
-    GraphTotalPoint,
-  } from 'src/explorer/graphQuery.service';
-  import { BigNumber } from 'bignumber.js';
+  GraphPoint,
+  GraphQueryService,
+  GraphTotalPoint,
+} from 'src/explorer/graphQuery.service';
+import { BigNumber } from 'bignumber.js';
+
+export interface PointData {
+  finalPoints: any[],
+  finalTotalPoints: bigint
+}
 
 @Injectable()
 export class NovaService {
@@ -20,7 +25,7 @@ export class NovaService {
   public async getPoints(
     tokenAddress: string,
     address: string,
-  ): Promise<[any[], bigint]> {
+  ): Promise<PointData> {
     let finalTotalPoints = BigInt(0),
         finalPoints = [],
         points: GraphPoint[], 
@@ -30,7 +35,7 @@ export class NovaService {
     const project = `${this.projectName}-${tokenAddress}`;
     if (!projects.includes(project)) {
       this.logger.error(`Notfound GraphQL data, project is : ${project} .`);
-      return [undefined, BigInt(0)];
+      return {finalPoints, finalTotalPoints};
     }
 
     [points, totalPoints] =
@@ -39,18 +44,16 @@ export class NovaService {
           project,
         ); 
     if (Array.isArray(points) && totalPoints) {
-      [finalPoints, finalTotalPoints] = this.getPointData(points, totalPoints);
+      return this.getPointData(points, totalPoints);
     } else {
       // Exception in fetching GraphQL data.
-      this.logger.error(`Exception in fetching GraphQL data, project is : ${project} .`);
-      return [undefined, BigInt(0)];
+      throw new Error(`Exception in fetching GraphQL data, project is : ${project}.`);
     }
-    return [finalPoints, finalTotalPoints];
   }
 
   public async getAllPoints(
     tokenAddress: string,
-  ): Promise<[any[], bigint]> {
+  ): Promise<PointData> {
     let finalTotalPoints = BigInt(0),
         finalPoints = [],
         points: GraphPoint[], 
@@ -61,7 +64,7 @@ export class NovaService {
     const project = `${this.projectName}-${tokenAddress}`;
     if (!projects.includes(project)) {
       this.logger.error(`Notfound GraphQL data, project is : ${project} .`);
-      return [undefined, BigInt(0)];
+      return {finalPoints, finalTotalPoints};
     }
   
     [points, totalPoints] =
@@ -85,8 +88,7 @@ export class NovaService {
       }
     } else {
       // Exception in fetching GraphQL data.
-      this.logger.error("Exception in fetching GraphQL data.");
-      return [undefined, BigInt(0)];
+      throw new Error(`Exception in fetching GraphQL data, project is : ${project}.`);
     }
   
     for(const [key, addressPoint] of addressPoints) {
@@ -97,12 +99,12 @@ export class NovaService {
       };
       finalPoints.push(newPoint);
     }
-    return [finalPoints, finalTotalPoints];
+    return {finalPoints, finalTotalPoints};
   }
 
   public async getAllPointsWithBalance(
     tokenAddress: string,
-  ): Promise<[any[], bigint]> {
+  ): Promise<PointData> {
     let finalTotalPoints = BigInt(0),
         finalPoints = [],
         points: GraphPoint[], 
@@ -112,7 +114,7 @@ export class NovaService {
     const project = `${this.projectName}-${tokenAddress}`;
     if (!projects.includes(project)) {
       this.logger.error(`Notfound GraphQL data, project is : ${project} .`);
-      return [undefined, BigInt(0)];
+      return {finalPoints, finalTotalPoints};
     }
     
     [points, totalPoints] =
@@ -120,20 +122,17 @@ export class NovaService {
           project,
         );
     if (Array.isArray(points) && totalPoints) {
-      [finalPoints, finalTotalPoints] = this.getPointData(points, totalPoints);
+      return this.getPointData(points, totalPoints);
     } else {
       // Exception in fetching GraphQL data.
-      this.logger.error("Exception in fetching GraphQL data.");
-      return [undefined, BigInt(0)];
+      throw new Error(`Exception in fetching GraphQL data, project is : ${project}.`);
     }
-
-    return [finalPoints, finalTotalPoints];
   }
 
   private getPointData(
     points: GraphPoint[],
     totalPoints: GraphTotalPoint,
-  ): [any[], bigint] {
+  ): PointData {
     let finalPoints = [];
     const now = (new Date().getTime() / 1000) | 0;
     const finalTotalPoints = GraphQueryService.getTotalPoints(totalPoints, now);
@@ -151,7 +150,7 @@ export class NovaService {
       finalPoints.push(newPoint);
     }
 
-    return [finalPoints, finalTotalPoints];
+    return {finalPoints, finalTotalPoints};
   }
 
   public getRealPoints(

@@ -54,7 +54,9 @@ export class NovaController {
   ): Promise<NovaPointsWithoutDecimalsDto> {
     let finalPoints: any[], finalTotalPoints: bigint;
     try{
-      [finalPoints, finalTotalPoints] = await this.novaService.getPoints(tokenAddress, address);
+      const pointData = await this.novaService.getPoints(tokenAddress, address);
+      finalPoints = pointData.finalPoints;
+      finalTotalPoints = pointData.finalTotalPoints;
     } catch (err) {
       this.logger.error('Get nova all points failed', err);
       return SERVICE_EXCEPTION;
@@ -106,7 +108,9 @@ export class NovaController {
 
     let cacheData: NovaPointsWithoutDecimalsDto, finalPoints: any[], finalTotalPoints: bigint;
     try{
-      [finalPoints, finalTotalPoints] = await this.novaService.getAllPoints(tokenAddress);
+      const pointData = await this.novaService.getAllPoints(tokenAddress);
+      finalPoints = pointData.finalPoints;
+      finalTotalPoints = pointData.finalTotalPoints;
     } catch (err) {
       this.logger.error('Get nova all points failed', err);
       this.logger.error(err.message, err.stack);
@@ -161,7 +165,9 @@ export class NovaController {
 
     let cacheData: NovaPointsWithoutDecimalsDto, finalPoints: any[], finalTotalPoints: bigint;
     try{
-      [finalPoints, finalTotalPoints] = await this.novaService.getAllPointsWithBalance(tokenAddress);
+      const pointData = await this.novaService.getAllPointsWithBalance(tokenAddress);
+      finalPoints = pointData.finalPoints;
+      finalTotalPoints = pointData.finalTotalPoints;
     } catch (err) {
       this.logger.error('Get nova all points failed', err);
       return SERVICE_EXCEPTION;

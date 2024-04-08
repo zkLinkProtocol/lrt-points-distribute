@@ -1,9 +1,14 @@
 import { Injectable, Logger } from '@nestjs/common';
 import {
-    GraphPoint,
-    GraphQueryService,
-    GraphTotalPoint,
-  } from 'src/explorer/graphQuery.service';
+  GraphPoint,
+  GraphQueryService,
+  GraphTotalPoint,
+} from 'src/explorer/graphQuery.service';
+
+export interface PointData {
+  finalPoints: any[],
+  finalTotalPoints: bigint
+}
 
 @Injectable()
 export class ProjectService {
@@ -18,7 +23,7 @@ export class ProjectService {
   public async getPoints(
     projectName: string,
     address: string,
-  ): Promise<[any[], bigint]> {
+  ): Promise<PointData> {
     let finalTotalPoints = BigInt(0),
         finalPoints = [],
         points: GraphPoint[], 
@@ -29,28 +34,23 @@ export class ProjectService {
     for (const key in projectIds) {
       if (Object.prototype.hasOwnProperty.call(projectIds, key)) {
         const projectId = projectIds[key];
-        [points, totalPoints] =
-            await this.graphQueryService.queryPointsRedistributedByAddress(
-              address,
-              projectId,
-            ); 
+        [points, totalPoints] = await this.graphQueryService.queryPointsRedistributedByAddress(address, projectId); 
         if (Array.isArray(points) && totalPoints) {
           const [tmpPoints, tmpTotalPoints] = this.getPointData(points, totalPoints);
           finalTotalPoints += tmpTotalPoints;
           finalPoints = [...finalPoints, ...tmpPoints];
         } else {
           // Exception in fetching GraphQL data.
-          this.logger.error("Exception in fetching GraphQL data.");
-          return [undefined, BigInt(0)];
+          throw new Error('Exception in fetching GraphQL data.');
         }
       }
     }
-    return [finalPoints, finalTotalPoints];
+    return {finalPoints, finalTotalPoints};
   }
 
   public async getAllPoints(
     projectName: string,
-  ): Promise<[any[], bigint]> {
+  ): Promise<PointData> {
     let finalTotalPoints = BigInt(0),
         finalPoints = [],
         points: GraphPoint[], 
@@ -60,10 +60,7 @@ export class ProjectService {
     const projectIds = this.graphQueryService.getAllProjectIds(projectName);
   
     for (const projectId of projectIds) {
-      [points, totalPoints] =
-          await this.graphQueryService.queryPointsRedistributed(
-            projectId,
-          ); 
+      [points, totalPoints] = await this.graphQueryService.queryPointsRedistributed(projectId); 
       if (Array.isArray(points) && totalPoints) {
         const now = (new Date().getTime() / 1000) | 0;
         const totalPointsTmp = GraphQueryService.getTotalPoints(totalPoints, now);
@@ -82,8 +79,7 @@ export class ProjectService {
         }
       } else {
         // Exception in fetching GraphQL data.
-        this.logger.error("Exception in fetching GraphQL data.");
-        return [undefined, BigInt(0)];
+        throw new Error('Exception in fetching GraphQL data.');
       }
     }
   
@@ -95,12 +91,12 @@ export class ProjectService {
       };
       finalPoints.push(newPoint);
     }
-    return [finalPoints, finalTotalPoints];
+    return {finalPoints, finalTotalPoints};
   }
 
   public async getAllPointsWithBalance(
     projectName: string,
-  ): Promise<[any[], bigint]> {
+  ): Promise<PointData> {
     let finalTotalPoints = BigInt(0),
         finalPoints = [],
         points: GraphPoint[], 
@@ -109,22 +105,17 @@ export class ProjectService {
     const projectIds = this.graphQueryService.getAllProjectIds(projectName);
     
     for (const projectId of projectIds) {
-      [points, totalPoints] =
-          await this.graphQueryService.queryPointsRedistributed(
-            projectId,
-          );
+      [points, totalPoints] = await this.graphQueryService.queryPointsRedistributed(projectId);
       if (Array.isArray(points) && totalPoints) {
         const [tmpPoints, tmpTotalPoints] = this.getPointData(points, totalPoints);
         finalTotalPoints += tmpTotalPoints;
         finalPoints = [...finalPoints, ...tmpPoints];
       } else {
         // Exception in fetching GraphQL data.
-        this.logger.error("Exception in fetching GraphQL data.");
-        return [undefined, BigInt(0)];
+        throw new Error('Exception in fetching GraphQL data.');
       }
     }
-
-    return [finalPoints, finalTotalPoints];
+    return {finalPoints, finalTotalPoints};
   }
 
   private getPointData(

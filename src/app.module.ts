@@ -1,4 +1,5 @@
-import { Module } from '@nestjs/common';
+import { Module, ValidationPipe } from '@nestjs/common';
+import { APP_PIPE } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -26,6 +27,10 @@ import { MagpieController } from './controller/magpie.controller';
 import { NovaApiService } from './nova/novaapi.service';
 import { NovaService } from './nova/nova.service';
 import { NovaController } from './controller/nova.controller';
+import { RenzoPagingController } from './controller/paging/renzo.controller';
+import { MagpiePagingController } from './controller/paging/magpie.controller';
+import { NovaPagingController } from './controller/paging/nova.controller';
+import { RsethPagingController } from './controller/paging/rseth.controller';
 
 @Module({
   imports: [
@@ -51,9 +56,17 @@ import { NovaController } from './controller/nova.controller';
     RenzoController, 
     RsethController, 
     MagpieController,
-    NovaController
+    NovaController, 
+    RenzoPagingController, 
+    RsethPagingController, 
+    MagpiePagingController,
+    NovaPagingController
   ],
   providers: [
+    {
+      provide: APP_PIPE,
+      useClass: ValidationPipe,
+    },
     AppService,
     Points,
     PointsHistory,

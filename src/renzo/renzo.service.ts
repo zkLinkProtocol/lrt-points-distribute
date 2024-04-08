@@ -14,6 +14,12 @@ import { RenzoPointsWithoutDecimalsDto } from 'src/controller/pointsWithoutDecim
 import { In } from 'typeorm';
 import { formatEther } from 'ethers';
 
+export interface PointData {
+  renzoPoints: number;
+  eigenLayerPoints: number;
+  data: RenzoPointsWithoutDecimalsDto[];
+}
+
 @Injectable()
 export class RenzoService extends Worker {
   private readonly logger: Logger;
@@ -23,10 +29,7 @@ export class RenzoService extends Worker {
   private readonly unitPoints: bigint;
   private readonly unitInterval: number;
   private allUserBalance: UserBalances[] = [];
-  private pointData: Map<
-    string,
-    string | number | RenzoPointsWithoutDecimalsDto[]
-  > = new Map();
+  private pointData: Map<string, any>;
 
   public constructor(
     private readonly pointsRepository: PointsRepository,
@@ -41,6 +44,7 @@ export class RenzoService extends Worker {
     this.logger = new Logger(RenzoService.name);
     this.unitPoints = configService.get<bigint>('renzo.unitPoints');
     this.unitInterval = configService.get<number>('renzo.unitInterval');
+    this.pointData = new Map;
   }
 
   public async onModuleInit() {
@@ -49,19 +53,17 @@ export class RenzoService extends Worker {
     const func = async () => {
       try {
         await this.loadPointData();
-      } catch (error) {
-        this.logger.error('RenzoService init failed.', error);
-        this.logger.error(error.message, error.stack);
+      } catch (err) {
+        this.logger.error('RenzoService init failed.', err.stack);
       }
     };
     await func();
-    setInterval(func, 1000 * 300);
+    setInterval(func, 1000 * 100);
   }
 
   public async loadPointData() {
     this.logger.log('loadRenzoData has been load.');
-    const { renzoPoints, eigenLayerPoints, totalPoints, points } =
-      await this.getLocalPointAndRealPoint();
+    const { renzoPoints, eigenLayerPoints, totalPoints, points } = await this.getLocalPointAndRealPoint();
     let data: RenzoPointsWithoutDecimalsDto[] = [];
     for (const point of points) {
       const dto: RenzoPointsWithoutDecimalsDto = {
@@ -91,14 +93,13 @@ export class RenzoService extends Worker {
       };
       data.push(dto);
     }
-    this.pointData.set('renzoPoints', renzoPoints);
-    this.pointData.set('eigenLayerPoints', eigenLayerPoints);
-    this.pointData.set('data', data);
+    this.pointData.set("renzoPoints", renzoPoints);
+    this.pointData.set("eigenLayerPoints", eigenLayerPoints);
+    this.pointData.set("data", data);
   }
 
   private async getLocalPointAndRealPoint() {
-    const { renzoPoints, eigenLayerPoints } =
-      await this.renzoApiService.fetchRenzoPoints();
+    const { renzoPoints, eigenLayerPoints } = await this.renzoApiService.fetchRenzoPoints();
     this.logger.debug(
       `renzoPoints: ${renzoPoints}, eigenLayerPoints: ${eigenLayerPoints}`,
     );
@@ -116,8 +117,12 @@ export class RenzoService extends Worker {
     };
   }
 
-  public getPointData(): Map<string,any> {
-    return this.pointData;
+  public getPointData(): PointData {
+    return {
+      renzoPoints: this.pointData.get("renzoPoints"),
+      eigenLayerPoints: this.pointData.get("eigenLayerPoints"),
+      data: this.pointData.get("data")
+    } as PointData;
   }
 
   public async getPoints(address: string) {

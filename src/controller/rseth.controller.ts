@@ -52,7 +52,9 @@ export class RsethController {
     let finalPoints: any[], finalTotalPoints: bigint;
 
     try{
-      [finalPoints, finalTotalPoints] = await this.projectService.getPoints(GRAPH_QUERY_PROJECT_ID, address);
+      const pointData = await this.projectService.getPoints(GRAPH_QUERY_PROJECT_ID, address);
+      finalPoints = pointData.finalPoints;
+      finalTotalPoints = pointData.finalTotalPoints;
     } catch (err) {
       this.logger.error('Get rsETH all points failed', err);
       return SERVICE_EXCEPTION;
@@ -91,7 +93,9 @@ export class RsethController {
 
     let cacheData: TokenPointsWithoutDecimalsDto, finalPoints: any[], finalTotalPoints: bigint;
     try{
-      [finalPoints, finalTotalPoints] = await this.projectService.getAllPoints(GRAPH_QUERY_PROJECT_ID);
+      const pointData = await this.projectService.getAllPoints(GRAPH_QUERY_PROJECT_ID);
+      finalPoints = pointData.finalPoints;
+      finalTotalPoints = pointData.finalTotalPoints;
     } catch (err) {
       this.logger.error('Get rsETH all points failed', err);
       return SERVICE_EXCEPTION;
@@ -132,7 +136,9 @@ export class RsethController {
 
     let cacheData: TokenPointsWithoutDecimalsDto, finalPoints: any[], finalTotalPoints: bigint;
     try{
-      [finalPoints, finalTotalPoints] = await this.projectService.getAllPointsWithBalance(GRAPH_QUERY_PROJECT_ID);
+      const pointData = await this.projectService.getAllPointsWithBalance(GRAPH_QUERY_PROJECT_ID);
+      finalPoints = pointData.finalPoints;
+      finalTotalPoints = pointData.finalTotalPoints;
     } catch (err) {
       this.logger.error('Get rsETH all points failed', err);
       return SERVICE_EXCEPTION;

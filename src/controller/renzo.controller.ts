@@ -56,7 +56,7 @@ export class RenzoController {
     if(null == pointData){
       return NOT_FOUND_EXCEPTION;
     }
-    const data = pointData.get("data");
+    const data = pointData.data;
     if (Array.isArray(data)) {
       return {
         errno: 0,
@@ -97,9 +97,9 @@ export class RenzoController {
       if(null == pointData){
         return NOT_FOUND_EXCEPTION;
       }
-      const renzoPoints = pointData.get("renzoPoints");
-      const eigenLayerPoints = pointData.get("eigenLayerPoints");
-      const data = pointData.get("data");
+      const renzoPoints = pointData.renzoPoints;
+      const eigenLayerPoints = pointData.eigenLayerPoints;
+      const data = pointData.data;
       const cacheData = {
         errno: 0,
         errmsg: 'no error',
