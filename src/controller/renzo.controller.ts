@@ -14,9 +14,8 @@ import {
   NOT_FOUND_EXCEPTION
 } from './tokenPointsWithoutDecimals.dto';
 import { RenzoPointsWithoutDecimalsDto } from './pointsWithoutDecimals.dto';
-import { PointData, RenzoService } from 'src/renzo/renzo.service';
-import { PagingOptionsDto } from 'src/common/pagingOptionsDto.dto';
-import { PaginationUtil } from 'src/common/pagination.util';
+import { RenzoService } from 'src/renzo/renzo.service';
+import { RenzoApiService } from 'src/explorer/renzoapi.service';
 
 const options = {
   // how long to live in ms
@@ -42,6 +41,7 @@ export class RenzoController {
 
   constructor(
     private readonly renzoService: RenzoService,
+    private readonly renzoApiService: RenzoApiService,
   ) {}
 
   @Get('/points')
@@ -83,37 +83,39 @@ export class RenzoController {
   @ApiBadRequestResponse({
     description: '{ "errno": 1, "errmsg": "Service exception" }',
   })
-  public async getAllRenzoPoints(
-    @Query() pagingOptions: PagingOptionsDto,
-  ): Promise<
+  public async getAllRenzoPoints(): Promise<
     Partial<RenzoTokenPointsWithoutDecimalsDto & ExceptionResponse>
   > {
-    let pointData: PointData = cache.get(RENZO_ALL_POINTS_CACHE_KEY) as PointData;
-    if (!pointData) {
-      try {
-        pointData = this.renzoService.getPointData();
-        if(!pointData?.data){
-          return NOT_FOUND_EXCEPTION;
-        }
-        cache.set(RENZO_ALL_POINTS_CACHE_KEY, pointData);
-      } catch (err) {
-        this.logger.error('Get renzo all points failed', err.stack);
-        return SERVICE_EXCEPTION;
-      }
+    const allPoints = cache.get(
+      RENZO_ALL_POINTS_CACHE_KEY,
+    ) as RenzoTokenPointsWithoutDecimalsDto;
+    if (allPoints) {
+      return allPoints;
     }
+    try {
+      const pointData = this.renzoService.getPointData();
+      if(null == pointData){
+        return NOT_FOUND_EXCEPTION;
+      }
+      const renzoPoints = pointData.renzoPoints;
+      const eigenLayerPoints = pointData.eigenLayerPoints;
+      const data = pointData.data;
+      const cacheData = {
+        errno: 0,
+        errmsg: 'no error',
+        totals: {
+          renzoPoints,
+          eigenLayerPoints,
+        },
+        data,
+      };
 
-    // data for paging
-    const {page = 1, limit = 100} = pagingOptions;
-    const paging = PaginationUtil.paginate(pointData.data, page, limit);
-    return {
-      errno: 0,
-      errmsg: 'no error',
-      totals: {
-        renzoPoints: pointData.renzoPoints,
-        eigenLayerPoints: pointData.eigenLayerPoints,
-      },
-      meta: paging.meta,
-      data: paging.items
-    };
+      cache.set(RENZO_ALL_POINTS_CACHE_KEY, cacheData);
+      return cacheData;
+    } catch (err) {
+      this.logger.error('Get renzo all points failed', err);
+      this.logger.error(err.message, err.stack);
+      return SERVICE_EXCEPTION;
+    }
   }
 }

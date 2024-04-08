@@ -1,10 +1,4 @@
 import { Controller, Get, Logger, Query } from '@nestjs/common';
-import { LRUCache } from 'lru-cache';
-import { ParseAddressPipe } from 'src/common/pipes/parseAddress.pipe';
-import { NOT_FOUND_EXCEPTION, SERVICE_EXCEPTION } from './tokenPointsWithoutDecimals.dto';
-import { NovaPointsWithoutDecimalsDto } from 'src/nova/novaPointsWithoutDecimalsDto.dto';
-import { NovaService } from 'src/nova/nova.service';
-import { NovaApiService, NovaPoints } from 'src/nova/novaapi.service';
 import {
   ApiBadRequestResponse,
   ApiExcludeController,
@@ -13,10 +7,15 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
-import { PointData } from 'src/nova/nova.service';
-import { PagingOptionsDto } from 'src/common/pagingOptionsDto.dto';
-import { PaginationUtil } from 'src/common/pagination.util';
-import { PagingMetaDto } from 'src/common/paging.dto';
+import { LRUCache } from 'lru-cache';
+import { ParseAddressPipe } from 'src/common/pipes/parseAddress.pipe';
+import {
+  NOT_FOUND_EXCEPTION,
+  SERVICE_EXCEPTION,
+} from './tokenPointsWithoutDecimals.dto';
+import { NovaPointsWithoutDecimalsDto } from 'src/nova/novaPointsWithoutDecimalsDto.dto';
+import { NovaService } from 'src/nova/nova.service';
+import { NovaApiService, NovaPoints } from 'src/nova/novaapi.service';
 
 const options = {
   // how long to live in ms
@@ -53,15 +52,17 @@ export class NovaController {
     @Query('address', new ParseAddressPipe()) address: string,
     @Query('tokenAddress', new ParseAddressPipe()) tokenAddress: string,
   ): Promise<NovaPointsWithoutDecimalsDto> {
-    let pointData: PointData;
+    let finalPoints: any[], finalTotalPoints: bigint;
     try{
-      pointData = await this.novaService.getPoints(tokenAddress, address);
-      if(!pointData.finalPoints || !pointData.finalTotalPoints){
-        return NOT_FOUND_EXCEPTION
-      }
+      const pointData = await this.novaService.getPoints(tokenAddress, address);
+      finalPoints = pointData.finalPoints;
+      finalTotalPoints = pointData.finalTotalPoints;
     } catch (err) {
-      this.logger.error('Get nova all points failed', err.stack);
+      this.logger.error('Get nova all points failed', err);
       return SERVICE_EXCEPTION;
+    }
+    if(!finalPoints || !finalTotalPoints){
+      return NOT_FOUND_EXCEPTION
     }
 
     // Get real points.
@@ -69,13 +70,14 @@ export class NovaController {
     try{
       points = await this.novaApiService.getNovaPoint(tokenAddress);
     } catch (err) {
-      this.logger.error('Get nova real points failed', err.stack);
+      this.logger.error('Get nova real points failed', err);
+      this.logger.error(err.message, err.stack);
       return SERVICE_EXCEPTION;
     }
     if(!points){
       return NOT_FOUND_EXCEPTION;
     }
-    return this.getReturnData(pointData, null, points.novaPoint);
+    return this.getReturnData(finalPoints, finalTotalPoints, points.novaPoint);
   }
 
   @Get('/all/points')
@@ -94,22 +96,28 @@ export class NovaController {
     description: '{ "errno": 1, "errmsg": "not found" }',
   })
   public async getAllNovaPoints(
-    @Query() pagingOptions: PagingOptionsDto,
     @Query('tokenAddress', new ParseAddressPipe()) tokenAddress: string,
   ): Promise<Partial<NovaPointsWithoutDecimalsDto>> {
     const cacheKey = NOVA_ALL_POINTS_CACHE_KEY + tokenAddress;
-    let pointData = cache.get(cacheKey) as PointData;
-    if (!pointData) {
-      try{
-        pointData = await this.novaService.getAllPoints(tokenAddress);
-        if(!pointData.finalPoints || !pointData.finalTotalPoints){
-          return NOT_FOUND_EXCEPTION
-        }
-        cache.set(cacheKey, pointData);
-      } catch (err) {
-        this.logger.error('Get nova all points failed', err.stack);
-        return SERVICE_EXCEPTION;
-      }
+    const allPoints = cache.get(
+      cacheKey,
+    ) as NovaPointsWithoutDecimalsDto;
+    if (allPoints) {
+      return allPoints;
+    }
+
+    let cacheData: NovaPointsWithoutDecimalsDto, finalPoints: any[], finalTotalPoints: bigint;
+    try{
+      const pointData = await this.novaService.getAllPoints(tokenAddress);
+      finalPoints = pointData.finalPoints;
+      finalTotalPoints = pointData.finalTotalPoints;
+    } catch (err) {
+      this.logger.error('Get nova all points failed', err);
+      this.logger.error(err.message, err.stack);
+      return SERVICE_EXCEPTION;
+    }
+    if(!finalPoints || !finalTotalPoints){
+      return NOT_FOUND_EXCEPTION
     }
 
     // Get real points.
@@ -117,13 +125,16 @@ export class NovaController {
     try{
       points = await this.novaApiService.getNovaPoint(tokenAddress);
     } catch (err) {
-      this.logger.error('Get nova real points failed', err.stack);
+      this.logger.error('Get nova real points failed', err);
+      this.logger.error(err.message, err.stack);
       return SERVICE_EXCEPTION;
     }
     if(!points){
       return NOT_FOUND_EXCEPTION;
     }
-    return this.getReturnData(pointData, pagingOptions, points.novaPoint);
+    cacheData = this.getReturnData(finalPoints, finalTotalPoints, points.novaPoint);
+    cache.set(cacheKey, cacheData);
+    return cacheData;
   }
 
   @Get('/all/points-with-balance')
@@ -142,22 +153,27 @@ export class NovaController {
     description: '{ "errno": 1, "errmsg": "not found" }',
   })
   public async getAllNovaPointsWithBalance(
-    @Query() pagingOptions: PagingOptionsDto,
     @Query('tokenAddress', new ParseAddressPipe()) tokenAddress: string,
   ): Promise<Partial<NovaPointsWithoutDecimalsDto>> {
     const cacheKey = NOVA_ALL_POINTS_WITH_BALANCE_CACHE_KEY + tokenAddress;
-    let pointData = cache.get(cacheKey) as PointData;
-    if (!pointData) {
-      try{
-        pointData = await this.novaService.getAllPointsWithBalance(tokenAddress);
-        if(!pointData.finalPoints || !pointData.finalTotalPoints){
-          return NOT_FOUND_EXCEPTION
-        }
-        cache.set(cacheKey, pointData);
-      } catch (err) {
-        this.logger.error('Get nova all points failed', err.stack);
-        return SERVICE_EXCEPTION;
-      }
+    const allPoints = cache.get(
+      cacheKey,
+    ) as NovaPointsWithoutDecimalsDto;
+    if (allPoints) {
+      return allPoints;
+    }
+
+    let cacheData: NovaPointsWithoutDecimalsDto, finalPoints: any[], finalTotalPoints: bigint;
+    try{
+      const pointData = await this.novaService.getAllPointsWithBalance(tokenAddress);
+      finalPoints = pointData.finalPoints;
+      finalTotalPoints = pointData.finalTotalPoints;
+    } catch (err) {
+      this.logger.error('Get nova all points failed', err);
+      return SERVICE_EXCEPTION;
+    }
+    if(!finalPoints || !finalTotalPoints){
+      return NOT_FOUND_EXCEPTION
     }
 
     // Get real points.
@@ -165,37 +181,30 @@ export class NovaController {
     try{
       points = await this.novaApiService.getNovaPoint(tokenAddress);
     } catch (err) {
-      this.logger.error('Get nova real points failed', err.stack);
+      this.logger.error('Get nova real points failed', err);
+      this.logger.error(err.message, err.stack);
       return SERVICE_EXCEPTION;
     }
     if(!points){
       return NOT_FOUND_EXCEPTION;
     }
-    return this.getReturnData(pointData, pagingOptions, points.novaPoint);
+    cacheData = this.getReturnData(finalPoints, finalTotalPoints, points.novaPoint);
+    cache.set(cacheKey, cacheData);
+    return cacheData;
   }
 
   private getReturnData(
-    pointData: PointData,
-    pagingOptions: PagingOptionsDto,
+    finalPoints: any[],
+    finnalTotalPoints: bigint,
     novaPoint: number,
   ): NovaPointsWithoutDecimalsDto {
-    let list = pointData.finalPoints;
-    let meta: PagingMetaDto;
-    if(null != pagingOptions){
-      const {page = 1, limit = 100} = pagingOptions;
-      const paging = PaginationUtil.paginate(pointData.finalPoints, page, limit);
-      list = paging.items;
-      meta = paging.meta;
-    }
-
     return {
       errno: 0,
       errmsg: 'no error',
       total_points: novaPoint.toString(),
-      meta: meta,
-      data: list.map(point => {
+      data: finalPoints.map(point => {
         const tmpPoints = point.points;
-        point.points = this.novaService.getRealPoints(tmpPoints, pointData.finalTotalPoints, novaPoint);
+        point.points = this.novaService.getRealPoints(tmpPoints, finnalTotalPoints, novaPoint);
         return point;
       })
     } as NovaPointsWithoutDecimalsDto;

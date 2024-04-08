@@ -6,7 +6,6 @@ import {
   Param,
   Query,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import {
   ApiBadRequestResponse,
   ApiExcludeController,
@@ -15,27 +14,24 @@ import {
   ApiParam,
   ApiTags,
 } from '@nestjs/swagger';
-import { PointsRepository } from 'src/repositories/points.repository';
-import { TokenPointsDto } from './tokenPoints.dto';
-import { LRUCache } from 'lru-cache';
-import { Points } from 'src/entities/points.entity';
-import {
-  ADDRESS_REGEX_PATTERN,
-  ParseAddressPipe,
-} from 'src/common/pipes/parseAddress.pipe';
-import { TokenPointsWithoutDecimalsDto } from './tokenPointsWithoutDecimals.dto';
+import { ConfigService } from '@nestjs/config';
 import { BigNumber } from 'bignumber.js';
-import { PointsWithoutDecimalsDto } from './pointsWithoutDecimals.dto';
-import { RenzoService } from 'src/renzo/renzo.service';
-import { PointsDto } from './points.dto';
+import { LRUCache } from 'lru-cache';
 import { ethers } from 'ethers';
-import { PuffPointsService } from 'src/puffPoints/puffPoints.service';
-import { GraphQueryService } from 'src/explorer/graphQuery.service';
-import { TokensDto } from './tokens.dto';
+import { ADDRESS_REGEX_PATTERN, ParseAddressPipe } from 'src/common/pipes/parseAddress.pipe';
+import { Points } from 'src/entities/points.entity';
+import { PointsRepository } from 'src/repositories/points.repository';
+import { RenzoService } from 'src/renzo/renzo.service';
 import { ParseProjectNamePipe } from 'src/common/pipes/parseProjectName.pipe';
-import { PagingMetaDto } from 'src/common/paging.dto';
 import { PagingOptionsDto } from 'src/common/pagingOptionsDto.dto';
 import { PaginationUtil } from 'src/common/pagination.util';
+import { PuffPointsService } from 'src/puffPoints/puffPoints.service';
+import { GraphQueryService } from 'src/explorer/graphQuery.service';
+import { TokenPointsDto } from './tokenPoints.dto';
+import { TokenPointsWithoutDecimalsDto } from './tokenPointsWithoutDecimals.dto';
+import { PointsWithoutDecimalsDto } from './pointsWithoutDecimals.dto';
+import { PointsDto } from './points.dto';
+import { TokensDto } from './tokens.dto';
 
 const options = {
   // how long to live in ms
@@ -225,23 +221,17 @@ export class PointsController {
   @ApiBadRequestResponse({
     description: '{ "message": "Not Found", "statusCode": 404 }',
   })
-  public async allPufferPoints2(
-    @Query() pagingOptions: PagingOptionsDto
-  ): Promise<TokenPointsWithoutDecimalsDto> {
+  public async allPufferPoints2(): Promise<TokenPointsWithoutDecimalsDto> {
     let res: TokenPointsWithoutDecimalsDto;
     try {
       const [allPoints, totalPoints, realPufferPoints] =
         await this.getPointsAndTotalPoints();
 
-      const {page = 1, limit = 100} = pagingOptions;
-      const paging = PaginationUtil.paginate(allPoints, page, limit);
-
       res = {
         errno: 0,
         errmsg: 'no error',
         total_points: realPufferPoints,
-        meta: paging.meta,
-        data: paging.items.map((p) => {
+        data: allPoints.map((p) => {
           return {
             address: p.address,
             balance: ((item) => {
@@ -297,7 +287,35 @@ export class PointsController {
   @ApiBadRequestResponse({
     description: '{ "message": "Not Found", "statusCode": 404 }',
   })
-  public async allPufferPoints(
+  public async allPufferPoints(): Promise<TokenPointsDto> {
+    this.logger.log('allPufferPoints');
+    const [allPoints, totalPoints, _] = await this.getPointsAndTotalPoints();
+    
+    const result = allPoints.map((p) => {
+      return {
+        address: p.address,
+        updatedAt: p.updatedAt,
+        points: p.points.toString(),
+      };
+    });
+    return {
+      decimals: 18,
+      tokenAddress: this.puffPointsTokenAddress,
+      totalPoints: totalPoints.toString(),
+      result: result,
+    };
+  }
+
+  @Get('/allpufferpoints/paging')
+  @ApiOkResponse({
+    description:
+      "Return paginated results of all users' PufferPoints with a decimals of 18. The rule is to add 30 points per hour.\nTiming starts from the user's first deposit, with each user having an independent timer.",
+    type: TokenPointsDto,
+  })
+  @ApiBadRequestResponse({
+    description: '{ "message": "Not Found", "statusCode": 404 }',
+  })
+  public async allPufferPointsPaging(
     @Query() pagingOptions: PagingOptionsDto
   ): Promise<TokenPointsDto> {
     this.logger.log('allPufferPoints');
@@ -319,6 +337,62 @@ export class PointsController {
       meta: paging.meta,
       result: result,
     };
+  }
+
+
+
+  @Get('/allpufferpoints2/paging')
+  @ApiOkResponse({
+    description:
+      "Return paginated results of all users' PufferPoints. The rule is to add 30 points per hour.\nTiming starts from the user's first deposit, with each user having an independent timer.",
+    type: TokenPointsWithoutDecimalsDto,
+  })
+  @ApiBadRequestResponse({
+    description: '{ "message": "Not Found", "statusCode": 404 }',
+  })
+  public async allPufferPointsPaging2(
+    @Query() pagingOptions: PagingOptionsDto
+  ): Promise<TokenPointsWithoutDecimalsDto> {
+    let res: TokenPointsWithoutDecimalsDto;
+    try {
+      const [allPoints, totalPoints, realPufferPoints] =
+        await this.getPointsAndTotalPoints();
+
+      const {page = 1, limit = 100} = pagingOptions;
+      const paging = PaginationUtil.paginate(allPoints, page, limit);
+
+      res = {
+        errno: 0,
+        errmsg: 'no error',
+        total_points: realPufferPoints,
+        meta: paging.meta,
+        data: paging.items.map((p) => {
+          return {
+            address: p.address,
+            balance: ((item) => {
+              if (item && item.balance) {
+                return BigNumber(ethers.formatEther(item.balance)).toFixed(6);
+              }
+              return '0';
+            })(this.puffPointsService.findUserBalance(p.address)),
+            updated_at: (p.updatedAt.getTime() / 1000) | 0,
+            points: new BigNumber(p.points.toString())
+              .multipliedBy(realPufferPoints)
+              .div(totalPoints.toString())
+              .toFixed(6),
+          };
+        }),
+      };
+    } catch (e) {
+      res = {
+        errno: 1,
+        errmsg: 'Not Found',
+        total_points: '0',
+        data: [] as PointsWithoutDecimalsDto[],
+      };
+    }
+
+    return res;
   }
 
   private async getPointsAndTotalPoints(): Promise<[Points[], BigInt, string]> {
