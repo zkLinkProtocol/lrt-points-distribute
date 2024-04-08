@@ -4,6 +4,7 @@ import {
   GraphQueryService,
   GraphTotalPoint,
 } from 'src/explorer/graphQuery.service';
+import { NovaApiService, NovaPoints } from 'src/nova/novaapi.service';
 import { BigNumber } from 'bignumber.js';
 
 export interface PointData {
@@ -17,7 +18,7 @@ export class NovaService {
   private readonly graphQueryService: GraphQueryService;
   private readonly projectName: string = "nova";
 
-  public constructor(graphQueryService: GraphQueryService) {
+  public constructor(private novaApiService: NovaApiService, graphQueryService: GraphQueryService) {
     this.graphQueryService = graphQueryService;
     this.logger = new Logger(NovaService.name);
   }
@@ -49,6 +50,54 @@ export class NovaService {
       // Exception in fetching GraphQL data.
       throw new Error(`Exception in fetching GraphQL data, project is : ${project}.`);
     }
+  }
+
+  public async getAllTokensPoints( address: string ): Promise<PointData> {
+    const [points, totalPoints] = 
+      await this.graphQueryService.queryPointsRedistributedByProjectNameAndAddress(
+        address, 
+        this.projectName
+      );
+    
+    let tempProjectIdGraphTotalPoint: Map<String, bigint> = new Map;
+    let tempProjectIdTotalPoints: Map<String, number> = new Map;
+    let finalTotalPoints: bigint = BigInt(0);
+    for (const item of totalPoints) {
+      const projectArr = item.project.split('-');
+      const tokenAddress = projectArr[1];
+      // Get real points.
+      let points: NovaPoints;
+      try{
+        points = await this.novaApiService.getNovaPoint(tokenAddress);
+      } catch (err) {
+        this.logger.error('Get nova real points failed.', err.stack);
+        throw new Error(`Get nova real points failed: ${tokenAddress}.`);
+      }
+      const tempFinalTotalPoints = this.caulTotalPoint(item);
+      tempProjectIdGraphTotalPoint.set(item.project, tempFinalTotalPoints);
+      tempProjectIdTotalPoints.set(item.project, points.novaPoint);
+      finalTotalPoints += tempFinalTotalPoints;
+    }
+
+    let finalPoints = [];
+    const now = (new Date().getTime() / 1000) | 0;
+    for (const point of points) {
+      const projectArr = point.project.split('-');
+      const tempPoint = GraphQueryService.getPoints(point, now);
+      const tempOrgTotaoPoint = tempProjectIdGraphTotalPoint.get(point.project);
+      const tempRealTotaoPoint = tempProjectIdTotalPoints.get(point.project);
+      const newPoint = {
+        address: point.address,
+        points: tempPoint,
+        realPoints: this.getRealPoints(tempPoint, tempOrgTotaoPoint, tempRealTotaoPoint),
+        balance: point.balance,
+        tokenAddress: projectArr[1],
+        updated_at: now,
+      };
+      finalPoints.push(newPoint);
+    }
+
+    return {finalPoints, finalTotalPoints};
   }
 
   public async getAllPoints(
@@ -151,6 +200,11 @@ export class NovaService {
     }
 
     return {finalPoints, finalTotalPoints};
+  }
+
+  private caulTotalPoint(totalPoint: GraphTotalPoint): bigint{
+    const now = (new Date().getTime() / 1000) | 0;
+    return GraphQueryService.getTotalPoints(totalPoint, now);
   }
 
   public getRealPoints(
