@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Transfer } from 'src/type/transfer';
+import { Token } from 'src/type/token';
 import { UserBalances } from 'src/type/userBalances';
 
 @Injectable()
@@ -62,5 +63,22 @@ export class ExplorerService {
     }
     firstDeposit.timestamp = new Date(firstDeposit.timestamp);
     return firstDeposit;
+  }
+
+  public async getTokens(): Promise<Token[]> {
+    const response = await fetch(
+      `${this.explorerApi}/tokens?page=1&limit=200`,
+      {
+        method: 'get',
+      },
+    );
+    const responseJson = await response.json();
+    if (!responseJson || !responseJson.items) {
+      this.logger.error(
+        `No tokens`,
+      );
+      return null;
+    }
+    return responseJson.items;
   }
 }
