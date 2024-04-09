@@ -309,9 +309,9 @@ export class RenzoService extends Worker {
       points: 0n,
       updatedAt: transfer.timestamp,
     });
-    // this.logger.log(
-    //   `First deposit for RENZO ${transfer.to} timestamp:${transfer.timestamp.toUTCString()}`,
-    // );
+    this.logger.log(
+      `First deposit for RENZO ${transfer.to} timestamp:${transfer.timestamp.toUTCString()}`,
+    );
   }
 
   public updatePoints(
@@ -324,9 +324,9 @@ export class RenzoService extends Worker {
     const diffInHours = Math.floor(diffInMs / this.unitInterval);
     if (diffInHours < 1) {
       // return true to prevent try again
-      // this.logger.debug(
-      //   `diffInHours < 1 for address: ${address} tokenAddress: ${tokenAddress} updateAt: ${pufPoint.updatedAt.toUTCString()} diffInHours:${diffInHours}`,
-      // );
+      this.logger.debug(
+        `diffInHours < 1 for address: ${address} tokenAddress: ${tokenAddress} updateAt: ${pufPoint.updatedAt.toUTCString()} diffInHours:${diffInHours}`,
+      );
       return [null, 0n];
     }
     const addPointsNumber = this.unitPoints * BigInt(diffInHours) * balance;
@@ -338,9 +338,9 @@ export class RenzoService extends Worker {
       ),
     };
     // update points and timestamp
-    // this.logger.log(
-    //   `UPDATE RENZO ${address} add:${formatEther(addPointsNumber)} total:${formatEther(pufPoint.points + addPointsNumber)} tokenAddress:${tokenAddress}`,
-    // );
+    this.logger.log(
+      `UPDATE RENZO ${address} add:${formatEther(addPointsNumber)} total:${formatEther(pufPoint.points + addPointsNumber)} tokenAddress:${tokenAddress}`,
+    );
     return [newPoints, addPointsNumber];
   }
 }
