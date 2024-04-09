@@ -38,17 +38,12 @@ export class RenzoApiService {
   }
 
   public async fetchRenzoPoints(): Promise<RenzoPoints> {
-    // const allRenzoPoints = await Promise.all(
-    //   this.l1Erc20Bridges.map(async (bridgeAddress) =>
-    //     await this._fetchRenzoPoints(bridgeAddress),
-    //   ),
-    // );
     const allRenzoPoints = [];
 
     for (const bridgeAddress of this.l1Erc20Bridges) {
       const renzoPoints = await this._fetchRenzoPoints(bridgeAddress);
       allRenzoPoints.push(renzoPoints);
-      await new Promise(resolve => setTimeout(resolve, 3000)); // wait 3s
+      await new Promise(resolve => setTimeout(resolve, 1000)); // wait 1s
     }
     return allRenzoPoints.reduce(
       (acc, renzoPoints) => {
@@ -58,6 +53,17 @@ export class RenzoApiService {
       },
       { renzoPoints: 0, eigenLayerPoints: 0 },
     );
+  }
+
+  public async fetchTokensRenzoPoints(): Promise<Map<String, RenzoPoints>> {
+    const allRenzoPoints: Map<String, RenzoPoints> = new Map;
+
+    for (const bridgeAddress of this.l1Erc20Bridges) {
+      const renzoPoints = await this._fetchRenzoPoints(bridgeAddress);
+      allRenzoPoints.set(bridgeAddress.toLocaleLowerCase(), renzoPoints);
+      await new Promise(resolve => setTimeout(resolve, 1000)); // wait 1s
+    }
+    return allRenzoPoints;
   }
 
   public async _fetchRenzoPoints(bridgeAddress: string): Promise<RenzoPoints> {

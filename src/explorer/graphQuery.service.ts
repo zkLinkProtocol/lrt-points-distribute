@@ -239,8 +239,6 @@ export class GraphQueryService implements OnModuleInit {
 }
     `;
     const data = await this.query(query);
-    this.logger.log(`graph query : ${query}`);
-    this.logger.log(`graph query result : ${data}`);
     if (data && data.data && Array.isArray(data.data.totalPoints) && Array.isArray(data.data.points)) {
       return [
         data.data.points as GraphPoint[],
