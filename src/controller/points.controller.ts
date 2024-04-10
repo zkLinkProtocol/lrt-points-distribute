@@ -69,7 +69,7 @@ export class PointsController implements OnModuleInit {
   }
 
   public async onModuleInit() {
-    // setInterval will wait for 100s, so it's necessary to execute the loadMagpieData function once first.
+    // setInterval will wait for 100s, so it's necessary to execute the loadPointsAndTotalPoints function once first.
     const func = async () => {
       try {
         await this.loadPointsAndTotalPoints();
@@ -443,60 +443,56 @@ export class PointsController implements OnModuleInit {
   }
 
   private async loadPointsAndTotalPoints() {
-    let allPoints = cache.get(ALL_PUFFER_POINTS_CACHE_KEY) as Points[];
-    let realPufferPoints = cache.get(REAL_PUFFFER_POINTS_CACHE_KEY) as string;
-    let totalPoints = BigInt(
-      (cache.get(TOTAL_PUFFER_POINTS_CACHE_KEY) as string) || 0,
-    );
-    if (!allPoints || !realPufferPoints || !totalPoints) {
-      try {
-        const realData = await fetch(
-          'https://quest-api.puffer.fi/puffer-quest/third/query_zklink_pufpoint',
-          {
-            method: 'get',
-            headers: {
-              'Content-Type': 'application/json',
-              'client-id': '08879426f59a4b038b7755b274bc19dc',
-            },
+    let allPoints: Points[];
+    let realPufferPoints: string;
+    let totalPoints: bigint = BigInt(0);
+    try {
+      const realData = await fetch(
+        'https://quest-api.puffer.fi/puffer-quest/third/query_zklink_pufpoint',
+        {
+          method: 'get',
+          headers: {
+            'Content-Type': 'application/json',
+            'client-id': '08879426f59a4b038b7755b274bc19dc',
           },
-        );
-        const pufReadData = await realData.json();
-        if (
-          pufReadData &&
-          pufReadData.errno === 0 &&
-          pufReadData.data &&
-          pufReadData.data.pufeth_points_detail
-        ) {
-          /**
-           *"pufeth_points_detail": {
-            "balance": "271.314758",
-            "last_updated_at": 1710834827,
-            "points_per_hour": 30,
-            "last_points": "437936.342254",
-            "latest_points": "450864.490477"
-            }
-           */
-          realPufferPoints = pufReadData.data.pufeth_points_detail[
-            'latest_points'
-          ] as string;
-        } else {
-          this.logger.error('Failed to get real puffer points');
-          throw new NotFoundException();
-        }
-
-        allPoints = await this.getAllPufferPoints();
-        allPoints.forEach((p) => {
-          totalPoints += p.points;
-        });
-      } catch (e) {
-        this.logger.error(e);
+        },
+      );
+      const pufReadData = await realData.json();
+      if (
+        pufReadData &&
+        pufReadData.errno === 0 &&
+        pufReadData.data &&
+        pufReadData.data.pufeth_points_detail
+      ) {
+        /**
+         *"pufeth_points_detail": {
+          "balance": "271.314758",
+          "last_updated_at": 1710834827,
+          "points_per_hour": 30,
+          "last_points": "437936.342254",
+          "latest_points": "450864.490477"
+          }
+          */
+        realPufferPoints = pufReadData.data.pufeth_points_detail[
+          'latest_points'
+        ] as string;
+      } else {
+        this.logger.error('Failed to get real puffer points');
         throw new NotFoundException();
       }
 
-      cache.set(REAL_PUFFFER_POINTS_CACHE_KEY, realPufferPoints);
-      cache.set(TOTAL_PUFFER_POINTS_CACHE_KEY, totalPoints.toString());
-      cache.set(ALL_PUFFER_POINTS_CACHE_KEY, allPoints);
+      allPoints = await this.getAllPufferPoints();
+      allPoints.forEach((p) => {
+        totalPoints += p.points;
+      });
+    } catch (e) {
+      this.logger.error(e);
+      throw new NotFoundException();
     }
+
+    cache.set(REAL_PUFFFER_POINTS_CACHE_KEY, realPufferPoints);
+    cache.set(TOTAL_PUFFER_POINTS_CACHE_KEY, totalPoints.toString());
+    cache.set(ALL_PUFFER_POINTS_CACHE_KEY, allPoints);
   }
 
   public async getAllPufferPoints() {
