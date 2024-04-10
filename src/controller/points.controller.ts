@@ -36,7 +36,7 @@ import { TokensDto } from './tokens.dto';
 
 const options = {
   // how long to live in ms
-  ttl: 1000 * 60,
+  ttl: 1000 * 300,
   // return stale items before removing from cache?
   allowStale: false,
   ttlAutopurge: true,
