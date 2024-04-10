@@ -74,7 +74,7 @@ export class PointsController implements OnModuleInit {
       try {
         await this.loadPointsAndTotalPoints();
       } catch (err) {
-        this.logger.error("MagpieGraphQueryService init failed", err.stack);
+        this.logger.error("Pufferpoint init failed", err.stack);
       }
     };
     await func();
