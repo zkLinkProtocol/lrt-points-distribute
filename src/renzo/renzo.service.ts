@@ -67,7 +67,7 @@ export class RenzoService extends Worker {
       }
     };
     await func();
-    setInterval(func, 1000 * 10);
+    setInterval(func, 1000 * 100);
   }
 
   public async loadPointData() {
