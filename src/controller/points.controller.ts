@@ -36,7 +36,7 @@ import { TokensDto } from './tokens.dto';
 
 const options = {
   // how long to live in ms
-  ttl: 1000 * 300,
+  ttl: 1000 * 20,
   // return stale items before removing from cache?
   allowStale: false,
   ttlAutopurge: true,
@@ -55,6 +55,9 @@ const PUFFER_ADDRESS_POINTS_FORWARD = 'pufferAddressPointsForward';
 export class PointsController implements OnModuleInit {
   private readonly logger = new Logger(PointsController.name);
   private readonly puffPointsTokenAddress: string;
+  private allPoints: Points[];
+  private realPufferPoints: string;
+  private totalPoints: bigint = BigInt(0);
 
   constructor(
     private readonly pointsRepository: PointsRepository,
@@ -433,19 +436,10 @@ export class PointsController implements OnModuleInit {
   }
 
   private getPointsAndTotalPoints(): [Points[], string, string]{
-    let allPoints = cache.get(ALL_PUFFER_POINTS_CACHE_KEY) as Points[];
-    let realPufferPoints = cache.get(REAL_PUFFFER_POINTS_CACHE_KEY) as string;
-    let totalPoints = BigInt(
-      (cache.get(TOTAL_PUFFER_POINTS_CACHE_KEY) as string) || 0,
-    );
-
-    return [allPoints, realPufferPoints, totalPoints.toString()];
+    return [this.allPoints, this.realPufferPoints, this.totalPoints.toString()];
   }
 
   private async loadPointsAndTotalPoints() {
-    let allPoints: Points[];
-    let realPufferPoints: string;
-    let totalPoints: bigint = BigInt(0);
     try {
       const realData = await fetch(
         'https://quest-api.puffer.fi/puffer-quest/third/query_zklink_pufpoint',
@@ -464,16 +458,7 @@ export class PointsController implements OnModuleInit {
         pufReadData.data &&
         pufReadData.data.pufeth_points_detail
       ) {
-        /**
-         *"pufeth_points_detail": {
-          "balance": "271.314758",
-          "last_updated_at": 1710834827,
-          "points_per_hour": 30,
-          "last_points": "437936.342254",
-          "latest_points": "450864.490477"
-          }
-          */
-        realPufferPoints = pufReadData.data.pufeth_points_detail[
+        this.realPufferPoints = pufReadData.data.pufeth_points_detail[
           'latest_points'
         ] as string;
       } else {
@@ -481,18 +466,14 @@ export class PointsController implements OnModuleInit {
         throw new NotFoundException();
       }
 
-      allPoints = await this.getAllPufferPoints();
-      allPoints.forEach((p) => {
-        totalPoints += p.points;
+      this.allPoints = await this.getAllPufferPoints();
+      this.allPoints.forEach((p) => {
+        this.totalPoints += p.points;
       });
     } catch (e) {
       this.logger.error(e);
       throw new NotFoundException();
     }
-
-    cache.set(REAL_PUFFFER_POINTS_CACHE_KEY, realPufferPoints);
-    cache.set(TOTAL_PUFFER_POINTS_CACHE_KEY, totalPoints.toString());
-    cache.set(ALL_PUFFER_POINTS_CACHE_KEY, allPoints);
   }
 
   public async getAllPufferPoints() {
