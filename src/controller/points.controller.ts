@@ -5,6 +5,7 @@ import {
   NotFoundException,
   Param,
   Query,
+  OnModuleInit
 } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
@@ -35,7 +36,7 @@ import { TokensDto } from './tokens.dto';
 
 const options = {
   // how long to live in ms
-  ttl: 1000 * 5,
+  ttl: 1000 * 20,
   // return stale items before removing from cache?
   allowStale: false,
   ttlAutopurge: true,
@@ -51,9 +52,12 @@ const PUFFER_ADDRESS_POINTS_FORWARD = 'pufferAddressPointsForward';
 @ApiTags('points')
 @ApiExcludeController(false)
 @Controller('points')
-export class PointsController {
+export class PointsController implements OnModuleInit {
   private readonly logger = new Logger(PointsController.name);
   private readonly puffPointsTokenAddress: string;
+  private allPoints: Points[];
+  private realPufferPoints: string;
+  private totalPoints: bigint = BigInt(0);
 
   constructor(
     private readonly pointsRepository: PointsRepository,
@@ -65,6 +69,19 @@ export class PointsController {
     this.puffPointsTokenAddress = configService.get<string>(
       'puffPoints.tokenAddress',
     );
+  }
+
+  public async onModuleInit() {
+    // setInterval will wait for 100s, so it's necessary to execute the loadPointsAndTotalPoints function once first.
+    const func = async () => {
+      try {
+        await this.loadPointsAndTotalPoints();
+      } catch (err) {
+        this.logger.error("Pufferpoint init failed", err.stack);
+      }
+    };
+    await func();
+    setInterval(func, 1000 * 50);
   }
 
   @Get('tokens')
@@ -177,8 +194,7 @@ export class PointsController {
   ): Promise<TokenPointsWithoutDecimalsDto> {
     let res: TokenPointsWithoutDecimalsDto;
     try {
-      const [allPoints, totalPoints, realPufferPoints] =
-        await this.getPointsAndTotalPoints();
+      const [allPoints, totalPoints, realPufferPoints] = this.getPointsAndTotalPoints();
       const point = allPoints.filter(
         (p) => p.address.toLowerCase() === address.toLowerCase(),
       );
@@ -232,8 +248,7 @@ export class PointsController {
   public async allPufferPoints2(): Promise<TokenPointsWithoutDecimalsDto> {
     let res: TokenPointsWithoutDecimalsDto;
     try {
-      const [allPoints, totalPoints, realPufferPoints] =
-        await this.getPointsAndTotalPoints();
+      const [allPoints, totalPoints, realPufferPoints] = this.getPointsAndTotalPoints();
       const allPointsFilter = allPoints.filter(
         (p) => BigNumber(p.points.toString()).comparedTo(0) > 0,
       );
@@ -308,7 +323,7 @@ export class PointsController {
   })
   public async allPufferPoints(): Promise<TokenPointsDto> {
     this.logger.log('allPufferPoints');
-    const [allPoints, totalPoints, _] = await this.getPointsAndTotalPoints();
+    const [allPoints, totalPoints, _] = this.getPointsAndTotalPoints();
     
     const allPointsFilter = allPoints.filter(
       (p) => BigNumber(p.points.toString()).comparedTo(0) > 0,
@@ -342,7 +357,7 @@ export class PointsController {
     @Query() pagingOptions: PagingOptionsDto
   ): Promise<TokenPointsDto> {
     this.logger.log('allPufferPoints');
-    const [allPoints, totalPoints, _] = await this.getPointsAndTotalPoints();
+    const [allPoints, totalPoints, _] = this.getPointsAndTotalPoints();
     const allPointsFilter = allPoints.filter(
       (p) => BigNumber(p.points.toString()).comparedTo(0) > 0,
     );
@@ -365,8 +380,6 @@ export class PointsController {
     };
   }
 
-
-
   @Get('/allpufferpoints2/paging')
   @ApiOkResponse({
     description:
@@ -381,8 +394,7 @@ export class PointsController {
   ): Promise<TokenPointsWithoutDecimalsDto> {
     let res: TokenPointsWithoutDecimalsDto;
     try {
-      const [allPoints, totalPoints, realPufferPoints] =
-        await this.getPointsAndTotalPoints();
+      const [allPoints, totalPoints, realPufferPoints] = this.getPointsAndTotalPoints();
       const allPointsFilter = allPoints.filter(
         (p) => BigNumber(p.points.toString()).comparedTo(0) > 0,
       );
@@ -423,63 +435,45 @@ export class PointsController {
     return res;
   }
 
-  private async getPointsAndTotalPoints(): Promise<[Points[], BigInt, string]> {
-    let allPoints = cache.get(ALL_PUFFER_POINTS_CACHE_KEY) as Points[];
-    let realPufferPoints = cache.get(REAL_PUFFFER_POINTS_CACHE_KEY) as string;
-    let totalPoints = BigInt(
-      (cache.get(TOTAL_PUFFER_POINTS_CACHE_KEY) as string) || 0,
-    );
-    if (!allPoints || !realPufferPoints || !totalPoints) {
-      try {
-        const realData = await fetch(
-          'https://quest-api.puffer.fi/puffer-quest/third/query_zklink_pufpoint',
-          {
-            method: 'get',
-            headers: {
-              'Content-Type': 'application/json',
-              'client-id': '08879426f59a4b038b7755b274bc19dc',
-            },
-          },
-        );
-        const pufReadData = await realData.json();
-        if (
-          pufReadData &&
-          pufReadData.errno === 0 &&
-          pufReadData.data &&
-          pufReadData.data.pufeth_points_detail
-        ) {
-          /**
-           *"pufeth_points_detail": {
-            "balance": "271.314758",
-            "last_updated_at": 1710834827,
-            "points_per_hour": 30,
-            "last_points": "437936.342254",
-            "latest_points": "450864.490477"
-            }
-           */
-          realPufferPoints = pufReadData.data.pufeth_points_detail[
-            'latest_points'
-          ] as string;
-        } else {
-          this.logger.error('Failed to get real puffer points');
-          throw new NotFoundException();
-        }
+  private getPointsAndTotalPoints(): [Points[], string, string]{
+    return [this.allPoints, this.realPufferPoints, this.totalPoints.toString()];
+  }
 
-        allPoints = await this.getAllPufferPoints();
-        allPoints.forEach((p) => {
-          totalPoints += p.points;
-        });
-      } catch (e) {
-        this.logger.error(e);
+  private async loadPointsAndTotalPoints() {
+    try {
+      const realData = await fetch(
+        'https://quest-api.puffer.fi/puffer-quest/third/query_zklink_pufpoint',
+        {
+          method: 'get',
+          headers: {
+            'Content-Type': 'application/json',
+            'client-id': '08879426f59a4b038b7755b274bc19dc',
+          },
+        },
+      );
+      const pufReadData = await realData.json();
+      if (
+        pufReadData &&
+        pufReadData.errno === 0 &&
+        pufReadData.data &&
+        pufReadData.data.pufeth_points_detail
+      ) {
+        this.realPufferPoints = pufReadData.data.pufeth_points_detail[
+          'latest_points'
+        ] as string;
+      } else {
+        this.logger.error('Failed to get real puffer points');
         throw new NotFoundException();
       }
 
-      cache.set(REAL_PUFFFER_POINTS_CACHE_KEY, realPufferPoints);
-      cache.set(TOTAL_PUFFER_POINTS_CACHE_KEY, totalPoints.toString());
-      cache.set(ALL_PUFFER_POINTS_CACHE_KEY, allPoints);
+      this.allPoints = await this.getAllPufferPoints();
+      this.allPoints.forEach((p) => {
+        this.totalPoints += p.points;
+      });
+    } catch (e) {
+      this.logger.error(e);
+      throw new NotFoundException();
     }
-
-    return [allPoints, totalPoints, realPufferPoints];
   }
 
   public async getAllPufferPoints() {
