@@ -436,7 +436,7 @@ export class PointsController implements OnModuleInit {
   }
 
   private getPointsAndTotalPoints(): [Points[], string, string]{
-    return [this.allPoints, this.realPufferPoints, this.totalPoints.toString()];
+    return [this.allPoints, this.totalPoints.toString(), this.realPufferPoints];
   }
 
   private async loadPointsAndTotalPoints() {
@@ -467,6 +467,7 @@ export class PointsController implements OnModuleInit {
       }
 
       this.allPoints = await this.getAllPufferPoints();
+      this.totalPoints = BigInt(0);
       this.allPoints.forEach((p) => {
         this.totalPoints += p.points;
       });
