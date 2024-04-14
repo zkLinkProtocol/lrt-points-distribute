@@ -31,6 +31,7 @@ import { RenzoPagingController } from './controller/paging/renzo.controller';
 import { MagpiePagingController } from './controller/paging/magpie.controller';
 import { NovaPagingController } from './controller/paging/nova.controller';
 import { RsethPagingController } from './controller/paging/rseth.controller';
+import { ProjectGraphService } from './project/projectGraph.service';
 
 @Module({
   imports: [
@@ -70,6 +71,7 @@ import { RsethPagingController } from './controller/paging/rseth.controller';
     AppService,
     Points,
     PointsHistory,
+    GraphQueryService,
     PuffPointsService,
     PuffPointsProcessor,
     PointsRepository,
@@ -77,11 +79,11 @@ import { RsethPagingController } from './controller/paging/rseth.controller';
     ExplorerService,
     RenzoService,
     RenzoApiService,
-    GraphQueryService,
     ProjectService,
     MagpieGraphQueryService,
     NovaApiService,
-    NovaService
+    NovaService,
+    ProjectGraphService
   ],
 })
 export class AppModule {}

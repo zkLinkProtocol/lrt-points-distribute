@@ -22,8 +22,8 @@ export interface GraphTotalPoint {
 export class GraphQueryService implements OnModuleInit {
   private readonly logger: Logger;
   private readonly novaPointRedistributeGraphApi: string;
-  private projectTokenMap: Map<string, Map<string, string>> =
-    new Map();
+  private projectTokenMap: Map<string, Map<string, string>> = new Map();
+  
   public constructor(configService: ConfigService) {
     this.logger = new Logger(GraphQueryService.name);
     this.novaPointRedistributeGraphApi = configService.get<string>(
@@ -66,6 +66,7 @@ export class GraphQueryService implements OnModuleInit {
         const tokenAddress = projectArr[1];
         if (!this.projectTokenMap.has(projectName)) {
           this.projectTokenMap.set(projectName, new Map());
+          this.logger.log(`GraphQueryService ${projectName} had save to cache.`);
         }
         this.projectTokenMap
           .get(projectName)
@@ -75,6 +76,10 @@ export class GraphQueryService implements OnModuleInit {
   }
 
   public getAllTokenAddresses(projectName: string): string[] {
+    for (const key in this.projectTokenMap) {
+      console.log(`token:${key}`);
+      console.log(this.projectTokenMap[key].keys());
+    }
     const project = this.projectTokenMap.get(projectName);
     return project ? Array.from(project.keys()) : [];
   }
@@ -184,7 +189,12 @@ export class GraphQueryService implements OnModuleInit {
 
   public async queryPointsRedistributedByProjectName(
     projectName: string,
-    ): Promise<[GraphPoint[], GraphTotalPoint]> {
+    page?: number,
+    limit?: number
+  ): Promise<[GraphPoint[], GraphTotalPoint[]]> {
+    const {_page = 1, _limit = 1000} = {_page: page, _limit: limit};
+    let skip = (_page - 1) * _limit;
+    skip = skip < 0 ? 0 : skip;
     const query = `
 {
   totalPoints(where:{project_contains: "${projectName}"}){
@@ -195,7 +205,7 @@ export class GraphQueryService implements OnModuleInit {
     totalTimeWeightAmountIn
     totalTimeWeightAmountOut
   }
-  points(where:{project_contains: "${projectName}"}) {
+  points(first: ${_limit}, skip: ${skip}, where:{project_contains: "${projectName}"}) {
     address
     balance
     weightBalance
@@ -205,14 +215,17 @@ export class GraphQueryService implements OnModuleInit {
   }
 }
     `;
+    this.logger.log(`Start query ${projectName}, skip: ${skip}, limit:${_limit}`);
     const data = await this.query(query);
     if (data && data.data && Array.isArray(data.data.totalPoints) && Array.isArray(data.data.points)) {
+      this.logger.log(`End success query ${projectName}, skip: ${skip}, limit:${_limit}, data:${data.data.points.length}`);
       return [
         data.data.points as GraphPoint[],
-        data.data.totalPoint as GraphTotalPoint,
+        data.data.totalPoints as GraphTotalPoint[],
       ];
+    }else{
+      throw new Error(`Exception in fetching GraphQL data, project is : ${projectName}, query is : ${query}.`);
     }
-    return [[], undefined];
   }
 
   public async queryPointsRedistributedByProjectNameAndAddress(
@@ -228,7 +241,7 @@ export class GraphQueryService implements OnModuleInit {
     totalTimeWeightAmountIn
     totalTimeWeightAmountOut
   }
-  points(where: {project_contains: "${projectName}", address: "${address}"}) {
+  points(first:1000, where: {project_contains: "${projectName}", address: "${address}"}) {
     address
     balance
     weightBalance
@@ -245,7 +258,7 @@ export class GraphQueryService implements OnModuleInit {
         data.data.totalPoints as GraphTotalPoint[],
       ];
     }else{
-      throw new Error(`Exception in fetching GraphQL data, project is : ${projectName}.`);
+      throw new Error(`Exception in fetching GraphQL data, project is : ${projectName}, query is : ${query}.`);
     }
   }
 

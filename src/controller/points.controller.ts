@@ -22,7 +22,7 @@ import { ethers } from 'ethers';
 import { ADDRESS_REGEX_PATTERN, ParseAddressPipe } from 'src/common/pipes/parseAddress.pipe';
 import { Points } from 'src/entities/points.entity';
 import { PointsRepository } from 'src/repositories/points.repository';
-import { RenzoService } from 'src/renzo/renzo.service';
+import { RenzoPointItem, RenzoService } from 'src/renzo/renzo.service';
 import { ParseProjectNamePipe } from 'src/common/pipes/parseProjectName.pipe';
 import { PagingOptionsDto } from 'src/common/pagingOptionsDto.dto';
 import { PaginationUtil } from 'src/common/pagination.util';
@@ -52,7 +52,7 @@ const PUFFER_ADDRESS_POINTS_FORWARD = 'pufferAddressPointsForward';
 @ApiTags('points')
 @ApiExcludeController(false)
 @Controller('points')
-export class PointsController implements OnModuleInit {
+export class PointsController {
   private readonly logger = new Logger(PointsController.name);
   private readonly puffPointsTokenAddress: string;
   private allPoints: Points[];
@@ -69,19 +69,6 @@ export class PointsController implements OnModuleInit {
     this.puffPointsTokenAddress = configService.get<string>(
       'puffPoints.tokenAddress',
     );
-  }
-
-  public async onModuleInit() {
-    // setInterval will wait for 100s, so it's necessary to execute the loadPointsAndTotalPoints function once first.
-    const func = async () => {
-      try {
-        await this.loadPointsAndTotalPoints();
-      } catch (err) {
-        this.logger.error("Pufferpoint init failed", err.stack);
-      }
-    };
-    await func();
-    setInterval(func, 1000 * 50);
   }
 
   @Get('tokens')
@@ -102,15 +89,13 @@ export class PointsController implements OnModuleInit {
   public async getRenzoPoints(
     @Query('address', new ParseAddressPipe()) address: string,
   ): Promise<PointsDto[]> {
-    const points = await this.renzoService.getPoints(address);
-    const result = points.map((point: Points) => {
+    const data = await this.renzoService.getPointsData(address);
+    const result = data.items.map((point: RenzoPointItem) => {
       const dto: PointsDto = {
         address: point.address,
-        updatedAt: point.updatedAt,
-        points: BigNumber(point.points.toString())
-          .div(Math.pow(10, 18))
-          .toFixed(6),
-        tokenAddress: point.token,
+        updatedAt: new Date(point.updatedAt * 1000),
+        points: Number(ethers.formatEther(point.localPoints)).toFixed(6),
+        tokenAddress: point.tokenAddress,
       };
       return dto;
     });
@@ -131,28 +116,23 @@ export class PointsController implements OnModuleInit {
     description: '{ "message": "Not Found", "statusCode": 404 }',
   })
   public async getAllRenzoPoints(): Promise<TokenPointsWithoutDecimalsDto> {
-    const allPoints = cache.get(
-      RENZO_ALL_POINTS_CACHE_KEY,
-    ) as TokenPointsWithoutDecimalsDto;
+    const allPoints = cache.get(RENZO_ALL_POINTS_CACHE_KEY) as TokenPointsWithoutDecimalsDto;
     if (allPoints) {
       return allPoints;
     }
 
     try {
-      const points = await this.renzoService.getAllPoints();
+      const data = await this.renzoService.getPointsData();
       let result: PointsWithoutDecimalsDto[] = [];
-      let totalPoints = 0n;
-      for (const point of points) {
+      let totalPoints = data.localTotalPoints;
+      for (const point of data.items) {
         const dto: PointsWithoutDecimalsDto = {
           address: point.address,
-          tokenAddress: point.token,
-          points: BigNumber(point.points.toString())
-            .div(Math.pow(10, 18))
-            .toFixed(6),
-          updated_at: point.updatedAt.getTime() / 1000,
+          tokenAddress: point.tokenAddress,
+          points: Number(ethers.formatEther(point.localPoints)).toFixed(6),
+          updated_at: point.updatedAt,
         };
         result.push(dto);
-        totalPoints += point.points;
       }
 
       const cachePoints: TokenPointsWithoutDecimalsDto = {
@@ -194,33 +174,27 @@ export class PointsController implements OnModuleInit {
   ): Promise<TokenPointsWithoutDecimalsDto> {
     let res: TokenPointsWithoutDecimalsDto;
     try {
-      const [allPoints, totalPoints, realPufferPoints] = this.getPointsAndTotalPoints();
+      const [allPoints, totalPoints, realPufferPoints] = this.puffPointsService.getPointsData();
       const point = allPoints.filter(
         (p) => p.address.toLowerCase() === address.toLowerCase(),
       );
-
       if (point.length === 0) {
         throw new NotFoundException();
       }
       res = {
         errno: 0,
         errmsg: 'no error',
-        total_points: realPufferPoints,
+        total_points: realPufferPoints.toString(),
         data: [
           {
             address: point[0].address,
             tokenAddress: point[0].token,
             points: new BigNumber(point[0].points.toString())
               .multipliedBy(realPufferPoints)
-              .div(totalPoints.toString())
+              .div(point[0].perTokenTotalPoints.toString())
               .toFixed(6),
-            balance: ((item) => {
-              if (item && item.balance) {
-                return BigNumber(ethers.formatEther(item.balance)).toFixed(6);
-              }
-              return '0';
-            })(this.puffPointsService.findUserBalance(point[0].address)),
-            updated_at: (point[0].updatedAt.getTime() / 1000) | 0,
+            balance: Number(ethers.formatEther(point[0].balance)).toFixed(6),
+            updated_at: point[0].updatedAt,
           },
         ],
       };
@@ -248,28 +222,23 @@ export class PointsController implements OnModuleInit {
   public async allPufferPoints2(): Promise<TokenPointsWithoutDecimalsDto> {
     let res: TokenPointsWithoutDecimalsDto;
     try {
-      const [allPoints, totalPoints, realPufferPoints] = this.getPointsAndTotalPoints();
+      const [allPoints, _, realPufferPoints] = this.puffPointsService.getPointsData();
       const allPointsFilter = allPoints.filter(
-        (p) => BigNumber(p.points.toString()).comparedTo(0) > 0,
+        (p) => p.balance >= 10**12,
       );
       res = {
         errno: 0,
         errmsg: 'no error',
-        total_points: realPufferPoints,
+        total_points: realPufferPoints.toString(),
         data: allPointsFilter.map((p) => {
           return {
             address: p.address,
             tokenAddress: p.token,
-            balance: ((item) => {
-              if (item && item.balance) {
-                return BigNumber(ethers.formatEther(item.balance)).toFixed(6);
-              }
-              return '0';
-            })(this.puffPointsService.findUserBalance(p.address)),
-            updated_at: (p.updatedAt.getTime() / 1000) | 0,
+            balance: Number(ethers.formatEther(p.balance)).toFixed(6),
+            updated_at: p.updatedAt,
             points: new BigNumber(p.points.toString())
               .multipliedBy(realPufferPoints)
-              .div(totalPoints.toString())
+              .div(p.perTokenTotalPoints.toString())
               .toFixed(6),
           };
         }),
@@ -298,7 +267,7 @@ export class PointsController implements OnModuleInit {
       return pufReadDataCache;
     }
     const realData = await fetch(
-      `https://quest-api.puffer.fi/puffer-quest/third/query_zklink_point?address=${address}`,
+      `https://quest-api.puffer.fi/puffer-quest/third/query_user_points?address=${address}`,
       {
         method: 'get',
         headers: {
@@ -323,22 +292,22 @@ export class PointsController implements OnModuleInit {
   })
   public async allPufferPoints(): Promise<TokenPointsDto> {
     this.logger.log('allPufferPoints');
-    const [allPoints, totalPoints, _] = this.getPointsAndTotalPoints();
+    const [allPoints, totalPoints, _] = this.puffPointsService.getPointsData();
     
     const allPointsFilter = allPoints.filter(
-      (p) => BigNumber(p.points.toString()).comparedTo(0) > 0,
+      (p) => p.balance > 10**12,
     );
     const result = allPointsFilter.map((p) => {
       return {
         address: p.address,
-        updatedAt: p.updatedAt,
+        updatedAt: new Date(p.updatedAt * 1000),
         tokenAddress: p.token,
         points: p.points.toString(),
       };
     });
     return {
       decimals: 18,
-      tokenAddress: this.puffPointsTokenAddress,
+      tokenAddress: this.puffPointsService.tokenAddress,
       totalPoints: totalPoints.toString(),
       result: result,
     };
@@ -357,7 +326,7 @@ export class PointsController implements OnModuleInit {
     @Query() pagingOptions: PagingOptionsDto
   ): Promise<TokenPointsDto> {
     this.logger.log('allPufferPoints');
-    const [allPoints, totalPoints, _] = this.getPointsAndTotalPoints();
+    const [allPoints, totalPoints, _] = this.puffPointsService.getPointsData();
     const allPointsFilter = allPoints.filter(
       (p) => BigNumber(p.points.toString()).comparedTo(0) > 0,
     );
@@ -373,7 +342,7 @@ export class PointsController implements OnModuleInit {
     });
     return {
       decimals: 18,
-      tokenAddress: this.puffPointsTokenAddress,
+      tokenAddress: this.puffPointsService.tokenAddress,
       totalPoints: totalPoints.toString(),
       meta: paging.meta,
       result: result,
@@ -394,31 +363,26 @@ export class PointsController implements OnModuleInit {
   ): Promise<TokenPointsWithoutDecimalsDto> {
     let res: TokenPointsWithoutDecimalsDto;
     try {
-      const [allPoints, totalPoints, realPufferPoints] = this.getPointsAndTotalPoints();
+      const [allPoints, _, realPufferPoints] = this.puffPointsService.getPointsData();
       const allPointsFilter = allPoints.filter(
-        (p) => BigNumber(p.points.toString()).comparedTo(0) > 0,
+        (p) => p.balance > 10**12,
       );
       const {page = 1, limit = 100} = pagingOptions;
       const paging = PaginationUtil.paginate(allPointsFilter, page, limit);
       res = {
         errno: 0,
         errmsg: 'no error',
-        total_points: realPufferPoints,
+        total_points: realPufferPoints.toString(),
         meta: paging.meta,
         data: paging.items.map((p) => {
           return {
             address: p.address,
             tokenAddress: p.token,
-            balance: ((item) => {
-              if (item && item.balance) {
-                return BigNumber(ethers.formatEther(item.balance)).toFixed(6);
-              }
-              return '0';
-            })(this.puffPointsService.findUserBalance(p.address)),
-            updated_at: (p.updatedAt.getTime() / 1000) | 0,
+            balance: Number(ethers.formatEther(p.balance)).toFixed(6),
+            updated_at: p.updatedAt,
             points: new BigNumber(p.points.toString())
               .multipliedBy(realPufferPoints)
-              .div(totalPoints.toString())
+              .div(p.perTokenTotalPoints.toString())
               .toFixed(6),
           };
         }),
@@ -433,71 +397,5 @@ export class PointsController implements OnModuleInit {
     }
 
     return res;
-  }
-
-  private getPointsAndTotalPoints(): [Points[], string, string]{
-    return [this.allPoints, this.totalPoints.toString(), this.realPufferPoints];
-  }
-
-  private async loadPointsAndTotalPoints() {
-    try {
-      const realData = await fetch(
-        'https://quest-api.puffer.fi/puffer-quest/third/query_zklink_pufpoint',
-        {
-          method: 'get',
-          headers: {
-            'Content-Type': 'application/json',
-            'client-id': '08879426f59a4b038b7755b274bc19dc',
-          },
-        },
-      );
-      const pufReadData = await realData.json();
-      if (
-        pufReadData &&
-        pufReadData.errno === 0 &&
-        pufReadData.data &&
-        pufReadData.data.pufeth_points_detail
-      ) {
-        this.realPufferPoints = pufReadData.data.pufeth_points_detail[
-          'latest_points'
-        ] as string;
-      } else {
-        this.logger.error('Failed to get real puffer points');
-        throw new NotFoundException();
-      }
-
-      this.allPoints = await this.getAllPufferPoints();
-      this.totalPoints = BigInt(0);
-      this.allPoints.forEach((p) => {
-        this.totalPoints += p.points;
-      });
-    } catch (e) {
-      this.logger.error(e);
-      throw new NotFoundException();
-    }
-  }
-
-  public async getAllPufferPoints() {
-    let result: Points[] = [];
-    let page: number = 1;
-    const pageSize = 300;
-    while (true) {
-      const points = await this.pointsRepository.find({
-        where: {
-          token: this.puffPointsTokenAddress,
-        },
-        skip: (page - 1) * pageSize,
-        take: pageSize,
-      });
-
-      result.push(...points);
-      if (points.length < pageSize) {
-        break;
-      }
-
-      ++page;
-    }
-
-    return result;
   }
 }

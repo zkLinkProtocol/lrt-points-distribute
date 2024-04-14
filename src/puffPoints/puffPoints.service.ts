@@ -1,139 +1,107 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import waitFor from '../utils/waitFor';
-import { Worker } from '../common/worker';
 import { PuffPointsProcessor } from './puffPoints.processor';
 import { Transfer } from 'src/type/transfer';
 import { UserBalances } from 'src/type/userBalances';
 import { PointsRepository } from 'src/repositories/points.repository';
+import { LocalPointData, LocalPointsItem, ProjectGraphService } from 'src/project/projectGraph.service';
+import { GraphQueryService } from 'src/explorer/graphQuery.service';
 
 @Injectable()
-export class PuffPointsService extends Worker {
+export class PuffPointsService{
+  public tokenAddress: string;
+  private readonly projectName: string = "puffer";
   private readonly logger: Logger;
+  private realTotalPoints: number = 0;
+  private localTotalPoints: bigint = BigInt(0);
+  private localPoints: LocalPointsItem[];
+
   private readonly waitForInterval: number;
   private readonly waitForRetry: number;
-  private readonly puffPointsTokenAddress: string;
   private readonly explorerApi: string;
   private allUserBalance: UserBalances[] = [];
+
   public constructor(
     private readonly puffPointsProcessor: PuffPointsProcessor,
     private readonly pointsRepository: PointsRepository,
-
+    private readonly projectGraphService: ProjectGraphService,
+    private readonly graphQueryService: GraphQueryService,
     configService: ConfigService,
   ) {
-    super();
     this.waitForInterval = configService.get<number>(
       'puffPoints.waitForInterval',
     );
-    this.puffPointsTokenAddress = configService.get<string>(
-      'puffPoints.tokenAddress',
-    );
+    
     this.waitForRetry = configService.get<number>('puffPoints.waitForRetry');
     this.logger = new Logger(PuffPointsService.name);
     this.explorerApi = configService.get<string>('explorerApiUrl');
   }
 
-  public findUserBalance(address: string): UserBalances {
-    return this.allUserBalance.find(
-      (balance) => balance.address.toLowerCase() === address.toLowerCase(),
-    );
-  }
-  
-  protected async runProcess(): Promise<void> {
-    let nextIterationDelay = this.waitForInterval;
-
-    try {
-      const allBalances = await this.getAllBalance(this.puffPointsTokenAddress);
-      this.allUserBalance = allBalances;
-      this.logger.log(`LOAD PUFFER BALANCE ${allBalances.length} users`);
-      for (const balance of allBalances) {
-        const address = balance.address;
-        // const address = '0x017932354d7db8a000922b28f53dd9424a3bf0a6';
-        const next = await this.puffPointsProcessor.processNextUser(
-          balance,
-          this.puffPointsTokenAddress,
-        );
-        if (!next) {
-          const firstDeposit = await this.getFirstDeposit(
-            address,
-            this.puffPointsTokenAddress,
-          );
-          if (firstDeposit) {
-            await this.initPuffPoints(firstDeposit);
-            //immidiately retry
-            await this.puffPointsProcessor.processNextUser(
-              balance,
-              this.puffPointsTokenAddress,
-            );
-          } else {
-            this.logger.error(
-              `No first deposit for address: ${address} tokenAddress: ${this.puffPointsTokenAddress}`,
-            );
-          }
-        }
+  public async onModuleInit(){
+    this.logger.log(`Init ${PuffPointsService.name} onmoduleinit`);
+    const func = async () => {
+      try {
+        await this.loadPointsData();
+      } catch (err) {
+        this.logger.error(`${PuffPointsService.name} init failed.`, err.stack);
       }
-    } catch (error) {
-      console.error(error);
-      nextIterationDelay = this.waitForRetry;
-      this.logger.error(
-        `Error on processing next block range, waiting ${nextIterationDelay} ms to retry`,
-        error.stack,
-      );
-    }
-
-    await waitFor(() => !this.currentProcessPromise, nextIterationDelay);
-
-    if (!this.currentProcessPromise) {
-      return;
-    }
-    return this.runProcess();
+    };
+    // func();
+    // setInterval(func, 1000 * 60);
   }
 
-  private async getAllBalance(tokenAddress: string): Promise<UserBalances[]> {
-    const allBalancesRes: any = await fetch(
-      `${this.explorerApi}/api?module=account&action=tokenbalanceall&contractaddress=${tokenAddress}`,
+  // load points data
+  public async loadPointsData(){
+    this.realTotalPoints = await this.getRealPointsData();
+    const pointsData = await this.getLocalPointsData();
+    this.localPoints = pointsData.localPoints;
+    this.localTotalPoints = pointsData.localTotalPoints;
+
+    // get tokens from graph
+    const tokens = this.graphQueryService.getAllTokenAddresses(this.projectName);
+    if(tokens.length > 0){
+      this.tokenAddress = tokens[0];
+    }
+  }
+
+  // return points data
+  public getPointsData():[LocalPointsItem[], bigint, number]{
+    return [this.localPoints, this.localTotalPoints, this.realTotalPoints];
+  }
+
+  // return local points and totalPoints
+  public async getLocalPointsData(): Promise<LocalPointData>{
+    return await this.projectGraphService.getPoints(this.projectName);
+  }
+
+  // return local points and totalPoints by address
+  public async getLocalPointsDataByAddress(address: string): Promise<LocalPointData>{
+    return await this.projectGraphService.getPoints(this.projectName, address);
+  }
+
+  // return real totalPoints
+  public async getRealPointsData(): Promise<number>{
+    const realData = await fetch(
+      'https://quest-api.puffer.fi/puffer-quest/third/query_zklink_pufpoint',
       {
         method: 'get',
+        headers: {
+          'Content-Type': 'application/json',
+          'client-id': '08879426f59a4b038b7755b274bc19dc',
+        },
       },
     );
-    const allBalances = await allBalancesRes.json();
-    if (!allBalances || !allBalances.result) {
-      this.logger.error(`No user balance tokenAddress: ${tokenAddress}`);
-      return [];
+    const pufReadData = await realData.json();
+    if (
+      pufReadData &&
+      pufReadData.errno === 0 &&
+      pufReadData.data &&
+      pufReadData.data.pufeth_points_detail
+    ) {
+      return pufReadData.data.pufeth_points_detail['latest_points'] as number;
+    } else {
+      throw new Error(`Failed to get real ${this.projectName} points`);
     }
-    return allBalances.result;
-  }
-
-  private async getFirstDeposit(
-    address: string,
-    tokenAddress: string,
-  ): Promise<Transfer> {
-    const checkDeposit = await fetch(
-      `${this.explorerApi}/address/${address}/firstdeposit?token=${tokenAddress}`,
-      {
-        method: 'get',
-      },
-    );
-    const firstDeposit: Transfer = await checkDeposit.json();
-    if (!firstDeposit || !firstDeposit.timestamp) {
-      this.logger.log(
-        `No first deposit for address: ${address} tokenAddress: ${tokenAddress}`,
-      );
-      return null;
-    }
-    firstDeposit.timestamp = new Date(firstDeposit.timestamp);
-    return firstDeposit;
-  }
-
-  private async initPuffPoints(transfer: Transfer) {
-    await this.pointsRepository.add({
-      address: transfer.to,
-      token: transfer.tokenAddress,
-      points: 0n,
-      updatedAt: transfer.timestamp,
-    });
-    this.logger.log(
-      `First deposit for PUFFER ${transfer.to} timestamp:${transfer.timestamp.toUTCString()}`,
-    );
   }
 }

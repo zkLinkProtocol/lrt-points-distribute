@@ -7,8 +7,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { LRUCache } from 'lru-cache';
-import { ParseAddressPipe } from 'src/common/pipes/parseAddress.pipe';
-import { PointData, RenzoService } from 'src/renzo/renzo.service';
+import { RenzoData, RenzoService } from 'src/renzo/renzo.service';
 import { PagingOptionsDto } from 'src/common/pagingOptionsDto.dto';
 import { PaginationUtil } from 'src/common/pagination.util';
 import {
@@ -16,8 +15,7 @@ import {
   RenzoTokenPointsWithoutDecimalsDto,
   NOT_FOUND_EXCEPTION
 } from '../tokenPointsWithoutDecimals.dto';
-import { RenzoPointsWithoutDecimalsDto } from '../pointsWithoutDecimals.dto';
-import { PagingMetaDto } from 'src/common/paging.dto';
+import { ethers } from 'ethers';
 
 const options = {
   // how long to live in ms
@@ -45,48 +43,6 @@ export class RenzoPagingController {
     private readonly renzoService: RenzoService,
   ) {}
 
-  @Get('/points/paging')
-  @ApiOperation({ summary: 'Get paginated renzo personal points' })
-  @ApiBadRequestResponse({
-    description: '{ "errno": 1, "errmsg": "Service exception" }',
-  })
-  public async getRenzoPoints(
-    @Query('address', new ParseAddressPipe()) address: string,
-    @Query() pagingOptions: PagingOptionsDto
-  ): Promise<{ data: RenzoPointsWithoutDecimalsDto[], meta?: PagingMetaDto } | ExceptionResponse> {
-    let pointData: PointData = cache.get(RENZO_ALL_POINTS_CACHE_KEY) as PointData;
-    if (!pointData) {
-      try {
-        pointData = this.renzoService.getPointData();
-        if(!pointData?.data){
-          return NOT_FOUND_EXCEPTION;
-        }
-        cache.set(RENZO_ALL_POINTS_CACHE_KEY, pointData);
-      } catch (err) {
-        this.logger.error('Get renzo all points failed', err.stack);
-        return SERVICE_EXCEPTION;
-      }
-    }
-    const data = pointData.data;
-    if (Array.isArray(data)) {
-      // data for paging
-      const {page = 1, limit = 100} = pagingOptions;
-      const userData = data.filter(
-        (point) => point.address.toLowerCase() === address.toLowerCase(),
-      ) ?? [];
-      const paging = PaginationUtil.paginate(userData, page, limit);
-      
-      return {
-        errno: 0,
-        errmsg: 'no error',
-        meta: paging.meta,
-        data:
-          paging.items ?? [],
-      };
-    }
-    return SERVICE_EXCEPTION;
-  }
-
   @Get('/all/points/paging')
   @ApiOperation({
     summary:
@@ -105,11 +61,11 @@ export class RenzoPagingController {
   ): Promise<
     Partial<RenzoTokenPointsWithoutDecimalsDto & ExceptionResponse>
   > {
-    let pointData: PointData = cache.get(RENZO_ALL_POINTS_CACHE_KEY) as PointData;
+    let pointData: RenzoData = cache.get(RENZO_ALL_POINTS_CACHE_KEY) as RenzoData;
     if (!pointData) {
       try {
-        pointData = this.renzoService.getPointData();
-        if(!pointData?.data){
+        pointData = this.renzoService.getPointsData();
+        if(!pointData?.items){
           return NOT_FOUND_EXCEPTION;
         }
         cache.set(RENZO_ALL_POINTS_CACHE_KEY, pointData);
@@ -121,16 +77,27 @@ export class RenzoPagingController {
 
     // data for paging
     const {page = 1, limit = 100} = pagingOptions;
-    const paging = PaginationUtil.paginate(pointData.data, page, limit);
+    const paging = PaginationUtil.paginate(pointData.items, page, limit);
     return {
       errno: 0,
       errmsg: 'no error',
       totals: {
-        renzoPoints: pointData.renzoPoints,
-        eigenLayerPoints: pointData.eigenLayerPoints,
+        renzoPoints: pointData.realTotalRenzoPoints,
+        eigenLayerPoints: pointData.realTotalEigenLayerPoints,
       },
       meta: paging.meta,
-      data: paging.items
+      data: paging.items.map(item=>{
+        return {
+          address: item.address,
+          points: {
+            renzoPoints: Number(item.realRenzoPoints.toFixed(6)),
+            eigenLayerPoints: Number(item.realEigenLayerPoints.toFixed(6))
+          },
+          tokenAddress: item.tokenAddress,
+          balance: Number(ethers.formatEther(item.balance)).toFixed(6),
+          updatedAt: item.updatedAt
+        }
+      })
     };
   }
 }

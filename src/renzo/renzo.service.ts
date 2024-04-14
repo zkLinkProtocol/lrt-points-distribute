@@ -1,158 +1,173 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import waitFor from '../utils/waitFor';
-import { Worker } from '../common/worker';
-import { Transfer } from 'src/type/transfer';
 import { UserBalances } from 'src/type/userBalances';
-import { PointsRepository } from 'src/repositories/points.repository';
-import { Points } from 'src/entities/points.entity';
-import { ethers } from 'ethers';
-import { BigNumber } from 'bignumber.js';
+import { LocalPointData, LocalPointsItem, ProjectGraphService } from 'src/project/projectGraph.service';
+import { GraphQueryService } from 'src/explorer/graphQuery.service';
+import { RenzoApiService, RenzoPoints } from 'src/explorer/renzoapi.service';
 import { ExplorerService } from 'src/explorer/explorer.service';
-import { RenzoApiService } from 'src/explorer/renzoapi.service';
 import { RenzoPointsWithoutDecimalsDto } from 'src/controller/pointsWithoutDecimals.dto';
-import { In } from 'typeorm';
-import { formatEther } from 'ethers';
+import BigNumber from 'bignumber.js';
+import { ethers } from 'ethers';
 
-export interface PointData {
-  renzoPoints: number;
-  eigenLayerPoints: number;
-  data: RenzoPointsWithoutDecimalsDto[];
+export interface RenzoPointItem{
+  address: string,
+  tokenAddress: string,
+  balance: bigint,
+  localPoints: bigint,
+  localTotalPointsPerToken: bigint,
+  localTotalPointsPerTokenMau: bigint,
+  realTotalRenzoPointsPerToken: number,
+  realTotalEigenLayerPointsPerToken: number,
+  realRenzoPoints: number,
+  realEigenLayerPoints: number,
+  updatedAt: number
+}
+
+export interface RenzoData{
+  localTotalPoints: bigint,
+  realTotalRenzoPoints: number,
+  realTotalEigenLayerPoints: number,
+  items: RenzoPointItem[]
 }
 
 @Injectable()
-export class RenzoService extends Worker {
+export class RenzoService{
+  public tokenAddress: string[];
+  private readonly projectName: string = "renzo";
   private readonly logger: Logger;
-  private readonly waitForInterval: number;
-  private readonly waitForRetry: number;
-  private readonly renzoTokenAddress: string[];
-  private readonly unitPoints: bigint;
-  private readonly unitInterval: number;
+  
+  private renzoData: RenzoData = {localTotalPoints: BigInt(0), realTotalRenzoPoints: 0, realTotalEigenLayerPoints: 0, items:[]};
+  private realTotalRenzoPoints: number = 0;
+  private realTotalEigenLayerPoints: number = 0;
   private readonly l1Erc20BridgeEthereum: string;
   private readonly l1Erc20BridgeArbitrum: string;
   private readonly l1Erc20BridgeLinea: string;
   private readonly l1Erc20BridgeBlast: string;
-  private allUserBalance: UserBalances[] = [];
-  private pointData: Map<string, any>;
 
   public constructor(
-    private readonly pointsRepository: PointsRepository,
     private readonly explorerService: ExplorerService,
     private readonly renzoApiService: RenzoApiService,
-    configService: ConfigService,
+    private readonly projectGraphService: ProjectGraphService,
+    private readonly graphQueryService: GraphQueryService,
+    private readonly configService: ConfigService,
   ) {
-    super();
-    this.waitForInterval = configService.get<number>('renzo.waitForInterval');
-    this.renzoTokenAddress = configService.get<string[]>('renzo.tokenAddress');
-    this.waitForRetry = configService.get<number>('renzo.waitForRetry');
     this.logger = new Logger(RenzoService.name);
-    this.unitPoints = configService.get<bigint>('renzo.unitPoints');
-    this.unitInterval = configService.get<number>('renzo.unitInterval');
     this.l1Erc20BridgeEthereum = configService.get<string>('l1Erc20BridgeEthereum');
     this.l1Erc20BridgeArbitrum = configService.get<string>('l1Erc20BridgeArbitrum');
     this.l1Erc20BridgeLinea = configService.get<string>('l1Erc20BridgeLinea');
     this.l1Erc20BridgeBlast = configService.get<string>('l1Erc20BridgeBlast');
-    
-    this.pointData = new Map;
   }
 
-  public async onModuleInit() {
-    this.logger.log('Init RenzoService onmoduleinit');
-    // setInterval will wait for 100s, so it's necessary to execute the fetchApiData function once first.
+  public async onModuleInit(){
+    this.logger.log(`Init ${RenzoService.name} onmoduleinit`);
     const func = async () => {
       try {
-        await this.loadPointData();
+        await this.loadPointsData();
       } catch (err) {
-        this.logger.error('RenzoService init failed.', err.stack);
+        this.logger.error(`${RenzoService.name} init failed.`, err.stack);
       }
     };
-    await func();
-    setInterval(func, 1000 * 100);
+    func();
+    setInterval(func, 1000 * 30);
   }
 
-  public async loadPointData() {
-    this.logger.log('loadRenzoData has been load.');
-    const tokensRenzoPoints = await this.renzoApiService.fetchTokensRenzoPoints();
-    const [points, tokensLocalPoints] = await this.getLocalPoint();
-    const tokensMapBridgeTokens = await this.getTokensMapBriageTokens();
-    if(tokensMapBridgeTokens.size < 1 || tokensLocalPoints.size < 1 || tokensRenzoPoints.size < 1) {
-      throw new Error(`Fetch empty data, tokensMapBridgeTokens.size: ${tokensMapBridgeTokens.size}, tokensLocalPoints.size: ${tokensLocalPoints.size}, tokensRenzoPoints.size: ${tokensRenzoPoints.size}`);
+  // load points data
+  public async loadPointsData(){
+    // get tokens from graph
+    const tokens = this.graphQueryService.getAllTokenAddresses(this.projectName);
+    if(tokens.length <= 0){
+      this.logger.log(`Graph don't have ${this.projectName} tokens`);
+      return;
     }
-    
-    let data: RenzoPointsWithoutDecimalsDto[] = [],
-        totalRealRenzoPoints: number = Number(0),
-        totalRealEigenLayerPoints: number = Number(0);
-    for (const point of points) {
+    this.tokenAddress = tokens;
+
+    const realTokenTotalPoints = await this.getRealPointsData();
+    const pointsData = await this.getLocalPointsData();
+    const localPoints = pointsData.localPoints;
+    const localTotalPoints = pointsData.localTotalPoints;
+    const tokensMapBridgeTokens = await this.getTokensMapBriageTokens();
+    if(tokensMapBridgeTokens.size < 1 || localPoints.length < 1 || realTokenTotalPoints.size < 1) {
+      throw new Error(`Fetch ${this.projectName} empty data, tokensMapBridgeTokens.size: ${tokensMapBridgeTokens.size}, tokensLocalPoints.size: ${localPoints.length}, tokensRenzoPoints.size: ${realTokenTotalPoints.size}`);
+    }
+
+    let data: RenzoPointItem[] = [],
+        realTotalRenzoPoints: number = Number(0),
+        realTotalEigenLayerPoints: number = Number(0);
+    for (const point of localPoints) {
       const tokenAddress = point.token.toLocaleLowerCase();
       if(!tokenAddress){
-        throw new Error(`Get renzo point exception, address is ${point.address}`);
-      }
-      const totalPoints = tokensLocalPoints.get(tokenAddress);
-      if(totalPoints <= 0){
-        this.logger.log(`Get renzo local totalPoints is zero, tokenAddress is ${tokenAddress}`);
-        continue;
+        throw new Error(`Get ${this.projectName} point exception, address is ${point.address}`);
       }
 
       const bridgeToken = tokensMapBridgeTokens.get(tokenAddress);
-      const renzoPoints = tokensRenzoPoints.get(bridgeToken);
+      const renzoPoints = realTokenTotalPoints.get(bridgeToken);
       if(!renzoPoints){
-        this.logger.log(`Get renzo renzoPoints is undefined, tokenAddress is ${tokenAddress}`);
-        continue;
+        throw new Error(`Get ${this.projectName} realPoint per token is undefined, tokenAddress is ${tokenAddress}`);
       }
       const realRenzoPoints = Number(
         new BigNumber(point.points.toString())
           .multipliedBy(renzoPoints.renzoPoints)
-          .div(totalPoints.toString())
+          .div(point.perTokenTotalPoints.toString())
           .toFixed(6),
       );
-      totalRealRenzoPoints += realRenzoPoints;
+      realTotalRenzoPoints += realRenzoPoints;
       const realEigenLayerPoints = Number(
         new BigNumber(point.points.toString())
           .multipliedBy(renzoPoints.eigenLayerPoints)
-          .div(totalPoints.toString())
+          .div(point.perTokenTotalPoints.toString())
           .toFixed(6),
       );
-      totalRealEigenLayerPoints += realEigenLayerPoints;
-      const dto: RenzoPointsWithoutDecimalsDto = {
+      realTotalEigenLayerPoints += realEigenLayerPoints;
+      const pointsItem: RenzoPointItem = {
         address: point.address,
         tokenAddress: point.token,
-        balance: ((item) => {
-          if (item && item.balance) {
-            return BigNumber(ethers.formatEther(item.balance)).toFixed(6);
-          }
-          return '0';
-        })(this.findUserBalance(point.address)),
-        points: {
-          renzoPoints: realRenzoPoints,
-          eigenLayerPoints: realEigenLayerPoints,
-        },
-        updatedAt: (point.updatedAt.getTime() / 1000) | 0,
+        balance: point.balance,
+        localPoints: point.points,
+        localTotalPointsPerToken: point.perTokenTotalPoints,
+        localTotalPointsPerTokenMau: point.perTokenTotalPointsMau,
+        realTotalRenzoPointsPerToken: renzoPoints.renzoPoints,
+        realTotalEigenLayerPointsPerToken: renzoPoints.eigenLayerPoints,
+        realRenzoPoints: realRenzoPoints,
+        realEigenLayerPoints: realEigenLayerPoints,
+        updatedAt: point.updatedAt
       };
-      data.push(dto);
+      data.push(pointsItem);
     }
-    this.pointData.set("renzoPoints", totalRealRenzoPoints);
-    this.pointData.set("eigenLayerPoints", totalRealEigenLayerPoints);
-    this.pointData.set("data", data);
+
+    this.renzoData = {
+      localTotalPoints: localTotalPoints,
+      realTotalRenzoPoints: realTotalRenzoPoints,
+      realTotalEigenLayerPoints: realTotalEigenLayerPoints,
+      items: data
+    };
   }
 
-  private async getLocalPoint(): Promise<[Points[], Map<String, bigint>]> {
-    const points = await this.getAllPoints();
-    const tokenPoins: Map<String, bigint> = new Map;
-    for (const item of points) {
-      const tokenAddress = item.token.toLocaleLowerCase();
-      const tempPoint = tokenPoins.get(tokenAddress);
-      if(undefined == tempPoint){
-        tokenPoins.set(tokenAddress, BigInt(item.points));
-      }else{
-        tokenPoins.set(tokenAddress, tempPoint + BigInt(item.points))
-      }
+  // return points data
+  public getPointsData():RenzoData;
+  public getPointsData(address: string): RenzoData;
+  public getPointsData(address?: string): RenzoData
+  {
+    let result: RenzoData = this.renzoData;
+    if(address){
+      result.items = this.renzoData.items.filter(
+        (item) => item.address === address
+      );
     }
+    return result;
+  }
 
-    return [points, tokenPoins];
+  // return local points and totalPoints
+  public async getLocalPointsData(): Promise<LocalPointData>{
+    return await this.projectGraphService.getPoints(this.projectName);
+  }
+
+  // return real totalPoints
+  public async getRealPointsData(): Promise<Map<string, RenzoPoints>>{
+    return await this.renzoApiService.fetchTokensRenzoPoints();
   }
 
   private async getTokensMapBriageTokens(): Promise<Map<string, string>>{
-    const tokens = this.renzoTokenAddress.map(item=>{
+    const tokens = this.tokenAddress.map(item=>{
       return item.toLocaleLowerCase();
     });
     const tokensMapBridgeTokens: Map<string, string> = new Map;
@@ -183,164 +198,24 @@ export class RenzoService extends Worker {
     }
     return tokensMapBridgeTokens;
   }
-
-  public getPointData(): PointData {
-    return {
-      renzoPoints: this.pointData.get("renzoPoints"),
-      eigenLayerPoints: this.pointData.get("eigenLayerPoints"),
-      data: this.pointData.get("data")
-    } as PointData;
-  }
-
-  public async getPoints(address: string) {
-    const points = await this.pointsRepository.find({
-      where: {
-        address,
-        token: In(this.renzoTokenAddress),
-      },
-    });
-    return points;
-  }
-
-  public async getAllPoints() {
-    let result: Points[] = [];
-    let page: number = 1;
-    const pageSize = 300;
-    while (true) {
-      const points = await this.pointsRepository.find({
-        where: {
-          token: In(this.renzoTokenAddress),
-        },
-        skip: (page - 1) * pageSize,
-        take: pageSize,
-      });
-
-      result.push(...points);
-      if (points.length < pageSize) {
-        break;
-      }
-
-      ++page;
-    }
-
-    return result;
-  }
-
-  public findUserBalance(address: string): UserBalances {
-    return this.allUserBalance.find(
-      (balance) => balance.address.toLowerCase() === address.toLowerCase(),
-    );
-  }
-
-  protected async runProcess(): Promise<void> {
-    let nextIterationDelay = this.waitForInterval;
-
-    try {
-      const allBalances = await this.explorerService.getAllBalance(
-        this.renzoTokenAddress,
-      );
-      this.allUserBalance = allBalances;
-      this.logger.log(`LOAD RENZO BALANCE ${allBalances.length} users`);
-      for (const balance of allBalances) {
-        const address = balance.address;
-        const next = await this.processNextUser(balance);
-        if (!next) {
-          const firstDeposit = await this.explorerService.getFirstDeposit(
-            address,
-            balance.tokenAddress,
-          );
-          if (firstDeposit) {
-            await this.initRenzo(firstDeposit);
-            //immidiately retry
-            await this.processNextUser(balance);
-          } else {
-            this.logger.error(
-              `No first deposit for address: ${address} tokenAddress: ${this.renzoTokenAddress}`,
-            );
-          }
-        }
-      }
-    } catch (error) {
-      nextIterationDelay = this.waitForRetry;
-      this.logger.error(
-        `Error on processing next block range, waiting ${nextIterationDelay} ms to retry`,
-        error.stack,
-      );
-    }
-
-    await waitFor(() => !this.currentProcessPromise, nextIterationDelay);
-
-    if (!this.currentProcessPromise) {
-      return;
-    }
-    return this.runProcess();
-  }
-
-  private async processNextUser(userBalance: UserBalances): Promise<boolean> {
-    const address = userBalance.address;
-    const balance = BigInt(userBalance.balance);
-    const tokenAddress = userBalance.tokenAddress;
-    const puffPoints = await this.pointsRepository.find({
-      where: {
-        address: address,
-        token: tokenAddress,
-      },
-    });
-    if (puffPoints.length > 0) {
-      const [newPoints, addPointsNumber] = this.updatePoints(
-        puffPoints[0],
-        balance,
-      );
-      if (newPoints) {
-        await this.pointsRepository.updatePointsDb(newPoints, addPointsNumber);
-      }
-
-      return true;
-    }
-
-    // return and run init
-    return false;
-  }
-
-  private async initRenzo(transfer: Transfer) {
-    await this.pointsRepository.add({
-      address: transfer.to,
-      token: transfer.tokenAddress,
-      points: 0n,
-      updatedAt: transfer.timestamp,
-    });
-    this.logger.log(
-      `First deposit for RENZO ${transfer.to} timestamp:${transfer.timestamp.toUTCString()}`,
-    );
-  }
-
-  public updatePoints(
-    pufPoint: Points,
-    balance: bigint,
-  ): [Partial<Points>, bigint] {
-    const address = pufPoint.address;
-    const tokenAddress = pufPoint.token;
-    const diffInMs = Date.now() - pufPoint.updatedAt.getTime();
-    const diffInHours = Math.floor(diffInMs / this.unitInterval);
-    if (diffInHours < 1) {
-      // return true to prevent try again
-      this.logger.debug(
-        `diffInHours < 1 for address: ${address} tokenAddress: ${tokenAddress} updateAt: ${pufPoint.updatedAt.toUTCString()} diffInHours:${diffInHours}`,
-      );
-      return [null, 0n];
-    }
-    const addPointsNumber = this.unitPoints * BigInt(diffInHours) * balance;
-    const newPoints = {
-      ...pufPoint,
-      points: BigInt(pufPoint.points) + addPointsNumber,
-      updatedAt: new Date(
-        pufPoint.updatedAt.getTime() + diffInHours * this.unitInterval,
-      ),
-    };
-    // update points and timestamp
-    this.logger.log(
-      `UPDATE RENZO ${address} add:${formatEther(addPointsNumber)} total:${formatEther(pufPoint.points + addPointsNumber)} tokenAddress:${tokenAddress}`,
-    );
-    return [newPoints, addPointsNumber];
-  }
 }
+
+
+// key : address, value : 0x16a0ef40142cdab0560d20fb7faa974313199df1
+// key : tokenAddress, value : 0x3fdb1939dab8e2d4f7a04212f142469cd52d6402
+// key : balance, value : 250000000000000000
+// key : localPoints, value : 241935250000000000000000
+// key : localTotalPointsPerToken, value : 2493454034512533155194237939
+// key : localTotalPointsPerTokenMau, value : 2494450514144126755194237939
+// key : realTotalRenzoPointsPerToken, value : 826747.4083813288
+// key : realTotalEigenLayerPointsPerToken, value : 826747.4083813288
+// key : realRenzoPoints, value : 80.217777
+// key : realEigenLayerPoints, value : 80.217777
+// key : updatedAt, value : 1712904020
+
+// 241935250000000000000000
+// 2493454034512533155194237939
+// 2494450514144126755194237939
+
+// pgsql: 0.0000818317381092166898025541874343064404184896348973936397980567...
+// graph: 0.0000972053236520520791229004406850192849629019078313516093180946...
