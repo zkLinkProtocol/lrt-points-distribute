@@ -435,7 +435,7 @@ export class PointsController implements OnModuleInit {
     return res;
   }
 
-  private getPointsAndTotalPoints(): [Points[], string, string]{
+  public getPointsAndTotalPoints(): [Points[], string, string]{
     return [this.allPoints, this.totalPoints.toString(), this.realPufferPoints];
   }
 

@@ -18,6 +18,7 @@ import { NovaPointsWithoutDecimalsDto } from 'src/nova/novaPointsWithoutDecimals
 import { NovaService } from 'src/nova/nova.service';
 import { NovaApiService, NovaPoints } from 'src/nova/novaapi.service';
 import { BigNumber } from 'bignumber.js';
+import { PointsController } from './points.controller';
 
 const options = {
   // how long to live in ms
@@ -39,7 +40,8 @@ export class NovaController {
 
   constructor(
     private novaService: NovaService, 
-    private novaApiService: NovaApiService
+    private novaApiService: NovaApiService,
+    private pointController: PointsController
   ) {}
 
   @Get('/points')
@@ -115,6 +117,55 @@ export class NovaController {
       return NOT_FOUND_EXCEPTION;
     }
     return this.getReturnData(finalPoints, finalTotalPoints, points.novaPoint);
+  }
+
+  @Get('/points/puffer')
+  @ApiOperation({ summary: 'Get puffer personal points' })
+  @ApiBadRequestResponse({
+    description: '{ "errno": 1, "errmsg": "Service exception" }',
+  })
+  @ApiNotFoundResponse({
+    description: '{ "errno": 1, "errmsg": "not found" }',
+  })
+  public async getNovaPufferPoints(
+    @Query('address', new ParseAddressPipe()) address: string,
+    @Query('tokenAddress', new ParseAddressPipe()) tokenAddress: string,
+  ): Promise<NovaPointsWithoutDecimalsDto> {
+    let finalPoints: any[], finalTotalPoints: bigint;
+    try{
+      const pointData = await this.novaService.getPoints(tokenAddress, address);
+      finalPoints = pointData.finalPoints;
+      finalTotalPoints = pointData.finalTotalPoints;
+    } catch (err) {
+      this.logger.error('Get nova all points failed', err.stack);
+      return SERVICE_EXCEPTION;
+    }
+    if(!finalPoints || !finalTotalPoints){
+      return NOT_FOUND_EXCEPTION
+    }
+
+    // Get real points.
+    let points: BigNumber;
+    try{
+      const [allPufferPoints, totalPufferPoints, realPufferPoints] = this.pointController.getPointsAndTotalPoints();
+      const point = allPufferPoints.filter(
+        (p) => p.address.toLowerCase() === tokenAddress.toLowerCase(),
+      );
+      if (point.length === 0) {
+        return NOT_FOUND_EXCEPTION;
+      }
+      points = new BigNumber(point[0].points.toString())
+              .multipliedBy(realPufferPoints)
+              .div(totalPufferPoints.toString());
+    } catch (err) {
+      this.logger.error('Get nova real points failed', err.stack);
+      return SERVICE_EXCEPTION;
+    }
+    if(!points){
+      return NOT_FOUND_EXCEPTION;
+    }
+    
+    return this.getReturnData(finalPoints, finalTotalPoints, points.toNumber());
   }
 
   @Get('/all/points')

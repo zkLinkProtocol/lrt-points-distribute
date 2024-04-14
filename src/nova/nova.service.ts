@@ -216,7 +216,7 @@ export class NovaService {
       new BigNumber(points.toString())
           .multipliedBy(new BigNumber(realTotalPoint))
           .dividedBy(new BigNumber(totalPoint.toString()))
-          .toFixed(18)
+          .toFixed(6)
     );
   }
 }
