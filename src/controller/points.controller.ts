@@ -33,6 +33,7 @@ import { TokenPointsWithoutDecimalsDto } from './tokenPointsWithoutDecimals.dto'
 import { PointsWithoutDecimalsDto } from './pointsWithoutDecimals.dto';
 import { PointsDto } from './points.dto';
 import { TokensDto } from './tokens.dto';
+import { NovaService } from 'src/nova/nova.service';
 
 const options = {
   // how long to live in ms
@@ -48,6 +49,7 @@ const TOTAL_PUFFER_POINTS_CACHE_KEY = 'totalPufferPoints';
 const REAL_PUFFFER_POINTS_CACHE_KEY = 'realPufferPoints';
 const RENZO_ALL_POINTS_CACHE_KEY = 'allRenzoPoints';
 const PUFFER_ADDRESS_POINTS_FORWARD = 'pufferAddressPointsForward';
+const LAYERBANK_LPUFFER_TOKEN = '0xdd6105865380984716C6B2a1591F9643e6ED1C48';
 
 @ApiTags('points')
 @ApiExcludeController(false)
@@ -65,6 +67,7 @@ export class PointsController implements OnModuleInit {
     private readonly renzoService: RenzoService,
     private readonly graphQueryService: GraphQueryService,
     private configService: ConfigService,
+    private readonly novaService: NovaService
   ) {
     this.puffPointsTokenAddress = configService.get<string>(
       'puffPoints.tokenAddress',
@@ -202,6 +205,27 @@ export class PointsController implements OnModuleInit {
       if (point.length === 0) {
         throw new NotFoundException();
       }
+
+      // layerbank puffer points
+      let lpufferRealPointsAddress: BigNumber = BigNumber(0);
+      const layerbankPoints = allPoints.filter(
+        (p) => p.address.toLowerCase() === LAYERBANK_LPUFFER_TOKEN.toLowerCase(),
+      );
+      
+      if(layerbankPoints.length > 0){
+        const lpufferRealPoints = new BigNumber(layerbankPoints[0].points.toString())
+              .multipliedBy(realPufferPoints)
+              .div(totalPoints.toString());
+
+        const lpufferPointData = await this.novaService.getPoints(LAYERBANK_LPUFFER_TOKEN.toLocaleLowerCase(), address);
+        const lpufferFinalPoints = lpufferPointData.finalPoints;
+        const lpufferFinalTotalPoints = lpufferPointData.finalTotalPoints;
+        if(lpufferFinalPoints.length > 0) {
+        lpufferRealPointsAddress = new BigNumber(lpufferFinalPoints[0].points.toString())
+            .multipliedBy(lpufferRealPoints)
+            .div(lpufferFinalTotalPoints.toString());
+        }
+      }
       res = {
         errno: 0,
         errmsg: 'no error',
@@ -213,6 +237,7 @@ export class PointsController implements OnModuleInit {
             points: new BigNumber(point[0].points.toString())
               .multipliedBy(realPufferPoints)
               .div(totalPoints.toString())
+              .plus(lpufferRealPointsAddress)
               .toFixed(6),
             balance: ((item) => {
               if (item && item.balance) {
