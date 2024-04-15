@@ -67,6 +67,7 @@ import { RsethPagingController } from './controller/paging/rseth.controller';
       provide: APP_PIPE,
       useClass: ValidationPipe,
     },
+    PointsController,
     AppService,
     Points,
     PointsHistory,
