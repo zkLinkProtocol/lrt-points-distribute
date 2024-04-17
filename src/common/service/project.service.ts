@@ -3,7 +3,7 @@ import {
   GraphPoint,
   GraphQueryService,
   GraphTotalPoint,
-} from 'src/explorer/graphQuery.service';
+} from 'src/common/service/graphQuery.service';
 
 export interface PointData {
   finalPoints: any[],

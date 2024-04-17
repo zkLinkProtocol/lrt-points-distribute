@@ -1,7 +1,7 @@
 import { Injectable, Logger, Module } from '@nestjs/common';
 import {
   GraphQueryService,
-} from 'src/explorer/graphQuery.service';
+} from 'src/common/service/graphQuery.service';
 
 export interface NovaPoints {
   novaPoint: number;

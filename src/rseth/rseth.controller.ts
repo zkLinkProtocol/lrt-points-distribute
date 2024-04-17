@@ -13,8 +13,8 @@ import {
   NOT_FOUND_EXCEPTION,
   SERVICE_EXCEPTION,
   TokenPointsWithoutDecimalsDto,
-} from './tokenPointsWithoutDecimals.dto';
-import { ProjectService } from 'src/project/project.service';
+} from '../puffer/tokenPointsWithoutDecimals.dto';
+import { ProjectService } from 'src/common/service/project.service';
 import { ethers } from 'ethers';
 
 const options = {

@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { RenzoPoints } from 'src/explorer/renzoapi.service';
+import { RenzoPoints } from 'src/renzo/renzoapi.service';
 
 export class PointsWithoutDecimalsDto {
   @ApiProperty({

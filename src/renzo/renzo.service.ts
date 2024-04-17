@@ -1,13 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { UserBalances } from 'src/type/userBalances';
-import { LocalPointData, LocalPointsItem, ProjectGraphService } from 'src/project/projectGraph.service';
-import { GraphQueryService } from 'src/explorer/graphQuery.service';
-import { RenzoApiService, RenzoPoints } from 'src/explorer/renzoapi.service';
-import { ExplorerService } from 'src/explorer/explorer.service';
-import { RenzoPointsWithoutDecimalsDto } from 'src/controller/pointsWithoutDecimals.dto';
+import { LocalPointData, ProjectGraphService } from 'src/common/service/projectGraph.service';
+import { GraphQueryService } from 'src/common/service/graphQuery.service';
+import { RenzoApiService, RenzoPoints } from 'src/renzo/renzoapi.service';
+import { ExplorerService } from 'src/common/service/explorer.service';
+import {cloneDeep} from 'lodash';
 import BigNumber from 'bignumber.js';
-import { ethers } from 'ethers';
 
 export interface RenzoPointItem{
   address: string,
@@ -37,8 +35,6 @@ export class RenzoService{
   private readonly logger: Logger;
   
   private renzoData: RenzoData = {localTotalPoints: BigInt(0), realTotalRenzoPoints: 0, realTotalEigenLayerPoints: 0, items:[]};
-  private realTotalRenzoPoints: number = 0;
-  private realTotalEigenLayerPoints: number = 0;
   private readonly l1Erc20BridgeEthereum: string;
   private readonly l1Erc20BridgeArbitrum: string;
   private readonly l1Erc20BridgeLinea: string;
@@ -68,7 +64,7 @@ export class RenzoService{
       }
     };
     func();
-    setInterval(func, 1000 * 30);
+    setInterval(func, 1000 * 200);
   }
 
   // load points data
@@ -107,14 +103,14 @@ export class RenzoService{
       const realRenzoPoints = Number(
         new BigNumber(point.points.toString())
           .multipliedBy(renzoPoints.renzoPoints)
-          .div(point.perTokenTotalPoints.toString())
+          .div(point.totalPointsPerToken.toString())
           .toFixed(6),
       );
       realTotalRenzoPoints += realRenzoPoints;
       const realEigenLayerPoints = Number(
         new BigNumber(point.points.toString())
           .multipliedBy(renzoPoints.eigenLayerPoints)
-          .div(point.perTokenTotalPoints.toString())
+          .div(point.totalPointsPerToken.toString())
           .toFixed(6),
       );
       realTotalEigenLayerPoints += realEigenLayerPoints;
@@ -123,8 +119,8 @@ export class RenzoService{
         tokenAddress: point.token,
         balance: point.balance,
         localPoints: point.points,
-        localTotalPointsPerToken: point.perTokenTotalPoints,
-        localTotalPointsPerTokenMau: point.perTokenTotalPointsMau,
+        localTotalPointsPerToken: point.totalPointsPerToken,
+        localTotalPointsPerTokenMau: point.totalPointsPerTokenMau,
         realTotalRenzoPointsPerToken: renzoPoints.renzoPoints,
         realTotalEigenLayerPointsPerToken: renzoPoints.eigenLayerPoints,
         realRenzoPoints: realRenzoPoints,
@@ -133,24 +129,26 @@ export class RenzoService{
       };
       data.push(pointsItem);
     }
-
-    this.renzoData = {
-      localTotalPoints: localTotalPoints,
-      realTotalRenzoPoints: realTotalRenzoPoints,
-      realTotalEigenLayerPoints: realTotalEigenLayerPoints,
-      items: data
-    };
+    if(data.length > 0){
+      this.renzoData = {
+        localTotalPoints: localTotalPoints,
+        realTotalRenzoPoints: realTotalRenzoPoints,
+        realTotalEigenLayerPoints: realTotalEigenLayerPoints,
+        items: data
+      };
+    }else{
+      this.logger.log(`Load renzo data empty.`);
+    }
   }
 
   // return points data
-  public getPointsData():RenzoData;
-  public getPointsData(address: string): RenzoData;
   public getPointsData(address?: string): RenzoData
   {
-    let result: RenzoData = this.renzoData;
+    let result: RenzoData = cloneDeep(this.renzoData);
     if(address){
+      const _address = address.toLocaleLowerCase();
       result.items = this.renzoData.items.filter(
-        (item) => item.address === address
+        (item) => item.address === _address
       );
     }
     return result;
@@ -199,23 +197,3 @@ export class RenzoService{
     return tokensMapBridgeTokens;
   }
 }
-
-
-// key : address, value : 0x16a0ef40142cdab0560d20fb7faa974313199df1
-// key : tokenAddress, value : 0x3fdb1939dab8e2d4f7a04212f142469cd52d6402
-// key : balance, value : 250000000000000000
-// key : localPoints, value : 241935250000000000000000
-// key : localTotalPointsPerToken, value : 2493454034512533155194237939
-// key : localTotalPointsPerTokenMau, value : 2494450514144126755194237939
-// key : realTotalRenzoPointsPerToken, value : 826747.4083813288
-// key : realTotalEigenLayerPointsPerToken, value : 826747.4083813288
-// key : realRenzoPoints, value : 80.217777
-// key : realEigenLayerPoints, value : 80.217777
-// key : updatedAt, value : 1712904020
-
-// 241935250000000000000000
-// 2493454034512533155194237939
-// 2494450514144126755194237939
-
-// pgsql: 0.0000818317381092166898025541874343064404184896348973936397980567...
-// graph: 0.0000972053236520520791229004406850192849629019078313516093180946...

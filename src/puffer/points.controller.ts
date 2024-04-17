@@ -4,8 +4,7 @@ import {
   Logger,
   NotFoundException,
   Param,
-  Query,
-  OnModuleInit
+  Query
 } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
@@ -20,14 +19,12 @@ import { BigNumber } from 'bignumber.js';
 import { LRUCache } from 'lru-cache';
 import { ethers } from 'ethers';
 import { ADDRESS_REGEX_PATTERN, ParseAddressPipe } from 'src/common/pipes/parseAddress.pipe';
-import { Points } from 'src/entities/points.entity';
-import { PointsRepository } from 'src/repositories/points.repository';
 import { RenzoPointItem, RenzoService } from 'src/renzo/renzo.service';
 import { ParseProjectNamePipe } from 'src/common/pipes/parseProjectName.pipe';
 import { PagingOptionsDto } from 'src/common/pagingOptionsDto.dto';
 import { PaginationUtil } from 'src/common/pagination.util';
-import { PuffPointsService } from 'src/puffPoints/puffPoints.service';
-import { GraphQueryService } from 'src/explorer/graphQuery.service';
+import { PuffPointsService, PufferData } from 'src/puffer/puffPoints.service';
+import { GraphQueryService } from 'src/common/service/graphQuery.service';
 import { TokenPointsDto } from './tokenPoints.dto';
 import { TokenPointsWithoutDecimalsDto } from './tokenPointsWithoutDecimals.dto';
 import { PointsWithoutDecimalsDto } from './pointsWithoutDecimals.dto';
@@ -43,9 +40,6 @@ const options = {
 };
 
 const cache = new LRUCache(options);
-const ALL_PUFFER_POINTS_CACHE_KEY = 'allPufferPoints';
-const TOTAL_PUFFER_POINTS_CACHE_KEY = 'totalPufferPoints';
-const REAL_PUFFFER_POINTS_CACHE_KEY = 'realPufferPoints';
 const RENZO_ALL_POINTS_CACHE_KEY = 'allRenzoPoints';
 const PUFFER_ADDRESS_POINTS_FORWARD = 'pufferAddressPointsForward';
 
@@ -55,12 +49,8 @@ const PUFFER_ADDRESS_POINTS_FORWARD = 'pufferAddressPointsForward';
 export class PointsController {
   private readonly logger = new Logger(PointsController.name);
   private readonly puffPointsTokenAddress: string;
-  private allPoints: Points[];
-  private realPufferPoints: string;
-  private totalPoints: bigint = BigInt(0);
 
   constructor(
-    private readonly pointsRepository: PointsRepository,
     private readonly puffPointsService: PuffPointsService,
     private readonly renzoService: RenzoService,
     private readonly graphQueryService: GraphQueryService,
@@ -94,7 +84,7 @@ export class PointsController {
       const dto: PointsDto = {
         address: point.address,
         updatedAt: new Date(point.updatedAt * 1000),
-        points: Number(ethers.formatEther(point.localPoints)).toFixed(6),
+        points: point.realRenzoPoints.toFixed(6),
         tokenAddress: point.tokenAddress,
       };
       return dto;
@@ -124,12 +114,12 @@ export class PointsController {
     try {
       const data = await this.renzoService.getPointsData();
       let result: PointsWithoutDecimalsDto[] = [];
-      let totalPoints = data.localTotalPoints;
+      let totalPoints = data.realTotalRenzoPoints;
       for (const point of data.items) {
         const dto: PointsWithoutDecimalsDto = {
           address: point.address,
           tokenAddress: point.tokenAddress,
-          points: Number(ethers.formatEther(point.localPoints)).toFixed(6),
+          points: point.realRenzoPoints.toFixed(6),
           updated_at: point.updatedAt,
         };
         result.push(dto);
@@ -138,9 +128,7 @@ export class PointsController {
       const cachePoints: TokenPointsWithoutDecimalsDto = {
         errno: 0,
         errmsg: 'no error',
-        total_points: BigNumber(totalPoints.toString())
-          .div(Math.pow(10, 18))
-          .toFixed(6),
+        total_points: totalPoints.toFixed(6),
         data: result,
       };
       cache.set(RENZO_ALL_POINTS_CACHE_KEY, cachePoints);
@@ -172,33 +160,12 @@ export class PointsController {
   public async pufferPoints(
     @Param('address', new ParseAddressPipe()) address: string,
   ): Promise<TokenPointsWithoutDecimalsDto> {
-    let res: TokenPointsWithoutDecimalsDto;
+    let res: TokenPointsWithoutDecimalsDto,
+        data: PufferData;
     try {
-      const [allPoints, totalPoints, realPufferPoints] = this.puffPointsService.getPointsData();
-      const point = allPoints.filter(
-        (p) => p.address.toLowerCase() === address.toLowerCase(),
-      );
-      if (point.length === 0) {
-        throw new NotFoundException();
-      }
-      res = {
-        errno: 0,
-        errmsg: 'no error',
-        total_points: realPufferPoints.toString(),
-        data: [
-          {
-            address: point[0].address,
-            tokenAddress: point[0].token,
-            points: new BigNumber(point[0].points.toString())
-              .multipliedBy(realPufferPoints)
-              .div(point[0].perTokenTotalPoints.toString())
-              .toFixed(6),
-            balance: Number(ethers.formatEther(point[0].balance)).toFixed(6),
-            updated_at: point[0].updatedAt,
-          },
-        ],
-      };
+      data = this.puffPointsService.getPointsData(address.toLocaleLowerCase());
     } catch (e) {
+      this.logger.log(e.errmsg, e.stack);
       res = {
         errno: 1,
         errmsg: 'Service exception',
@@ -206,7 +173,27 @@ export class PointsController {
         data: [] as PointsWithoutDecimalsDto[],
       };
     }
+    if (data.items.length === 0) {
+      throw new NotFoundException();
+    }
 
+    // layerbank point
+    const layerbankPoint = await this.puffPointsService.getLayerBankPoint(address);
+    const point = data.items[0];
+    res = {
+      errno: 0,
+      errmsg: 'no error',
+      total_points: data.realTotalPoints.toString(),
+      data: [
+        {
+          address: point.address,
+          tokenAddress: point.tokenAddress,
+          points: (point.realPoints+layerbankPoint).toString(),
+          balance: Number(ethers.formatEther(point.balance)).toFixed(6),
+          updated_at: point.updatedAt,
+        },
+      ],
+    };
     return res;
   }
 
@@ -222,24 +209,21 @@ export class PointsController {
   public async allPufferPoints2(): Promise<TokenPointsWithoutDecimalsDto> {
     let res: TokenPointsWithoutDecimalsDto;
     try {
-      const [allPoints, _, realPufferPoints] = this.puffPointsService.getPointsData();
-      const allPointsFilter = allPoints.filter(
+      const data = this.puffPointsService.getPointsData();
+      const allPointsFilter = data.items.filter(
         (p) => p.balance >= 10**12,
       );
       res = {
         errno: 0,
         errmsg: 'no error',
-        total_points: realPufferPoints.toString(),
+        total_points: data.realTotalPoints.toString(),
         data: allPointsFilter.map((p) => {
           return {
             address: p.address,
-            tokenAddress: p.token,
+            tokenAddress: p.tokenAddress,
             balance: Number(ethers.formatEther(p.balance)).toFixed(6),
             updated_at: p.updatedAt,
-            points: new BigNumber(p.points.toString())
-              .multipliedBy(realPufferPoints)
-              .div(p.perTokenTotalPoints.toString())
-              .toFixed(6),
+            points: p.realPoints.toString(),
           };
         }),
       };
@@ -292,23 +276,22 @@ export class PointsController {
   })
   public async allPufferPoints(): Promise<TokenPointsDto> {
     this.logger.log('allPufferPoints');
-    const [allPoints, totalPoints, _] = this.puffPointsService.getPointsData();
-    
-    const allPointsFilter = allPoints.filter(
+    const data = this.puffPointsService.getPointsData();
+    const allPointsFilter = data.items.filter(
       (p) => p.balance > 10**12,
     );
     const result = allPointsFilter.map((p) => {
       return {
         address: p.address,
         updatedAt: new Date(p.updatedAt * 1000),
-        tokenAddress: p.token,
-        points: p.points.toString(),
+        tokenAddress: p.tokenAddress,
+        points: p.localPoints.toString(),
       };
     });
     return {
       decimals: 18,
       tokenAddress: this.puffPointsService.tokenAddress,
-      totalPoints: totalPoints.toString(),
+      totalPoints: data.localTotalPoints.toString(),
       result: result,
     };
   }
@@ -326,9 +309,9 @@ export class PointsController {
     @Query() pagingOptions: PagingOptionsDto
   ): Promise<TokenPointsDto> {
     this.logger.log('allPufferPoints');
-    const [allPoints, totalPoints, _] = this.puffPointsService.getPointsData();
-    const allPointsFilter = allPoints.filter(
-      (p) => BigNumber(p.points.toString()).comparedTo(0) > 0,
+    const data = this.puffPointsService.getPointsData();
+    const allPointsFilter = data.items.filter(
+      (p) => p.balance >= 10**12
     );
     const {page = 1, limit = 100} = pagingOptions;
     const paging = PaginationUtil.paginate(allPointsFilter, page, limit);
@@ -336,14 +319,14 @@ export class PointsController {
       return {
         address: p.address,
         updatedAt: p.updatedAt,
-        tokenAddress: p.token,
-        points: p.points.toString(),
+        tokenAddress: p.tokenAddress,
+        points: p.realPoints.toString(),
       };
     });
     return {
       decimals: 18,
       tokenAddress: this.puffPointsService.tokenAddress,
-      totalPoints: totalPoints.toString(),
+      totalPoints: data.localTotalPoints.toString(),
       meta: paging.meta,
       result: result,
     };
@@ -363,8 +346,8 @@ export class PointsController {
   ): Promise<TokenPointsWithoutDecimalsDto> {
     let res: TokenPointsWithoutDecimalsDto;
     try {
-      const [allPoints, _, realPufferPoints] = this.puffPointsService.getPointsData();
-      const allPointsFilter = allPoints.filter(
+      const data = this.puffPointsService.getPointsData();
+      const allPointsFilter = data.items.filter(
         (p) => p.balance > 10**12,
       );
       const {page = 1, limit = 100} = pagingOptions;
@@ -372,18 +355,15 @@ export class PointsController {
       res = {
         errno: 0,
         errmsg: 'no error',
-        total_points: realPufferPoints.toString(),
+        total_points: data.realTotalPoints.toString(),
         meta: paging.meta,
         data: paging.items.map((p) => {
           return {
             address: p.address,
-            tokenAddress: p.token,
+            tokenAddress: p.tokenAddress,
             balance: Number(ethers.formatEther(p.balance)).toFixed(6),
             updated_at: p.updatedAt,
-            points: new BigNumber(p.points.toString())
-              .multipliedBy(realPufferPoints)
-              .div(p.perTokenTotalPoints.toString())
-              .toFixed(6),
+            points: p.realPoints.toString(),
           };
         }),
       };

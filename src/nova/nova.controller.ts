@@ -13,11 +13,12 @@ import { ParseAddressPipe } from 'src/common/pipes/parseAddress.pipe';
 import {
   NOT_FOUND_EXCEPTION,
   SERVICE_EXCEPTION,
-} from './tokenPointsWithoutDecimals.dto';
+} from '../puffer/tokenPointsWithoutDecimals.dto';
 import { NovaPointsWithoutDecimalsDto } from 'src/nova/novaPointsWithoutDecimalsDto.dto';
 import { NovaService } from 'src/nova/nova.service';
 import { NovaApiService, NovaPoints } from 'src/nova/novaapi.service';
 import { BigNumber } from 'bignumber.js';
+import { PuffPointsService } from 'src/puffer/puffPoints.service';
 
 const options = {
   // how long to live in ms
@@ -39,7 +40,8 @@ export class NovaController {
 
   constructor(
     private novaService: NovaService, 
-    private novaApiService: NovaApiService
+    private novaApiService: NovaApiService,
+    private pufferPointsSercie: PuffPointsService
   ) {}
 
   @Get('/points')
@@ -115,6 +117,46 @@ export class NovaController {
       return NOT_FOUND_EXCEPTION;
     }
     return this.getReturnData(finalPoints, finalTotalPoints, points.novaPoint);
+  }
+
+  @Get('/points/puffer')
+  @ApiOperation({ summary: 'Get puffer personal points in layerbank' })
+  @ApiBadRequestResponse({
+    description: '{ "errno": 1, "errmsg": "Service exception" }',
+  })
+  @ApiNotFoundResponse({
+    description: '{ "errno": 1, "errmsg": "not found" }',
+  })
+  public async getNovaPufferPoints(
+    @Query('address', new ParseAddressPipe()) address: string,
+    @Query('tokenAddress', new ParseAddressPipe()) tokenAddress: string,
+  ): Promise<NovaPointsWithoutDecimalsDto> {
+    let finalPoints: any[], finalTotalPoints: bigint;
+    try{
+      const pointData = await this.novaService.getPoints(tokenAddress, address);
+      finalPoints = pointData.finalPoints;
+      finalTotalPoints = pointData.finalTotalPoints;
+    } catch (err) {
+      this.logger.error('Get nova all points failed', err.stack);
+      return SERVICE_EXCEPTION;
+    }
+    if(!finalPoints || !finalTotalPoints){
+      return NOT_FOUND_EXCEPTION
+    }
+
+    // Get real puffer points in layerbank.
+    let points: number;
+    try{
+      const tokenData = await this.pufferPointsSercie.getPointsData(tokenAddress);
+      points = tokenData.items[0]?.realPoints ?? 0;
+    } catch (err) {
+      this.logger.error('Get puffer real points in layerbank failed', err.stack);
+      return SERVICE_EXCEPTION;
+    }
+    if(!points){
+      return NOT_FOUND_EXCEPTION;
+    }
+    return this.getReturnData(finalPoints, finalTotalPoints, points);
   }
 
   @Get('/all/points')

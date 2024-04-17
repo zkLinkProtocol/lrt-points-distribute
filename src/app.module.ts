@@ -4,34 +4,30 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { typeOrmModuleOptions } from './typeorm.config';
-import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ConfigModule } from '@nestjs/config';
 import config from './config';
-import { Points } from './entities/points.entity';
-import { PointsHistory } from './entities/pointsHistory.entity';
-import { PuffPointsService } from './puffPoints/puffPoints.service';
-import { PuffPointsProcessor } from './puffPoints/puffPoints.processor';
-import { PointsRepository } from './repositories/points.repository';
+import { PuffPointsService } from './puffer/puffPoints.service';
 import { MetricsModule } from './metrics';
 import { UnitOfWorkModule } from './unitOfWork';
-import { PointsHistoryRepository } from './repositories/pointsHistory.repository';
-import { PointsController } from './controller/points.controller';
-import { ExplorerService } from './explorer/explorer.service';
+import { PointsController } from './puffer/points.controller';
+import { ExplorerService } from './common/service/explorer.service';
 import { RenzoService } from './renzo/renzo.service';
-import { RenzoApiService } from './explorer/renzoapi.service';
-import { RenzoController } from './controller/renzo.controller';
-import { GraphQueryService } from './explorer/graphQuery.service';
-import { ProjectService } from './project/project.service';
+import { RenzoApiService } from './renzo/renzoapi.service';
+import { RenzoController } from './renzo/renzo.controller';
+import { GraphQueryService } from './common/service/graphQuery.service';
+import { ProjectService } from './common/service/project.service';
 import { MagpieGraphQueryService } from './magpie/magpieGraphQuery.service';
-import { RsethController } from './controller/rseth.controller';
-import { MagpieController } from './controller/magpie.controller';
+import { RsethController } from './rseth/rseth.controller';
+import { MagpieController } from './magpie/magpie.controller';
 import { NovaApiService } from './nova/novaapi.service';
 import { NovaService } from './nova/nova.service';
-import { NovaController } from './controller/nova.controller';
-import { RenzoPagingController } from './controller/paging/renzo.controller';
-import { MagpiePagingController } from './controller/paging/magpie.controller';
-import { NovaPagingController } from './controller/paging/nova.controller';
-import { RsethPagingController } from './controller/paging/rseth.controller';
-import { ProjectGraphService } from './project/projectGraph.service';
+import { NovaController } from './nova/nova.controller';
+import { RenzoPagingController } from './renzo/renzo.paging.controller';
+import { MagpiePagingController } from './magpie/magpie.paging.controller';
+import { NovaPagingController } from './nova/nova.paging.controller';
+import { RsethPagingController } from './rseth/rseth.paging.controller';
+import { ProjectGraphService } from './common/service/projectGraph.service';
+import { WithdrawService } from './common/service/withdraw.service';
 
 @Module({
   imports: [
@@ -47,7 +43,6 @@ import { ProjectGraphService } from './project/projectGraph.service';
         };
       },
     }),
-    TypeOrmModule.forFeature([Points, PointsHistory]),
     MetricsModule,
     UnitOfWorkModule,
   ],
@@ -69,13 +64,8 @@ import { ProjectGraphService } from './project/projectGraph.service';
       useClass: ValidationPipe,
     },
     AppService,
-    Points,
-    PointsHistory,
     GraphQueryService,
     PuffPointsService,
-    PuffPointsProcessor,
-    PointsRepository,
-    PointsHistoryRepository,
     ExplorerService,
     RenzoService,
     RenzoApiService,
@@ -83,7 +73,8 @@ import { ProjectGraphService } from './project/projectGraph.service';
     MagpieGraphQueryService,
     NovaApiService,
     NovaService,
-    ProjectGraphService
+    ProjectGraphService,
+    WithdrawService
   ],
 })
 export class AppModule {}

@@ -12,8 +12,8 @@ import {
   ExceptionResponse,
   RenzoTokenPointsWithoutDecimalsDto,
   NOT_FOUND_EXCEPTION
-} from './tokenPointsWithoutDecimals.dto';
-import { RenzoPointsWithoutDecimalsDto } from './pointsWithoutDecimals.dto';
+} from '../puffer/tokenPointsWithoutDecimals.dto';
+import { RenzoPointsWithoutDecimalsDto } from '../puffer/pointsWithoutDecimals.dto';
 import { RenzoService } from 'src/renzo/renzo.service';
 import { ethers } from 'ethers';
 
@@ -57,11 +57,6 @@ export class RenzoController {
     }
     const data = pointData.items;
     if (Array.isArray(data)) {
-      for (const item of data) {
-        for (const key in item) {
-          console.log(`key : ${key}, value : ${item[key]}`);
-        }
-      }
       return {
         errno: 0,
         errmsg: 'no error',
@@ -134,8 +129,7 @@ export class RenzoController {
       cache.set(RENZO_ALL_POINTS_CACHE_KEY, cacheData);
       return cacheData;
     } catch (err) {
-      this.logger.error('Get renzo all points failed', err);
-      this.logger.error(err.message, err.stack);
+      this.logger.error('Get renzo all points failed', err.stack);
       return SERVICE_EXCEPTION;
     }
   }

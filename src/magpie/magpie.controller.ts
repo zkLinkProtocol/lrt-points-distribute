@@ -10,9 +10,9 @@ import {
 import { LRUCache } from 'lru-cache';
 import { ethers } from 'ethers';
 import { ParseAddressPipe } from 'src/common/pipes/parseAddress.pipe';
-import { NOT_FOUND_EXCEPTION, SERVICE_EXCEPTION } from './tokenPointsWithoutDecimals.dto';
+import { NOT_FOUND_EXCEPTION, SERVICE_EXCEPTION } from '../puffer/tokenPointsWithoutDecimals.dto';
 import { MagiePointsWithoutDecimalsDto } from 'src/magpie/magiePointsWithoutDecimalsDto.dto';
-import { ProjectService } from 'src/project/project.service';
+import { ProjectService } from 'src/common/service/project.service';
 import { MagpieGraphQueryService } from 'src/magpie/magpieGraphQuery.service';
 
 const options = {

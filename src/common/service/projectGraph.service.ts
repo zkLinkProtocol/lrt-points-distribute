@@ -1,12 +1,15 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { GraphPoint, GraphQueryService, GraphTotalPoint } from 'src/explorer/graphQuery.service';
+import { GraphPoint, GraphQueryService, GraphTotalPoint } from 'src/common/service/graphQuery.service';
 import { BigNumber } from 'bignumber.js';
+import { WithdrawService } from 'src/common/service/withdraw.service';
 
 export interface LocalPointsItem {
   address: string,
   points: bigint,
-  perTokenTotalPoints: bigint,
-  perTokenTotalPointsMau: bigint,
+  withdrawPoints: bigint,
+  withdrawTotalPointsPerToken: bigint,
+  totalPointsPerToken: bigint,
+  totalPointsPerTokenMau: bigint,
   balance: bigint,
   token: string,
   updatedAt: number,
@@ -21,12 +24,13 @@ export interface LocalPointData {
 export class ProjectGraphService {
   private readonly logger: Logger;
 
-  public constructor(private readonly graphQueryService: GraphQueryService) {
+  public constructor(
+    private readonly graphQueryService: GraphQueryService,
+    private readonly withdrawService: WithdrawService
+  ) {
     this.logger = new Logger(ProjectGraphService.name);
   }
   
-  public async getPoints(projectName: string): Promise<LocalPointData>;
-  public async getPoints(projectName: string, address: string): Promise<LocalPointData>;
   public async getPoints(projectName: string, address?: string): Promise<LocalPointData> 
   {
     this.logger.log(`Start query ${projectName} graph data.`);
@@ -34,7 +38,7 @@ export class ProjectGraphService {
     if(address){
       [points, totalPoints] = await this.graphQueryService.queryPointsRedistributedByProjectNameAndAddress(address, projectName);
     }else{
-      let page = 1, limit = 1000, lastPageNum = 1000;
+      let page = 1, limit = 1000, lastPageNum = limit;
       while(lastPageNum >= limit){
         const [_points, _totalPoints] = await this.graphQueryService.queryPointsRedistributedByProjectName(projectName, page, limit);
         lastPageNum = _points.length;
@@ -62,29 +66,34 @@ export class ProjectGraphService {
     const now = (new Date().getTime() / 1000) | 0;
     for (const point of points) {
       const projectArr = point.project.split('-');
+      const token = projectArr[1].toLocaleLowerCase();
+      const withdrawPoints = this.withdrawService.getWithdrawPoint(token, point.address.toLocaleLowerCase());
+      const withdrawTotalPoint = this.withdrawService.getWithdrawTotalPoint(token);
       const newPoint = {
-        address: point.address,
-        points: GraphQueryService.getPoints(point, now),
-        perTokenTotalPoints: localTokenTotalPoint.get(point.project),
+        address: point.address.toLocaleLowerCase(),
+        points: GraphQueryService.getPoints(point, now) + withdrawPoints,
+        withdrawPoints: withdrawPoints,
+        withdrawTotalPointsPerToken: withdrawTotalPoint,
+        totalPointsPerToken: localTokenTotalPoint.get(point.project) + withdrawTotalPoint,
         balance: BigInt(point.balance),
-        token: projectArr[1],
+        token: token,
         updatedAt: now,
       } as LocalPointsItem;
       localPoints.push(newPoint);
     }
 
-    const perTokenTotalPointsMau: Map<string, bigint> = new Map;
+    const totalPointsPerTokenMau: Map<string, bigint> = new Map;
     for (const item of localPoints) {
-      if(!perTokenTotalPointsMau.has(item.token)){
-        perTokenTotalPointsMau.set(item.token, item.points);
+      if(!totalPointsPerTokenMau.has(item.token)){
+        totalPointsPerTokenMau.set(item.token, item.points);
       }else{
-        const tempPerTokenTotalPointsMau = perTokenTotalPointsMau.get(item.token);
-        perTokenTotalPointsMau.set(item.token, tempPerTokenTotalPointsMau + item.points);
+        const temptotalPointsPerTokenMau = totalPointsPerTokenMau.get(item.token);
+        totalPointsPerTokenMau.set(item.token, temptotalPointsPerTokenMau + item.points);
       }
     }
 
     localPoints.map(item => {
-      item.perTokenTotalPointsMau = perTokenTotalPointsMau.get(item.token);
+      item.totalPointsPerTokenMau = totalPointsPerTokenMau.get(item.token);
       return item;
     });
 

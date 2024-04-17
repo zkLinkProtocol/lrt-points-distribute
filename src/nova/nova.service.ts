@@ -3,7 +3,7 @@ import {
   GraphPoint,
   GraphQueryService,
   GraphTotalPoint,
-} from 'src/explorer/graphQuery.service';
+} from 'src/common/service/graphQuery.service';
 import { NovaApiService, NovaPoints } from 'src/nova/novaapi.service';
 import { BigNumber } from 'bignumber.js';
 
@@ -39,11 +39,10 @@ export class NovaService {
       return {finalPoints, finalTotalPoints};
     }
 
-    [points, totalPoints] =
-        await this.graphQueryService.queryPointsRedistributedByAddress(
-          address,
-          project,
-        ); 
+    [points, totalPoints] = await this.graphQueryService.queryPointsRedistributedByAddress(
+      address,
+      project,
+    ); 
     if (Array.isArray(points) && totalPoints) {
       return this.getPointData(points, totalPoints);
     } else {

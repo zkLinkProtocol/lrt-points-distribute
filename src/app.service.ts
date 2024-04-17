@@ -7,7 +7,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { DataSource } from 'typeorm';
 import runMigrations from './utils/runMigrations';
-import { PuffPointsService } from './puffPoints/puffPoints.service';
+import { PuffPointsService } from './puffer/puffPoints.service';
 import { RenzoService } from './renzo/renzo.service';
 
 @Injectable()

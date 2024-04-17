@@ -14,7 +14,7 @@ import {
   ExceptionResponse,
   RenzoTokenPointsWithoutDecimalsDto,
   NOT_FOUND_EXCEPTION
-} from '../tokenPointsWithoutDecimals.dto';
+} from '../puffer/tokenPointsWithoutDecimals.dto';
 import { ethers } from 'ethers';
 
 const options = {

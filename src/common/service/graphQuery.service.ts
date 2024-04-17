@@ -17,6 +17,16 @@ export interface GraphTotalPoint {
   totalTimeWeightAmountIn: string;
   totalTimeWeightAmountOut: string;
 }
+export interface GraphWithdrawPoint {
+  id: string;
+  project: string;
+  address: string;
+  balance: string;
+  weightBalance: string;
+  timeWeightAmountIn: string;
+  timeWeightAmountOut: string;
+  blockTimestamp: number;
+}
 
 @Injectable()
 export class GraphQueryService implements OnModuleInit {
@@ -107,7 +117,7 @@ export class GraphQueryService implements OnModuleInit {
       timestamp,
     );
   }
-  private static calcuPoint(
+  public static calcuPoint(
     weightBalance: string,
     timeWeightAmountIn: string,
     timeWeightAmountOut: string,
@@ -133,7 +143,7 @@ export class GraphQueryService implements OnModuleInit {
     totalTimeWeightAmountIn
     totalTimeWeightAmountOut
   }
-  points(where:{project: "${projectId}"}) {
+  points(first:1000,where:{project: "${projectId}"}) {
     address
     balance
     weightBalance
@@ -167,7 +177,7 @@ export class GraphQueryService implements OnModuleInit {
     totalTimeWeightAmountIn
     totalTimeWeightAmountOut
   }
-  points(where: {project: "${projectId}", address: "${address}"}) {
+  points(first:1000, where: {project: "${projectId}", address: "${address}"}) {
     address
     balance
     weightBalance
@@ -215,10 +225,8 @@ export class GraphQueryService implements OnModuleInit {
   }
 }
     `;
-    this.logger.log(`Start query ${projectName}, skip: ${skip}, limit:${_limit}`);
     const data = await this.query(query);
     if (data && data.data && Array.isArray(data.data.totalPoints) && Array.isArray(data.data.points)) {
-      this.logger.log(`End success query ${projectName}, skip: ${skip}, limit:${_limit}, data:${data.data.points.length}`);
       return [
         data.data.points as GraphPoint[],
         data.data.totalPoints as GraphTotalPoint[],
@@ -259,6 +267,35 @@ export class GraphQueryService implements OnModuleInit {
       ];
     }else{
       throw new Error(`Exception in fetching GraphQL data, project is : ${projectName}, query is : ${query}.`);
+    }
+  }
+
+  public async queryWithdrawPoints(page:number, limit:number): Promise<GraphWithdrawPoint[]> {
+    const {_page = 1, _limit = 1000} = {_page: page, _limit: limit};
+    let skip = (_page-1) * _limit;
+    skip = skip < 0 ? 0 : skip;
+    const query = `
+{
+  withdrawPoints(
+    first:${_limit}
+    skip:${skip}
+  ){
+    id
+    project
+    balance
+    weightBalance
+    address
+    timeWeightAmountIn
+    timeWeightAmountOut
+    blockTimestamp
+  }
+}
+    `;
+    const data = await this.query(query);
+    if (data && data.data && Array.isArray(data.data.withdrawPoints)) {
+      return data.data.withdrawPoints as GraphWithdrawPoint[];
+    }else{
+      throw new Error(`Exception in fetching GraphQL data, project is WithdrawPoints.`);
     }
   }
 
