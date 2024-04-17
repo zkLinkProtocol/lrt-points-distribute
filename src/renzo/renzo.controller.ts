@@ -12,10 +12,10 @@ import {
   ExceptionResponse,
   RenzoTokenPointsWithoutDecimalsDto,
   NOT_FOUND_EXCEPTION
-} from './tokenPointsWithoutDecimals.dto';
-import { RenzoPointsWithoutDecimalsDto } from './pointsWithoutDecimals.dto';
+} from '../puffer/tokenPointsWithoutDecimals.dto';
+import { RenzoPointsWithoutDecimalsDto } from '../puffer/pointsWithoutDecimals.dto';
 import { RenzoService } from 'src/renzo/renzo.service';
-import { RenzoApiService } from 'src/explorer/renzoapi.service';
+import { ethers } from 'ethers';
 
 const options = {
   // how long to live in ms
@@ -40,8 +40,7 @@ export class RenzoController {
   private readonly logger = new Logger(RenzoController.name);
 
   constructor(
-    private readonly renzoService: RenzoService,
-    private readonly renzoApiService: RenzoApiService,
+    private readonly renzoService: RenzoService
   ) {}
 
   @Get('/points')
@@ -52,19 +51,27 @@ export class RenzoController {
   public async getRenzoPoints(
     @Query('address', new ParseAddressPipe()) address: string,
   ): Promise<{ data: RenzoPointsWithoutDecimalsDto[] } | ExceptionResponse> {
-    const pointData = this.renzoService.getPointData();
+    const pointData = this.renzoService.getPointsData(address);
     if(null == pointData){
       return NOT_FOUND_EXCEPTION;
     }
-    const data = pointData.data;
+    const data = pointData.items;
     if (Array.isArray(data)) {
       return {
         errno: 0,
         errmsg: 'no error',
-        data:
-          data.filter(
-            (point) => point.address.toLowerCase() === address.toLowerCase(),
-          ) ?? [],
+        data: data.map(item=>{
+          return {
+            address: item.address,
+            points: {
+              renzoPoints: Number(item.realRenzoPoints.toFixed(6)),
+              eigenLayerPoints: Number(item.realEigenLayerPoints.toFixed(6))
+            },
+            tokenAddress: item.tokenAddress,
+            balance: Number(ethers.formatEther(item.balance)).toFixed(6),
+            updatedAt: item.updatedAt
+          }
+        })
       };
     }
     return SERVICE_EXCEPTION;
@@ -86,20 +93,18 @@ export class RenzoController {
   public async getAllRenzoPoints(): Promise<
     Partial<RenzoTokenPointsWithoutDecimalsDto & ExceptionResponse>
   > {
-    const allPoints = cache.get(
-      RENZO_ALL_POINTS_CACHE_KEY,
-    ) as RenzoTokenPointsWithoutDecimalsDto;
+    const allPoints = cache.get(RENZO_ALL_POINTS_CACHE_KEY) as RenzoTokenPointsWithoutDecimalsDto;
     if (allPoints) {
       return allPoints;
     }
     try {
-      const pointData = this.renzoService.getPointData();
+      const pointData = this.renzoService.getPointsData();
       if(null == pointData){
         return NOT_FOUND_EXCEPTION;
       }
-      const renzoPoints = pointData.renzoPoints;
-      const eigenLayerPoints = pointData.eigenLayerPoints;
-      const data = pointData.data;
+      const renzoPoints = pointData.realTotalRenzoPoints;
+      const eigenLayerPoints = pointData.realTotalEigenLayerPoints;
+      const data = pointData.items;
       const cacheData = {
         errno: 0,
         errmsg: 'no error',
@@ -107,14 +112,24 @@ export class RenzoController {
           renzoPoints,
           eigenLayerPoints,
         },
-        data,
+        data: data.map(item=>{
+          return {
+            address: item.address,
+            points: {
+              renzoPoints: Number(item.realRenzoPoints.toFixed(6)),
+              eigenLayerPoints: Number(item.realEigenLayerPoints.toFixed(6))
+            },
+            tokenAddress: item.tokenAddress,
+            balance: Number(ethers.formatEther(item.balance)).toFixed(6),
+            updatedAt: item.updatedAt
+          }
+        })
       };
 
       cache.set(RENZO_ALL_POINTS_CACHE_KEY, cacheData);
       return cacheData;
     } catch (err) {
-      this.logger.error('Get renzo all points failed', err);
-      this.logger.error(err.message, err.stack);
+      this.logger.error('Get renzo all points failed', err.stack);
       return SERVICE_EXCEPTION;
     }
   }

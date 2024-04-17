@@ -5,7 +5,7 @@ import { mock } from 'jest-mock-extended';
 
 import { RenzoService } from '../renzo/renzo.service';
 import { ConfigService } from '@nestjs/config';
-import { PuffPointsService } from '../puffPoints/puffPoints.service';
+import { PuffPointsService } from './puffPoints.service';
 import { PointsRepository } from '../repositories/points.repository';
 describe('PointsController', () => {
   let pointsController: PointsController;

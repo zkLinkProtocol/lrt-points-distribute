@@ -1,7 +1,7 @@
 import { Controller, Get, Logger, Query } from '@nestjs/common';
 import { LRUCache } from 'lru-cache';
 import { ParseAddressPipe } from 'src/common/pipes/parseAddress.pipe';
-import { NOT_FOUND_EXCEPTION, SERVICE_EXCEPTION } from '../tokenPointsWithoutDecimals.dto';
+import { NOT_FOUND_EXCEPTION, SERVICE_EXCEPTION } from '../puffer/tokenPointsWithoutDecimals.dto';
 import { NovaPointsWithoutDecimalsDto } from 'src/nova/novaPointsWithoutDecimalsDto.dto';
 import { NovaService } from 'src/nova/nova.service';
 import { NovaApiService, NovaPoints } from 'src/nova/novaapi.service';

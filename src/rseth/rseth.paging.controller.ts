@@ -10,16 +10,16 @@ import {
 import { LRUCache } from 'lru-cache';
 import { ethers } from 'ethers';
 import { ParseAddressPipe } from 'src/common/pipes/parseAddress.pipe';
-import { ProjectService } from 'src/project/project.service';
+import { ProjectService } from 'src/common/service/project.service';
 import { PagingOptionsDto } from 'src/common/pagingOptionsDto.dto';
 import { PaginationUtil } from 'src/common/pagination.util';
-import { PointData } from 'src/project/project.service';
+import { PointData } from 'src/common/service/project.service';
 import { PagingMetaDto } from 'src/common/paging.dto';
 import {
   NOT_FOUND_EXCEPTION,
   SERVICE_EXCEPTION,
   TokenPointsWithoutDecimalsDto,
-} from '../tokenPointsWithoutDecimals.dto';
+} from '../puffer/tokenPointsWithoutDecimals.dto';
 
 const options = {
   // how long to live in ms

@@ -55,8 +55,8 @@ export class RenzoApiService {
     );
   }
 
-  public async fetchTokensRenzoPoints(): Promise<Map<String, RenzoPoints>> {
-    const allRenzoPoints: Map<String, RenzoPoints> = new Map;
+  public async fetchTokensRenzoPoints(): Promise<Map<string, RenzoPoints>> {
+    const allRenzoPoints: Map<string, RenzoPoints> = new Map;
 
     for (const bridgeAddress of this.l1Erc20Bridges) {
       const renzoPoints = await this._fetchRenzoPoints(bridgeAddress);
@@ -67,16 +67,16 @@ export class RenzoApiService {
   }
 
   public async _fetchRenzoPoints(bridgeAddress: string): Promise<RenzoPoints> {
-    this.logger.debug(`start fetchRenzoPoints bridgeAddress: ${bridgeAddress}`);
+    this.logger.log(`start fetchRenzoPoints bridgeAddress: ${bridgeAddress}`);
     const realData = await fetch(`${this.renzoApiBaseurl}${bridgeAddress}`, {
       method: 'get',
       headers: {
         'Content-Type': 'application/json',
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36',
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36',
         'Host': 'app.renzoprotocol.com',
       },
     });
-    this.logger.debug(`end fetchRenzoPoints bridgeAddress: ${bridgeAddress}`);
+    this.logger.log(`end fetchRenzoPoints bridgeAddress: ${bridgeAddress}`);
     const pufReadData = await realData.json();
     if (!pufReadData || pufReadData.success !== true || !pufReadData.data) {
       this.logger.error(`No renzo points bridgeAddress: ${bridgeAddress}`);
@@ -87,7 +87,7 @@ export class RenzoApiService {
       this.logger.error(`No renzo points bridgeAddress: ${bridgeAddress}`);
       return { renzoPoints: 0, eigenLayerPoints: 0 };
     }
-    this.logger.debug(`success fetchRenzoPoints bridgeAddress: ${bridgeAddress}, renzoPoints:${totals.renzoPoints}, eigenLayerPoints:${totals.eigenLayerPoints} `);
+    this.logger.log(`success fetchRenzoPoints bridgeAddress: ${bridgeAddress}, renzoPoints:${totals.renzoPoints}, eigenLayerPoints:${totals.eigenLayerPoints} `);
 
     return {
       renzoPoints: totals.renzoPoints,

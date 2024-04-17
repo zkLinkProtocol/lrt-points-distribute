@@ -1,7 +1,7 @@
 import { Injectable, Logger, Module } from '@nestjs/common';
 import {
   GraphQueryService,
-} from 'src/explorer/graphQuery.service';
+} from 'src/common/service/graphQuery.service';
 
 export interface NovaPoints {
   novaPoint: number;
@@ -49,14 +49,12 @@ export class NovaApiService {
   }
 
   public async fetchNovaPoints(tokenAddress: string): Promise<NovaPoints> {
-    this.logger.debug(`start fetchNovaPoints tokenAddress: ${tokenAddress}`);
     const responseStr = await fetch(`${this.novaApiBaseurl}${tokenAddress}`, {
       method: 'get',
       headers: {
         'Content-Type': 'application/json',
       },
     });
-    this.logger.debug(`end fetchNovaPoints tokenAddress: ${tokenAddress}`);
     const response = await responseStr.json();
     if (!response || response.status != "1" || !response.result) {
       this.logger.error(`No nova realpoints, tokenAddress: ${tokenAddress}`);

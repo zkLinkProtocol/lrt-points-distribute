@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import { AppModule } from '../app.module';
-import { RenzoApiService } from './renzoapi.service';
+import { RenzoApiService } from '../renzo/renzoapi.service';
 import { ConfigService } from '@nestjs/config';
 
 describe('RenzoApiService', () => {
