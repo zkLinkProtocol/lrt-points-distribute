@@ -11,13 +11,13 @@ import { LRUCache } from 'lru-cache';
 import { ethers } from 'ethers';
 import { ParseAddressPipe } from 'src/common/pipes/parseAddress.pipe';
 import { MagiePointsWithoutDecimalsDto } from 'src/magpie/magiePointsWithoutDecimalsDto.dto';
-import { ProjectService } from 'src/project/project.service';
+import { ProjectService } from 'src/common/service/project.service';
 import { MagpieGraphQueryService } from 'src/magpie/magpieGraphQuery.service';
-import { PointData } from 'src/project/project.service';
+import { PointData } from 'src/common/service/project.service';
 import { PagingMetaDto } from 'src/common/paging.dto';
 import { PagingOptionsDto } from 'src/common/pagingOptionsDto.dto';
 import { PaginationUtil } from 'src/common/pagination.util';
-import { NOT_FOUND_EXCEPTION, SERVICE_EXCEPTION } from '../tokenPointsWithoutDecimals.dto';
+import { NOT_FOUND_EXCEPTION, SERVICE_EXCEPTION } from '../puffer/tokenPointsWithoutDecimals.dto';
 
 const options = {
   // how long to live in ms

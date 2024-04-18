@@ -17,13 +17,23 @@ export interface GraphTotalPoint {
   totalTimeWeightAmountIn: string;
   totalTimeWeightAmountOut: string;
 }
+export interface GraphWithdrawPoint {
+  id: string;
+  project: string;
+  address: string;
+  balance: string;
+  weightBalance: string;
+  timeWeightAmountIn: string;
+  timeWeightAmountOut: string;
+  blockTimestamp: number;
+}
 
 @Injectable()
 export class GraphQueryService implements OnModuleInit {
   private readonly logger: Logger;
   private readonly novaPointRedistributeGraphApi: string;
-  private projectTokenMap: Map<string, Map<string, string>> =
-    new Map();
+  private projectTokenMap: Map<string, Map<string, string>> = new Map();
+  
   public constructor(configService: ConfigService) {
     this.logger = new Logger(GraphQueryService.name);
     this.novaPointRedistributeGraphApi = configService.get<string>(
@@ -66,6 +76,7 @@ export class GraphQueryService implements OnModuleInit {
         const tokenAddress = projectArr[1];
         if (!this.projectTokenMap.has(projectName)) {
           this.projectTokenMap.set(projectName, new Map());
+          this.logger.log(`GraphQueryService ${projectName} had save to cache.`);
         }
         this.projectTokenMap
           .get(projectName)
@@ -75,6 +86,10 @@ export class GraphQueryService implements OnModuleInit {
   }
 
   public getAllTokenAddresses(projectName: string): string[] {
+    for (const key in this.projectTokenMap) {
+      console.log(`token:${key}`);
+      console.log(this.projectTokenMap[key].keys());
+    }
     const project = this.projectTokenMap.get(projectName);
     return project ? Array.from(project.keys()) : [];
   }
@@ -102,7 +117,7 @@ export class GraphQueryService implements OnModuleInit {
       timestamp,
     );
   }
-  private static calcuPoint(
+  public static calcuPoint(
     weightBalance: string,
     timeWeightAmountIn: string,
     timeWeightAmountOut: string,
@@ -128,7 +143,7 @@ export class GraphQueryService implements OnModuleInit {
     totalTimeWeightAmountIn
     totalTimeWeightAmountOut
   }
-  points(where:{project: "${projectId}"}) {
+  points(first:1000,where:{project: "${projectId}"}) {
     address
     balance
     weightBalance
@@ -162,7 +177,7 @@ export class GraphQueryService implements OnModuleInit {
     totalTimeWeightAmountIn
     totalTimeWeightAmountOut
   }
-  points(where: {project: "${projectId}", address: "${address}"}) {
+  points(first:1000, where: {project: "${projectId}", address: "${address}"}) {
     address
     balance
     weightBalance
@@ -184,7 +199,12 @@ export class GraphQueryService implements OnModuleInit {
 
   public async queryPointsRedistributedByProjectName(
     projectName: string,
-    ): Promise<[GraphPoint[], GraphTotalPoint]> {
+    page?: number,
+    limit?: number
+  ): Promise<[GraphPoint[], GraphTotalPoint[]]> {
+    const {_page = 1, _limit = 1000} = {_page: page, _limit: limit};
+    let skip = (_page - 1) * _limit;
+    skip = skip < 0 ? 0 : skip;
     const query = `
 {
   totalPoints(where:{project_contains: "${projectName}"}){
@@ -195,40 +215,7 @@ export class GraphQueryService implements OnModuleInit {
     totalTimeWeightAmountIn
     totalTimeWeightAmountOut
   }
-  points(where:{project_contains: "${projectName}"}) {
-    address
-    balance
-    weightBalance
-    timeWeightAmountIn
-    timeWeightAmountOut
-    project
-  }
-}
-    `;
-    const data = await this.query(query);
-    if (data && data.data && Array.isArray(data.data.totalPoints) && Array.isArray(data.data.points)) {
-      return [
-        data.data.points as GraphPoint[],
-        data.data.totalPoint as GraphTotalPoint,
-      ];
-    }
-    return [[], undefined];
-  }
-
-  public async queryPointsRedistributedByProjectNameAndAddress(
-    address: string,
-    projectName: string,
-  ): Promise<[GraphPoint[], GraphTotalPoint[]]> {
-    const query = `
-{
-  totalPoints(where:{project_contains: "${projectName}"}){
-    project
-    totalBalance
-    totalWeightBalance
-    totalTimeWeightAmountIn
-    totalTimeWeightAmountOut
-  }
-  points(where: {project_contains: "${projectName}", address: "${address}"}) {
+  points(first: ${_limit}, skip: ${skip}, where:{project_contains: "${projectName}"}) {
     address
     balance
     weightBalance
@@ -245,7 +232,70 @@ export class GraphQueryService implements OnModuleInit {
         data.data.totalPoints as GraphTotalPoint[],
       ];
     }else{
-      throw new Error(`Exception in fetching GraphQL data, project is : ${projectName}.`);
+      throw new Error(`Exception in fetching GraphQL data, project is : ${projectName}, query is : ${query}.`);
+    }
+  }
+
+  public async queryPointsRedistributedByProjectNameAndAddress(
+    address: string,
+    projectName: string,
+  ): Promise<[GraphPoint[], GraphTotalPoint[]]> {
+    const query = `
+{
+  totalPoints(where:{project_contains: "${projectName}"}){
+    project
+    totalBalance
+    totalWeightBalance
+    totalTimeWeightAmountIn
+    totalTimeWeightAmountOut
+  }
+  points(first:1000, where: {project_contains: "${projectName}", address: "${address}"}) {
+    address
+    balance
+    weightBalance
+    timeWeightAmountIn
+    timeWeightAmountOut
+    project
+  }
+}
+    `;
+    const data = await this.query(query);
+    if (data && data.data && Array.isArray(data.data.totalPoints) && Array.isArray(data.data.points)) {
+      return [
+        data.data.points as GraphPoint[],
+        data.data.totalPoints as GraphTotalPoint[],
+      ];
+    }else{
+      throw new Error(`Exception in fetching GraphQL data, project is : ${projectName}, query is : ${query}.`);
+    }
+  }
+
+  public async queryWithdrawPoints(page:number, limit:number): Promise<GraphWithdrawPoint[]> {
+    const {_page = 1, _limit = 1000} = {_page: page, _limit: limit};
+    let skip = (_page-1) * _limit;
+    skip = skip < 0 ? 0 : skip;
+    const query = `
+{
+  withdrawPoints(
+    first:${_limit}
+    skip:${skip}
+  ){
+    id
+    project
+    balance
+    weightBalance
+    address
+    timeWeightAmountIn
+    timeWeightAmountOut
+    blockTimestamp
+  }
+}
+    `;
+    const data = await this.query(query);
+    if (data && data.data && Array.isArray(data.data.withdrawPoints)) {
+      return data.data.withdrawPoints as GraphWithdrawPoint[];
+    }else{
+      throw new Error(`Exception in fetching GraphQL data, project is WithdrawPoints.`);
     }
   }
 

@@ -3,7 +3,7 @@ import {
   PointsWithoutDecimalsDto,
   RenzoPointsWithoutDecimalsDto,
 } from './pointsWithoutDecimals.dto';
-import { RenzoPoints } from 'src/explorer/renzoapi.service';
+import { RenzoPoints } from 'src/renzo/renzoapi.service';
 import { PagingMetaDto } from 'src/common/paging.dto';
 
 export class TokenPointsWithoutDecimalsDto {
