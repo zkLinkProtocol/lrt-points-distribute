@@ -7,26 +7,14 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
-import { LRUCache } from 'lru-cache';
 import { ethers } from 'ethers';
 import { ParseAddressPipe } from 'src/common/pipes/parseAddress.pipe';
 import { NOT_FOUND_EXCEPTION, SERVICE_EXCEPTION } from '../puffer/tokenPointsWithoutDecimals.dto';
-import { MagiePointsWithoutDecimalsDto } from 'src/magpie/magiePointsWithoutDecimalsDto.dto';
-import { ProjectService } from 'src/common/service/project.service';
-import { MagpieGraphQueryService } from 'src/magpie/magpieGraphQuery.service';
-
-const options = {
-  // how long to live in ms
-  ttl: 1000 * 10,
-  // return stale items before removing from cache?
-  allowStale: false,
-  ttlAutopurge: true,
-};
-
-const cache = new LRUCache(options);
-const MAGPIE_ALL_POINTS_CACHE_KEY = 'allMagpiePoints';
-const MAGPIE_ALL_POINTS_WITH_BALANCE_CACHE_KEY = 'allMagpiePointsWithBalance';
-const GRAPH_QUERY_PROJECT_ID = 'magpie';
+import { MagiePointsWithoutDecimalsDto, PointsWithoutDecimalsDto } from 'src/magpie/magiePointsWithoutDecimalsDto.dto';
+import { MagpieData, MagpiePointItemWithBalance, MagpiePointItemWithoutBalance, MagpieService } from './magpie.service';
+import { PagingOptionsDto } from 'src/common/pagingOptionsDto.dto';
+import { PaginationUtil } from 'src/common/pagination.util';
+import { PagingMetaDto } from 'src/common/paging.dto';
 
 @ApiTags('magpie')
 @ApiExcludeController(false)
@@ -34,10 +22,7 @@ const GRAPH_QUERY_PROJECT_ID = 'magpie';
 export class MagpieController {
   private readonly logger = new Logger(MagpieController.name);
 
-  constructor(
-    private projectService: ProjectService, 
-    private magpieGraphQueryService: MagpieGraphQueryService
-  ) {}
+  constructor( private magpieService: MagpieService ) {}
 
   @Get('/points')
   @ApiOperation({ summary: 'Get magpie personal points' })
@@ -50,23 +35,14 @@ export class MagpieController {
   public async getMagpiePoints(
     @Query('address', new ParseAddressPipe()) address: string,
   ): Promise<MagiePointsWithoutDecimalsDto> {
-    let finalPoints: any[], finalTotalPoints: bigint;
+    let pointData: MagpieData;
     try{
-      const pointData = await this.projectService.getPoints(GRAPH_QUERY_PROJECT_ID, address);
-      finalPoints = pointData.finalPoints;
-      finalTotalPoints = pointData.finalTotalPoints;
+      pointData = await this.magpieService.getPointsData(address);
     } catch (err) {
       this.logger.error('Get magpie all points failed', err);
       return SERVICE_EXCEPTION;
     }
-    if(!finalPoints || !finalTotalPoints){
-      return NOT_FOUND_EXCEPTION
-    }
-
-    // Get real points.
-    const [eigenpiePoints, eigenLayerPoints] = this.magpieGraphQueryService.getTotalPoints();
-
-    return this.getReturnData(finalPoints, finalTotalPoints, eigenpiePoints, eigenLayerPoints);
+    return this.getReturnData(pointData.items, pointData.realTotalEigenpiePoints, pointData.realTotalEigenLayerPoints);
   }
 
   @Get('/all/points')
@@ -87,31 +63,44 @@ export class MagpieController {
   public async getAllMagpiePoints(): Promise<
     Partial<MagiePointsWithoutDecimalsDto>
   > {
-    const allPoints = cache.get(
-      MAGPIE_ALL_POINTS_CACHE_KEY,
-    ) as MagiePointsWithoutDecimalsDto;
-    if (allPoints) {
-      return allPoints;
-    }
-
-    let cacheData: MagiePointsWithoutDecimalsDto, finalPoints: any[], finalTotalPoints: bigint;
+    let pointData: MagpieData;
     try{
-      const pointData = await this.projectService.getAllPoints(GRAPH_QUERY_PROJECT_ID);
-      finalPoints = pointData.finalPoints;
-      finalTotalPoints = pointData.finalTotalPoints;
+      pointData = await this.magpieService.getPointsDataGroupByAddress();
     } catch (err) {
       this.logger.error('Get magpie all points failed', err);
       return SERVICE_EXCEPTION;
     }
-    if(!finalPoints || !finalTotalPoints){
-      return NOT_FOUND_EXCEPTION
-    }
+    return this.getReturnData(pointData.items, pointData.realTotalEigenpiePoints, pointData.realTotalEigenLayerPoints);
+  }
 
-    // Get real points.
-    const [eigenpiePoints, eigenLayerPoints] = this.magpieGraphQueryService.getTotalPoints();
-    cacheData = this.getReturnData(finalPoints, finalTotalPoints, eigenpiePoints, eigenLayerPoints);
-    cache.set(MAGPIE_ALL_POINTS_CACHE_KEY, cacheData);
-    return cacheData;
+  @Get('/all/points/paging')
+  @ApiOperation({
+    summary:
+      'Get magpie point for all users, point are based on user token dimension',
+  })
+  @ApiOkResponse({
+    description: "Return all users' magpie points.",
+    type: MagiePointsWithoutDecimalsDto,
+  })
+  @ApiBadRequestResponse({
+    description: '{ "errno": 1, "errmsg": "Service exception" }',
+  })
+  @ApiNotFoundResponse({
+    description: '{ "errno": 1, "errmsg": "not found" }',
+  })
+  public async getPagingMagpiePoints(
+    @Query() pagingOptions: PagingOptionsDto
+  ): Promise<
+    Partial<MagiePointsWithoutDecimalsDto>
+  > {
+    let pointData: MagpieData;
+    try{
+      pointData = await this.magpieService.getPointsDataGroupByAddress();
+    } catch (err) {
+      this.logger.error('Get magpie all points failed', err);
+      return SERVICE_EXCEPTION;
+    }
+    return this.getReturnData(pointData.items, pointData.realTotalEigenpiePoints, pointData.realTotalEigenLayerPoints, pagingOptions);
   }
 
   @Get('/all/points-with-balance')
@@ -132,54 +121,93 @@ export class MagpieController {
   public async getAllMagpiePointsWithBalance(): Promise<
     Partial<MagiePointsWithoutDecimalsDto>
   > {
-    const allPoints = cache.get(
-      MAGPIE_ALL_POINTS_WITH_BALANCE_CACHE_KEY,
-    ) as MagiePointsWithoutDecimalsDto;
-    if (allPoints) {
-      return allPoints;
-    }
-
-    let cacheData: MagiePointsWithoutDecimalsDto, finalPoints: any[], finalTotalPoints: bigint;
+    let pointData: MagpieData;
     try{
-      const pointData = await this.projectService.getAllPointsWithBalance(GRAPH_QUERY_PROJECT_ID);
-      finalPoints = pointData.finalPoints;
-      finalTotalPoints = pointData.finalTotalPoints;
+      pointData = await this.magpieService.getPointsData();
     } catch (err) {
       this.logger.error('Get magpie all points failed', err);
       return SERVICE_EXCEPTION;
     }
-    if(!finalPoints || !finalTotalPoints){
-      return NOT_FOUND_EXCEPTION
-    }
+    return this.getReturnData(pointData.items, pointData.realTotalEigenpiePoints, pointData.realTotalEigenLayerPoints);
+  }
 
-    // Get real points.
-    const [eigenpiePoints, eigenLayerPoints] = this.magpieGraphQueryService.getTotalPoints();
-    cacheData = this.getReturnData(finalPoints, finalTotalPoints, eigenpiePoints, eigenLayerPoints);
-    cache.set(MAGPIE_ALL_POINTS_WITH_BALANCE_CACHE_KEY, cacheData);
-    return cacheData;
+  @Get('/all/points-with-balance/paging')
+  @ApiOperation({
+    summary:
+      'Get paging magpie point for all users, point are based on user token dimension',
+  })
+  @ApiOkResponse({
+    description: "Return all users' magpie points with balance.",
+    type: MagiePointsWithoutDecimalsDto,
+  })
+  @ApiBadRequestResponse({
+    description: '{ "errno": 1, "errmsg": "Service exception" }',
+  })
+  @ApiNotFoundResponse({
+    description: '{ "errno": 1, "errmsg": "not found" }',
+  })
+  public async getPagingMagpiePointsWithBalance(
+    @Query() pagingOptions: PagingOptionsDto
+  ): Promise<
+    Partial<MagiePointsWithoutDecimalsDto>
+  > {
+    let pointData: MagpieData;
+    try{
+      pointData = await this.magpieService.getPointsData();
+    } catch (err) {
+      this.logger.error('Get magpie all points failed', err);
+      return SERVICE_EXCEPTION;
+    }
+    return this.getReturnData(pointData.items, pointData.realTotalEigenpiePoints, pointData.realTotalEigenLayerPoints, pagingOptions);
   }
 
   private getReturnData(
-    finalPoints: any[],
-    finnalTotalPoints: bigint,
+    finalPoints: MagpiePointItemWithBalance[] | MagpiePointItemWithoutBalance[],
     eigenpiePoints: bigint,
     eigenLayerPoints: bigint,
+    pagingOptions?: PagingOptionsDto
   ): MagiePointsWithoutDecimalsDto {
-    return {
+    let list = finalPoints;
+    let meta: PagingMetaDto;
+    if(undefined != pagingOptions){
+      const {page = 1, limit = 100} = pagingOptions;
+      const paging = PaginationUtil.paginate(finalPoints, page, limit);
+      list = paging.items;
+      meta = paging.meta;
+    }
+    let res =  {
       errno: 0,
       errmsg: 'no error',
       totals: {
-        eigenpiePoints: ethers.formatEther(eigenpiePoints),
-        eigenLayerPoints: ethers.formatEther(eigenLayerPoints),
+        eigenpiePoints: Number(ethers.formatEther(eigenpiePoints)).toFixed(6),
+        eigenLayerPoints: Number(ethers.formatEther(eigenLayerPoints)).toFixed(6),
       },
-      data: finalPoints.map(point => {
-        const tmpPoints = point.points;
-        point.points = {
-          eigenpiePoints: ethers.formatEther(this.projectService.getRealPoints(tmpPoints, finnalTotalPoints, eigenpiePoints)),
-          eigenLayerPoints: ethers.formatEther(this.projectService.getRealPoints(tmpPoints, finnalTotalPoints, eigenLayerPoints)),
-        };
-        return point;
+      data: list.map(item => {
+        return  item.tokenAddress ?
+           {
+            address: item.address,
+            tokenAddress: item.tokenAddress,
+            balance: Number(ethers.formatEther(item.balance)).toFixed(6),
+            points:{
+              eigenpiePoints: Number(ethers.formatEther(item.realEigenpiePoints)).toFixed(6),
+              eigenLayerPoints: Number(ethers.formatEther(item.realEigenLayerPoints)).toFixed(6)
+            },
+            updated_at: item.updatedAt
+          } as PointsWithoutDecimalsDto
+        :
+           {
+            address: item.address,
+            points:{
+              eigenpiePoints: Number(ethers.formatEther(item.realEigenpiePoints)).toFixed(6),
+              eigenLayerPoints: Number(ethers.formatEther(item.realEigenLayerPoints)).toFixed(6)
+            },
+            updated_at: item.updatedAt
+          } as PointsWithoutDecimalsDto;
       })
-    } as MagiePointsWithoutDecimalsDto;
+    };
+    if(meta){
+      res["meta"] = meta;
+    }
+    return res as MagiePointsWithoutDecimalsDto;
   }
 }

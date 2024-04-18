@@ -33,7 +33,7 @@ export class NovaApiService {
         this.logger.error("NovaApiService init failed", err.stack);
       }
     };
-    await func();
+    func();
     setInterval(func, 1000 * 10);
   }
 

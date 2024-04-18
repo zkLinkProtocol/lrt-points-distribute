@@ -45,7 +45,7 @@ export class RenzoService{
     private readonly renzoApiService: RenzoApiService,
     private readonly projectGraphService: ProjectGraphService,
     private readonly graphQueryService: GraphQueryService,
-    private readonly configService: ConfigService,
+    private readonly configService: ConfigService
   ) {
     this.logger = new Logger(RenzoService.name);
     this.l1Erc20BridgeEthereum = configService.get<string>('l1Erc20BridgeEthereum');
@@ -165,9 +165,7 @@ export class RenzoService{
   }
 
   private async getTokensMapBriageTokens(): Promise<Map<string, string>>{
-    const tokens = this.tokenAddress.map(item=>{
-      return item.toLocaleLowerCase();
-    });
+    const tokens = this.tokenAddress;
     const tokensMapBridgeTokens: Map<string, string> = new Map;
     const allTokens = await this.explorerService.getTokens();
     for (const item of allTokens) {

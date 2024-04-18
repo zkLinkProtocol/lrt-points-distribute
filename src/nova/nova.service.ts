@@ -58,8 +58,8 @@ export class NovaService {
         this.projectName
       );
     
-    let tempProjectIdGraphTotalPoint: Map<String, bigint> = new Map;
-    let tempProjectIdTotalPoints: Map<String, number> = new Map;
+    let tempProjectIdGraphTotalPoint: Map<string, bigint> = new Map;
+    let tempProjectIdTotalPoints: Map<string, number> = new Map;
     let finalTotalPoints: bigint = BigInt(0);
     for (const item of totalPoints) {
       const projectArr = item.project.split('-');

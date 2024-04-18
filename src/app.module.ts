@@ -23,11 +23,12 @@ import { NovaApiService } from './nova/novaapi.service';
 import { NovaService } from './nova/nova.service';
 import { NovaController } from './nova/nova.controller';
 import { RenzoPagingController } from './renzo/renzo.paging.controller';
-import { MagpiePagingController } from './magpie/magpie.paging.controller';
 import { NovaPagingController } from './nova/nova.paging.controller';
-import { RsethPagingController } from './rseth/rseth.paging.controller';
 import { ProjectGraphService } from './common/service/projectGraph.service';
 import { WithdrawService } from './common/service/withdraw.service';
+import { MagpieService } from './magpie/magpie.service';
+import { RsethApiService } from './rseth/rseth.api.service';
+import { RsethService } from './rseth/rseth.service';
 
 @Module({
   imports: [
@@ -54,8 +55,6 @@ import { WithdrawService } from './common/service/withdraw.service';
     MagpieController,
     NovaController, 
     RenzoPagingController, 
-    RsethPagingController, 
-    MagpiePagingController,
     NovaPagingController
   ],
   providers: [
@@ -75,7 +74,10 @@ import { WithdrawService } from './common/service/withdraw.service';
     NovaApiService,
     NovaService,
     ProjectGraphService,
-    WithdrawService
+    WithdrawService,
+    MagpieService,
+    RsethApiService,
+    RsethService,
   ],
 })
 export class AppModule {}

@@ -45,7 +45,7 @@ export class WithdrawService implements OnModuleInit{
             this.logger.error(`${WithdrawService.name} init failed`, err.stack);
         }
     };
-    await func();
+    func();
     setInterval(func, 1000 * 60);
   }
 

@@ -50,7 +50,7 @@ export class GraphQueryService implements OnModuleInit {
         this.logger.error("GraphQueryService init failed", err.stack);
       }
     };
-    await func();
+    func();
     setInterval(func, 1000 * 600);
   }
 
@@ -72,8 +72,8 @@ export class GraphQueryService implements OnModuleInit {
       const allPoints = data.data.totalPoints as GraphTotalPoint[];
       allPoints.forEach((totalPoint) => {
         const projectArr = totalPoint.project.split('-');
-        const projectName = projectArr[0];
-        const tokenAddress = projectArr[1];
+        const projectName = projectArr[0].toLocaleLowerCase();
+        const tokenAddress = projectArr[1].toLocaleLowerCase();
         if (!this.projectTokenMap.has(projectName)) {
           this.projectTokenMap.set(projectName, new Map());
           this.logger.log(`GraphQueryService ${projectName} had save to cache.`);
@@ -86,10 +86,6 @@ export class GraphQueryService implements OnModuleInit {
   }
 
   public getAllTokenAddresses(projectName: string): string[] {
-    for (const key in this.projectTokenMap) {
-      console.log(`token:${key}`);
-      console.log(this.projectTokenMap[key].keys());
-    }
     const project = this.projectTokenMap.get(projectName);
     return project ? Array.from(project.keys()) : [];
   }
