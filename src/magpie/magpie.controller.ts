@@ -175,14 +175,14 @@ export class MagpieController {
       list = paging.items;
       meta = paging.meta;
     }
-    const res =  {
+    let res =  {
       errno: 0,
       errmsg: 'no error',
       totals: {
         eigenpiePoints: Number(ethers.formatEther(eigenpiePoints)).toFixed(6),
         eigenLayerPoints: Number(ethers.formatEther(eigenLayerPoints)).toFixed(6),
       },
-      data: finalPoints.map(item => {
+      data: list.map(item => {
         return  item.tokenAddress ?
            {
             address: item.address,
