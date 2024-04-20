@@ -235,8 +235,9 @@ export class GraphQueryService implements OnModuleInit {
   public async queryPointsRedistributedByProjectNameAndAddress(
     address: string,
     projectName: string,
+    subProject: string = ""
   ): Promise<[GraphPoint[], GraphTotalPoint[]]> {
-    const query = `
+    const query = subProject == "" ? `
 {
   totalPoints(where:{project_contains: "${projectName}"}){
     project
@@ -246,6 +247,26 @@ export class GraphQueryService implements OnModuleInit {
     totalTimeWeightAmountOut
   }
   points(first:1000, where: {project_contains: "${projectName}", address: "${address}"}) {
+    address
+    balance
+    weightBalance
+    timeWeightAmountIn
+    timeWeightAmountOut
+    project
+  }
+}
+    `
+    :
+    `
+{
+  totalPoints(where:{project_contains: "${projectName}"}){
+    project
+    totalBalance
+    totalWeightBalance
+    totalTimeWeightAmountIn
+    totalTimeWeightAmountOut
+  }
+  points(first:1000, where: {project_contains: "${projectName}", address: "${address}", subProject: "${subProject}"}) {
     address
     balance
     weightBalance

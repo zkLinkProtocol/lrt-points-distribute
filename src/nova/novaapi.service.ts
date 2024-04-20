@@ -45,7 +45,8 @@ export class NovaApiService {
   }
 
   public getNovaPoint(tokenAddress: String): NovaPoints{
-    return this.tokenNovaPoints.get(tokenAddress);
+    // if not found, return empty NovaPoints
+    return this.tokenNovaPoints.get(tokenAddress) || { novaPoint: 0, referPoint: 0 };
   }
 
   public async fetchNovaPoints(tokenAddress: string): Promise<NovaPoints> {
@@ -61,7 +62,7 @@ export class NovaApiService {
       return { novaPoint: 0, referPoint: 0 };
     }
     const points = response.result;
-    if (!points || !points.novaPoint) {
+    if (!points) {
       this.logger.error(`No nova realpoints, tokenAddress: ${tokenAddress}`);
       return { novaPoint: 0, referPoint: 0 };
     }

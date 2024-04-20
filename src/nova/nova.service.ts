@@ -51,11 +51,12 @@ export class NovaService {
     }
   }
 
-  public async getAllTokensPoints( address: string ): Promise<PointData> {
+  public async getAllTokensPoints( address: string, subProject: string ): Promise<PointData> {
     const [points, totalPoints] = 
       await this.graphQueryService.queryPointsRedistributedByProjectNameAndAddress(
         address, 
-        this.projectName
+        this.projectName,
+        subProject
       );
     
     let tempProjectIdGraphTotalPoint: Map<string, bigint> = new Map;
@@ -65,7 +66,7 @@ export class NovaService {
       const projectArr = item.project.split('-');
       const tokenAddress = projectArr[1];
       // Get real points.
-      let points: NovaPoints;
+      let points: NovaPoints = null;
       try{
         points = await this.novaApiService.getNovaPoint(tokenAddress);
       } catch (err) {

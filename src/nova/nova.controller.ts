@@ -53,11 +53,12 @@ export class NovaController {
     description: '{ "errno": 1, "errmsg": "not found" }',
   })
   public async getNovaPoints(
-    @Query('address', new ParseAddressPipe()) address: string
+    @Query('address', new ParseAddressPipe()) address: string,
+    @Query('subProject') subProject: string = ''
   ): Promise<NovaPointsWithoutDecimalsDto> {
     let finalPoints: any[], finalTotalPoints: bigint;
     try{
-      const pointData = await this.novaService.getAllTokensPoints(address);
+      const pointData = await this.novaService.getAllTokensPoints(address, subProject);
       finalPoints = pointData.finalPoints;
       finalTotalPoints = pointData.finalTotalPoints;
     } catch (err) {
@@ -71,7 +72,7 @@ export class NovaController {
     return {
       errno: 0,
       errmsg: 'no error',
-      total_points: finalTotalPoints.toString(),
+      total_points: BigNumber(ethers.formatEther(finalTotalPoints)).toFixed(6),
       data: finalPoints.map(point => {
         point.points = BigNumber(ethers.formatEther(point.points)).toFixed(6);
         point.balance = BigNumber(ethers.formatEther(point.balance)).toFixed(6);
