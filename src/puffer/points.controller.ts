@@ -5,7 +5,7 @@ import {
   NotFoundException,
   Param,
   Query,
-} from '@nestjs/common';
+} from "@nestjs/common";
 import {
   ApiBadRequestResponse,
   ApiExcludeController,
@@ -13,26 +13,26 @@ import {
   ApiOperation,
   ApiParam,
   ApiTags,
-} from '@nestjs/swagger';
-import { ConfigService } from '@nestjs/config';
-import { LRUCache } from 'lru-cache';
-import { ethers } from 'ethers';
+} from "@nestjs/swagger";
+import { ConfigService } from "@nestjs/config";
+import { LRUCache } from "lru-cache";
+import { ethers } from "ethers";
 import {
   ADDRESS_REGEX_PATTERN,
   ParseAddressPipe,
-} from 'src/common/pipes/parseAddress.pipe';
-import { RenzoPointItem, RenzoService } from 'src/renzo/renzo.service';
-import { ParseProjectNamePipe } from 'src/common/pipes/parseProjectName.pipe';
-import { PagingOptionsDto } from 'src/common/pagingOptionsDto.dto';
-import { PaginationUtil } from 'src/common/pagination.util';
-import { PuffPointsService, PufferData } from 'src/puffer/puffPoints.service';
-import { GraphQueryService } from 'src/common/service/graphQuery.service';
-import { TokenPointsDto } from './tokenPoints.dto';
-import { TokenPointsWithoutDecimalsDto } from './tokenPointsWithoutDecimals.dto';
-import { PointsWithoutDecimalsDto } from './pointsWithoutDecimals.dto';
-import { PointsDto } from './points.dto';
-import { TokensDto } from './tokens.dto';
-import { NovaService } from 'src/nova/nova.service';
+} from "src/common/pipes/parseAddress.pipe";
+import { RenzoPointItem, RenzoService } from "src/renzo/renzo.service";
+import { ParseProjectNamePipe } from "src/common/pipes/parseProjectName.pipe";
+import { PagingOptionsDto } from "src/common/pagingOptionsDto.dto";
+import { PaginationUtil } from "src/common/pagination.util";
+import { PuffPointsService, PufferData } from "src/puffer/puffPoints.service";
+import { GraphQueryService } from "src/common/service/graphQuery.service";
+import { TokenPointsDto } from "./tokenPoints.dto";
+import { TokenPointsWithoutDecimalsDto } from "./tokenPointsWithoutDecimals.dto";
+import { PointsWithoutDecimalsDto } from "./pointsWithoutDecimals.dto";
+import { PointsDto } from "./points.dto";
+import { TokensDto } from "./tokens.dto";
+import { NovaService } from "src/nova/nova.service";
 
 const options = {
   // how long to live in ms
@@ -43,12 +43,12 @@ const options = {
 };
 
 const cache = new LRUCache(options);
-const RENZO_ALL_POINTS_CACHE_KEY = 'allRenzoPoints';
-const PUFFER_ADDRESS_POINTS_FORWARD = 'pufferAddressPointsForward';
+const RENZO_ALL_POINTS_CACHE_KEY = "allRenzoPoints";
+const PUFFER_ADDRESS_POINTS_FORWARD = "pufferAddressPointsForward";
 
-@ApiTags('points')
+@ApiTags("points")
 @ApiExcludeController(false)
-@Controller('points')
+@Controller("points")
 export class PointsController {
   private readonly logger = new Logger(PointsController.name);
   private readonly puffPointsTokenAddress: string;
@@ -61,28 +61,28 @@ export class PointsController {
     private readonly novaService: NovaService,
   ) {
     this.puffPointsTokenAddress = configService.get<string>(
-      'puffPoints.tokenAddress',
+      "puffPoints.tokenAddress",
     );
   }
 
-  @Get('tokens')
-  @ApiOperation({ summary: 'Get all tokens' })
+  @Get("tokens")
+  @ApiOperation({ summary: "Get all tokens" })
   public async getTokens(
-    @Query('projectName', new ParseProjectNamePipe()) projectName: string,
+    @Query("projectName", new ParseProjectNamePipe()) projectName: string,
   ): Promise<TokensDto> {
     const result =
       await this.graphQueryService.getAllTokenAddresses(projectName);
     return {
       errno: 0,
-      errmsg: 'no error',
+      errmsg: "no error",
       data: result,
     };
   }
 
-  @Get('renzo/points')
-  @ApiOperation({ summary: 'Get renzo personal points' })
+  @Get("renzo/points")
+  @ApiOperation({ summary: "Get renzo personal points" })
   public async getRenzoPoints(
-    @Query('address', new ParseAddressPipe()) address: string,
+    @Query("address", new ParseAddressPipe()) address: string,
   ): Promise<PointsDto[]> {
     const data = await this.renzoService.getPointsData(address);
     const result = data.items.map((point: RenzoPointItem) => {
@@ -97,10 +97,10 @@ export class PointsController {
     return result;
   }
 
-  @Get('renzo/all/points')
+  @Get("renzo/all/points")
   @ApiOperation({
     summary:
-      'Get renzo point for all users, point are based on user token dimension',
+      "Get renzo point for all users, point are based on user token dimension",
   })
   @ApiOkResponse({
     description:
@@ -134,38 +134,38 @@ export class PointsController {
 
       const cachePoints: TokenPointsWithoutDecimalsDto = {
         errno: 0,
-        errmsg: 'no error',
+        errmsg: "no error",
         total_points: totalPoints.toFixed(6),
         data: result,
       };
       cache.set(RENZO_ALL_POINTS_CACHE_KEY, cachePoints);
       return cachePoints;
     } catch (err) {
-      this.logger.error('Get renzo all points failed', err.stack);
+      this.logger.error("Get renzo all points failed", err.stack);
       return {
         errno: 1,
-        errmsg: 'Service exception',
-        total_points: '0',
+        errmsg: "Service exception",
+        total_points: "0",
         data: [],
       };
     }
   }
 
-  @Get(':address/pufferpoints')
+  @Get(":address/pufferpoints")
   @ApiParam({
-    name: 'address',
+    name: "address",
     schema: { pattern: ADDRESS_REGEX_PATTERN },
-    description: 'Valid hex address',
+    description: "Valid hex address",
   })
   @ApiOkResponse({
-    description: 'Return the user puff points',
+    description: "Return the user puff points",
     type: TokenPointsWithoutDecimalsDto,
   })
   @ApiBadRequestResponse({
     description: '{ "message": "Not Found", "statusCode": 404 }',
   })
   public async pufferPoints(
-    @Param('address', new ParseAddressPipe()) address: string,
+    @Param("address", new ParseAddressPipe()) address: string,
   ): Promise<TokenPointsWithoutDecimalsDto> {
     let res: TokenPointsWithoutDecimalsDto, data: PufferData;
     try {
@@ -174,8 +174,8 @@ export class PointsController {
       this.logger.log(e.errmsg, e.stack);
       res = {
         errno: 1,
-        errmsg: 'Service exception',
-        total_points: '0',
+        errmsg: "Service exception",
+        total_points: "0",
         data: [] as PointsWithoutDecimalsDto[],
       };
     }
@@ -189,7 +189,7 @@ export class PointsController {
     const point = data.items[0];
     res = {
       errno: 0,
-      errmsg: 'no error',
+      errmsg: "no error",
       total_points: data.realTotalPoints.toString(),
       data: [
         {
@@ -204,7 +204,7 @@ export class PointsController {
     return res;
   }
 
-  @Get('/allpufferpoints2')
+  @Get("/allpufferpoints2")
   @ApiOkResponse({
     description:
       "Return all users' PufferPoints. The rule is to add 30 points per hour.\nTiming starts from the user's first deposit, with each user having an independent timer.",
@@ -220,7 +220,7 @@ export class PointsController {
       const allPointsFilter = data.items.filter((p) => p.balance >= 10 ** 12);
       res = {
         errno: 0,
-        errmsg: 'no error',
+        errmsg: "no error",
         total_points: data.realTotalPoints.toString(),
         data: allPointsFilter.map((p) => {
           return {
@@ -235,8 +235,8 @@ export class PointsController {
     } catch (e) {
       res = {
         errno: 1,
-        errmsg: 'Not Found',
-        total_points: '0',
+        errmsg: "Not Found",
+        total_points: "0",
         data: [] as PointsWithoutDecimalsDto[],
       };
     }
@@ -244,9 +244,9 @@ export class PointsController {
     return res;
   }
 
-  @Get('forward/puffer/zklink_point')
+  @Get("forward/puffer/zklink_point")
   public async getForwardPuffer(
-    @Query('address', new ParseAddressPipe()) address: string,
+    @Query("address", new ParseAddressPipe()) address: string,
   ) {
     const cacheKey = PUFFER_ADDRESS_POINTS_FORWARD + address;
     const pufReadDataCache = cache.get(cacheKey);
@@ -256,10 +256,10 @@ export class PointsController {
     const realData = await fetch(
       `https://quest-api.puffer.fi/puffer-quest/third/query_user_points?address=${address}`,
       {
-        method: 'get',
+        method: "get",
         headers: {
-          'Content-Type': 'application/json',
-          'client-id': '08879426f59a4b038b7755b274bc19dc',
+          "Content-Type": "application/json",
+          "client-id": "08879426f59a4b038b7755b274bc19dc",
         },
       },
     );
@@ -268,7 +268,7 @@ export class PointsController {
     return pufReadData;
   }
 
-  @Get('/allpufferpoints')
+  @Get("/allpufferpoints")
   @ApiOkResponse({
     description:
       "Return all users' PufferPoints with a decimals of 18. The rule is to add 30 points per hour.\nTiming starts from the user's first deposit, with each user having an independent timer.",
@@ -278,7 +278,7 @@ export class PointsController {
     description: '{ "message": "Not Found", "statusCode": 404 }',
   })
   public async allPufferPoints(): Promise<TokenPointsDto> {
-    this.logger.log('allPufferPoints');
+    this.logger.log("allPufferPoints");
     const data = this.puffPointsService.getPointsData();
     const allPointsFilter = data.items.filter((p) => p.balance > 10 ** 12);
     const result = allPointsFilter.map((p) => {
@@ -297,7 +297,7 @@ export class PointsController {
     };
   }
 
-  @Get('/allpufferpoints/paging')
+  @Get("/allpufferpoints/paging")
   @ApiOkResponse({
     description:
       "Return paginated results of all users' PufferPoints with a decimals of 18. The rule is to add 30 points per hour.\nTiming starts from the user's first deposit, with each user having an independent timer.",
@@ -309,7 +309,7 @@ export class PointsController {
   public async allPufferPointsPaging(
     @Query() pagingOptions: PagingOptionsDto,
   ): Promise<TokenPointsDto> {
-    this.logger.log('allPufferPoints');
+    this.logger.log("allPufferPoints");
     const data = this.puffPointsService.getPointsData();
     const allPointsFilter = data.items.filter((p) => p.balance >= 10 ** 12);
     const { page = 1, limit = 100 } = pagingOptions;
@@ -331,7 +331,7 @@ export class PointsController {
     };
   }
 
-  @Get('/allpufferpoints2/paging')
+  @Get("/allpufferpoints2/paging")
   @ApiOkResponse({
     description:
       "Return paginated results of all users' PufferPoints. The rule is to add 30 points per hour.\nTiming starts from the user's first deposit, with each user having an independent timer.",
@@ -351,7 +351,7 @@ export class PointsController {
       const paging = PaginationUtil.paginate(allPointsFilter, page, limit);
       res = {
         errno: 0,
-        errmsg: 'no error',
+        errmsg: "no error",
         total_points: data.realTotalPoints.toString(),
         meta: paging.meta,
         data: paging.items.map((p) => {
@@ -367,8 +367,8 @@ export class PointsController {
     } catch (e) {
       res = {
         errno: 1,
-        errmsg: 'Not Found',
-        total_points: '0',
+        errmsg: "Not Found",
+        total_points: "0",
         data: [] as PointsWithoutDecimalsDto[],
       };
     }
