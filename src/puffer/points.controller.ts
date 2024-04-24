@@ -4,7 +4,7 @@ import {
   Logger,
   NotFoundException,
   Param,
-  Query
+  Query,
 } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
@@ -15,10 +15,12 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
-import { BigNumber } from 'bignumber.js';
 import { LRUCache } from 'lru-cache';
 import { ethers } from 'ethers';
-import { ADDRESS_REGEX_PATTERN, ParseAddressPipe } from 'src/common/pipes/parseAddress.pipe';
+import {
+  ADDRESS_REGEX_PATTERN,
+  ParseAddressPipe,
+} from 'src/common/pipes/parseAddress.pipe';
 import { RenzoPointItem, RenzoService } from 'src/renzo/renzo.service';
 import { ParseProjectNamePipe } from 'src/common/pipes/parseProjectName.pipe';
 import { PagingOptionsDto } from 'src/common/pagingOptionsDto.dto';
@@ -43,7 +45,6 @@ const options = {
 const cache = new LRUCache(options);
 const RENZO_ALL_POINTS_CACHE_KEY = 'allRenzoPoints';
 const PUFFER_ADDRESS_POINTS_FORWARD = 'pufferAddressPointsForward';
-const LAYERBANK_LPUFFER_TOKEN = '0xdd6105865380984716C6B2a1591F9643e6ED1C48';
 
 @ApiTags('points')
 @ApiExcludeController(false)
@@ -57,7 +58,7 @@ export class PointsController {
     private readonly renzoService: RenzoService,
     private readonly graphQueryService: GraphQueryService,
     private configService: ConfigService,
-    private readonly novaService: NovaService
+    private readonly novaService: NovaService,
   ) {
     this.puffPointsTokenAddress = configService.get<string>(
       'puffPoints.tokenAddress',
@@ -69,7 +70,8 @@ export class PointsController {
   public async getTokens(
     @Query('projectName', new ParseProjectNamePipe()) projectName: string,
   ): Promise<TokensDto> {
-    const result = await this.graphQueryService.getAllTokenAddresses(projectName);
+    const result =
+      await this.graphQueryService.getAllTokenAddresses(projectName);
     return {
       errno: 0,
       errmsg: 'no error',
@@ -109,15 +111,17 @@ export class PointsController {
     description: '{ "message": "Not Found", "statusCode": 404 }',
   })
   public async getAllRenzoPoints(): Promise<TokenPointsWithoutDecimalsDto> {
-    const allPoints = cache.get(RENZO_ALL_POINTS_CACHE_KEY) as TokenPointsWithoutDecimalsDto;
+    const allPoints = cache.get(
+      RENZO_ALL_POINTS_CACHE_KEY,
+    ) as TokenPointsWithoutDecimalsDto;
     if (allPoints) {
       return allPoints;
     }
 
     try {
       const data = await this.renzoService.getPointsData();
-      let result: PointsWithoutDecimalsDto[] = [];
-      let totalPoints = data.realTotalRenzoPoints;
+      const result: PointsWithoutDecimalsDto[] = [];
+      const totalPoints = data.realTotalRenzoPoints;
       for (const point of data.items) {
         const dto: PointsWithoutDecimalsDto = {
           address: point.address,
@@ -163,8 +167,7 @@ export class PointsController {
   public async pufferPoints(
     @Param('address', new ParseAddressPipe()) address: string,
   ): Promise<TokenPointsWithoutDecimalsDto> {
-    let res: TokenPointsWithoutDecimalsDto,
-        data: PufferData;
+    let res: TokenPointsWithoutDecimalsDto, data: PufferData;
     try {
       data = this.puffPointsService.getPointsData(address.toLocaleLowerCase());
     } catch (e) {
@@ -181,7 +184,8 @@ export class PointsController {
     }
 
     // layerbank point
-    const layerbankPoint = await this.puffPointsService.getLayerBankPoint(address);
+    const layerbankPoint =
+      await this.puffPointsService.getLayerBankPoint(address);
     const point = data.items[0];
     res = {
       errno: 0,
@@ -191,7 +195,7 @@ export class PointsController {
         {
           address: point.address,
           tokenAddress: point.tokenAddress,
-          points: (point.realPoints+layerbankPoint).toString(),
+          points: (point.realPoints + layerbankPoint).toString(),
           balance: Number(ethers.formatEther(point.balance)).toFixed(6),
           updated_at: point.updatedAt,
         },
@@ -213,9 +217,7 @@ export class PointsController {
     let res: TokenPointsWithoutDecimalsDto;
     try {
       const data = this.puffPointsService.getPointsData();
-      const allPointsFilter = data.items.filter(
-        (p) => p.balance >= 10**12,
-      );
+      const allPointsFilter = data.items.filter((p) => p.balance >= 10 ** 12);
       res = {
         errno: 0,
         errmsg: 'no error',
@@ -246,10 +248,8 @@ export class PointsController {
   public async getForwardPuffer(
     @Query('address', new ParseAddressPipe()) address: string,
   ) {
-    const cacheKey = PUFFER_ADDRESS_POINTS_FORWARD+address;
-    const pufReadDataCache = cache.get(
-      cacheKey,
-    );
+    const cacheKey = PUFFER_ADDRESS_POINTS_FORWARD + address;
+    const pufReadDataCache = cache.get(cacheKey);
     if (pufReadDataCache) {
       return pufReadDataCache;
     }
@@ -280,9 +280,7 @@ export class PointsController {
   public async allPufferPoints(): Promise<TokenPointsDto> {
     this.logger.log('allPufferPoints');
     const data = this.puffPointsService.getPointsData();
-    const allPointsFilter = data.items.filter(
-      (p) => p.balance > 10**12,
-    );
+    const allPointsFilter = data.items.filter((p) => p.balance > 10 ** 12);
     const result = allPointsFilter.map((p) => {
       return {
         address: p.address,
@@ -309,14 +307,12 @@ export class PointsController {
     description: '{ "message": "Not Found", "statusCode": 404 }',
   })
   public async allPufferPointsPaging(
-    @Query() pagingOptions: PagingOptionsDto
+    @Query() pagingOptions: PagingOptionsDto,
   ): Promise<TokenPointsDto> {
     this.logger.log('allPufferPoints');
     const data = this.puffPointsService.getPointsData();
-    const allPointsFilter = data.items.filter(
-      (p) => p.balance >= 10**12
-    );
-    const {page = 1, limit = 100} = pagingOptions;
+    const allPointsFilter = data.items.filter((p) => p.balance >= 10 ** 12);
+    const { page = 1, limit = 100 } = pagingOptions;
     const paging = PaginationUtil.paginate(allPointsFilter, page, limit);
     const result = paging.items.map((p) => {
       return {
@@ -345,15 +341,13 @@ export class PointsController {
     description: '{ "message": "Not Found", "statusCode": 404 }',
   })
   public async allPufferPointsPaging2(
-    @Query() pagingOptions: PagingOptionsDto
+    @Query() pagingOptions: PagingOptionsDto,
   ): Promise<TokenPointsWithoutDecimalsDto> {
     let res: TokenPointsWithoutDecimalsDto;
     try {
       const data = this.puffPointsService.getPointsData();
-      const allPointsFilter = data.items.filter(
-        (p) => p.balance > 10**12,
-      );
-      const {page = 1, limit = 100} = pagingOptions;
+      const allPointsFilter = data.items.filter((p) => p.balance > 10 ** 12);
+      const { page = 1, limit = 100 } = pagingOptions;
       const paging = PaginationUtil.paginate(allPointsFilter, page, limit);
       res = {
         errno: 0,
