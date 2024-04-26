@@ -20,5 +20,5 @@ export class TokensDto {
     description: "token address",
     nullable: true,
   })
-  public readonly data?: String[];
+  public readonly data?: string[];
 }

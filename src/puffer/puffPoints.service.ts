@@ -6,6 +6,7 @@ import {
 import { GraphQueryService } from "src/common/service/graphQuery.service";
 import BigNumber from "bignumber.js";
 import { NovaService } from "src/nova/nova.service";
+import { ConfigService } from "@nestjs/config";
 
 export interface PufferPointItem {
   address: string;
@@ -24,6 +25,26 @@ export interface PufferData {
   items: PufferPointItem[];
 }
 
+interface PufferElPoints {
+  pools: {
+    balance: string;
+    decimals: string;
+    id: string;
+    name: string;
+    symbol: string;
+    totalSupplied: string;
+    underlying: string;
+  }[];
+  userPosition: {
+    positions: {
+      id: string;
+      pool: string;
+      supplied: string;
+      token: string;
+    }[];
+  };
+}
+
 const LAYERBANK_LPUFFER =
   "0xdd6105865380984716C6B2a1591F9643e6ED1C48".toLocaleLowerCase();
 
@@ -35,13 +56,18 @@ export class PuffPointsService {
   private realTotalPoints: number = 0;
   private localTotalPoints: bigint = BigInt(0);
   private localPoints: PufferPointItem[] = [];
+  private puffElPointsGraphApi: string;
 
   public constructor(
     private readonly projectGraphService: ProjectGraphService,
     private readonly graphQueryService: GraphQueryService,
     private readonly novaService: NovaService,
+    private readonly configService: ConfigService,
   ) {
     this.logger = new Logger(PuffPointsService.name);
+    this.puffElPointsGraphApi = this.configService.get<string>(
+      "novaPointPufferElPointsGraphApi",
+    );
   }
 
   public async onModuleInit() {
@@ -168,5 +194,46 @@ export class PuffPointsService {
         .toNumber();
     }
     return 0;
+  }
+
+  public async getPuffElPointsByAddress(
+    address: string,
+  ): Promise<PufferElPoints> {
+    try {
+      const body = {
+        query: `{
+          pools(first: 1000) {
+            decimals
+            id
+            name
+            symbol
+            totalSupplied
+            underlying
+            balance
+          }
+          userPosition(id: "${address}") {
+            id
+            positions {
+              id
+              pool
+              supplied
+              token
+            }
+          }
+        }`,
+      };
+
+      const response = await fetch(this.puffElPointsGraphApi, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await response.json();
+
+      return data.data;
+    } catch (err) {
+      this.logger.error("Fetch magpie graph query data faild", err.stack);
+      return undefined;
+    }
   }
 }
