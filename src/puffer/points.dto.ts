@@ -73,6 +73,20 @@ export class ElPointsDtoData {
 
   @ApiProperty({
     type: String,
+    description: "total puffer el balance",
+    example: "1000000000",
+  })
+  balanceSum: string;
+
+  @ApiProperty({
+    type: String,
+    description: "user Account balance",
+    example: "1000000000",
+  })
+  balanceDirect: string;
+
+  @ApiProperty({
+    type: String,
     description: "user Account balance",
     example: "1000000000",
   })

@@ -239,38 +239,52 @@ export class PointsController {
       const balanceFromDappTotal = data.userPosition.positions.reduce(
         (prev, cur) => {
           const pool = data.pools.find((pool) => pool.id === cur.pool);
-          const shareBalance =
-            (BigInt(pool.balance) * BigInt(cur.supplied)) /
-            BigInt(pool.totalSupplied);
-          return prev + shareBalance;
+          if (pool.name === "LayerBank") {
+            const shareBalance =
+              (BigInt(pool.balance) * BigInt(cur.supplied)) /
+              BigInt(pool.totalSupplied);
+            return prev + shareBalance;
+          }
+          return prev;
         },
         BigInt(0),
       );
 
-      const balanceFromDappTotalDetails = data.userPosition.positions.map(
-        (position) => {
+      const balanceFromDappTotalDetails = data.userPosition.positions
+        .map((position) => {
           const pool = data.pools.find((pool) => pool.id === position.pool);
-          return {
-            dappName: pool.name,
-            balance: (
-              (BigInt(pool.balance) * BigInt(position.supplied)) /
-              BigInt(pool.totalSupplied)
-            ).toString(),
-          };
-        },
-      );
+          if (pool.name === "LayerBank")
+            return {
+              dappName: pool.name,
+              balance: Number(
+                ethers.formatEther(
+                  (BigInt(pool.balance) * BigInt(position.supplied)) /
+                    BigInt(pool.totalSupplied),
+                ),
+              ).toFixed(6),
+            };
+        })
+        .filter((i) => !!i);
+
+      const balanceDirect = pufPointsData.items[0]?.balance ?? BigInt(0);
 
       const res = {
         address: address,
         points: points,
+        balanceDirect: Number(ethers.formatEther(balanceDirect)).toFixed(6),
+        balanceSum: Number(
+          ethers.formatEther(balanceDirect + balanceFromDappTotal),
+        ).toFixed(6),
         tokenAddress: data.userPosition.positions[0].token,
-        balanceFromDappTotal: balanceFromDappTotal.toString(),
+        balanceFromDappTotal: Number(
+          ethers.formatEther(balanceFromDappTotal),
+        ).toFixed(),
         balanceFromDappTotalDetails: balanceFromDappTotalDetails,
       };
 
       return {
         errno: 0,
-        errmsg: "Service exception",
+        errmsg: "no error",
         data: res,
       };
     } catch (e) {
