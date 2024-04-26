@@ -278,7 +278,7 @@ export class PointsController {
         tokenAddress: data.userPosition.positions[0].token,
         balanceFromDappTotal: Number(
           ethers.formatEther(balanceFromDappTotal),
-        ).toFixed(),
+        ).toFixed(6),
         balanceFromDappTotalDetails: balanceFromDappTotalDetails,
       };
 
