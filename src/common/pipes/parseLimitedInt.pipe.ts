@@ -2,7 +2,7 @@ import {
   ArgumentMetadata,
   ParseIntPipe,
   ParseIntPipeOptions,
-} from '@nestjs/common';
+} from "@nestjs/common";
 
 declare interface ParseLimitedIntPipeOptions extends ParseIntPipeOptions {
   min?: number;

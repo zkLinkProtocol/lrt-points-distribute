@@ -1,5 +1,5 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { Injectable, Logger } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 
 export interface MagpieGraphTotalPoint {
   id: string;
@@ -10,17 +10,16 @@ export interface MagpieGraphTotalPoint {
 @Injectable()
 export class MagpieGraphQueryService {
   private readonly logger: Logger;
-  private readonly magpiePointRedistributeGraphApi: string = "https://gateway-arbitrum.network.thegraph.com/api/db54be382da0a4d60b8ea908242dda0c/subgraphs/id/F2wKriMMFuc8sMtFxYd3Kew46DHvBGfGdTvhvvNAWg8x";
+  private readonly magpiePointRedistributeGraphApi: string =
+    "https://gateway-arbitrum.network.thegraph.com/api/db54be382da0a4d60b8ea908242dda0c/subgraphs/id/F2wKriMMFuc8sMtFxYd3Kew46DHvBGfGdTvhvvNAWg8x";
   private readonly magpieUserinfoId: string;
-  
+
   public constructor(configService: ConfigService) {
     this.logger = new Logger(MagpieGraphQueryService.name);
-    this.magpieUserinfoId = configService.get<string>(
-      'l1Erc20BridgeEthereum',
-    );
+    this.magpieUserinfoId = configService.get<string>("l1Erc20BridgeEthereum");
   }
 
-  public async getRealData():Promise<MagpieGraphTotalPoint> {
+  public async getRealData(): Promise<MagpieGraphTotalPoint> {
     const query = `
       {
         userInfo(id:"${this.magpieUserinfoId}") {
@@ -40,13 +39,13 @@ export class MagpieGraphQueryService {
   }
 
   private async query(query: string) {
-    try{
+    try {
       const body = {
         query: query,
       };
       const response = await fetch(this.magpiePointRedistributeGraphApi, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
       const data = await response.json();

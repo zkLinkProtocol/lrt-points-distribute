@@ -1,12 +1,12 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger } from "@nestjs/common";
 import {
   GraphPoint,
   GraphQueryService,
   GraphTotalPoint,
-} from 'src/common/service/graphQuery.service';
-import { BigNumber } from 'bignumber.js';
-import { WithdrawService } from 'src/common/service/withdraw.service';
-import transferFaildData from '../transferFaild.json';
+} from "src/common/service/graphQuery.service";
+import { BigNumber } from "bignumber.js";
+import { WithdrawService } from "src/common/service/withdraw.service";
+import transferFaildData from "../transferFaild.json";
 
 export interface LocalPointsItem {
   address: string;
@@ -88,7 +88,7 @@ export class ProjectGraphService {
     const localPoints: LocalPointsItem[] = [];
     const now = (new Date().getTime() / 1000) | 0;
     for (const point of points) {
-      const projectArr = point.project.split('-');
+      const projectArr = point.project.split("-");
       const token = projectArr[1].toLocaleLowerCase();
       const withdrawPoints = this.withdrawService.getWithdrawPoint(
         token,

@@ -1,6 +1,6 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { ethers } from 'ethers';
+import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { ethers } from "ethers";
 export interface GraphPoint {
   address: string;
   balance: string;
@@ -33,16 +33,16 @@ export class GraphQueryService implements OnModuleInit {
   private readonly logger: Logger;
   private readonly novaPointRedistributeGraphApi: string;
   private projectTokenMap: Map<string, Map<string, string>> = new Map();
-  
+
   public constructor(configService: ConfigService) {
     this.logger = new Logger(GraphQueryService.name);
     this.novaPointRedistributeGraphApi = configService.get<string>(
-      'novaPointRedistributeGraphApi',
+      "novaPointRedistributeGraphApi",
     );
   }
 
-  public async onModuleInit(){
-    this.logger.log('GraphQueryService has been initialized.');
+  public async onModuleInit() {
+    this.logger.log("GraphQueryService has been initialized.");
     const func = async () => {
       try {
         await this.loadGraphData();
@@ -71,12 +71,14 @@ export class GraphQueryService implements OnModuleInit {
     if (data && data.data && Array.isArray(data.data.totalPoints)) {
       const allPoints = data.data.totalPoints as GraphTotalPoint[];
       allPoints.forEach((totalPoint) => {
-        const projectArr = totalPoint.project.split('-');
+        const projectArr = totalPoint.project.split("-");
         const projectName = projectArr[0].toLocaleLowerCase();
         const tokenAddress = projectArr[1].toLocaleLowerCase();
         if (!this.projectTokenMap.has(projectName)) {
           this.projectTokenMap.set(projectName, new Map());
-          this.logger.log(`GraphQueryService ${projectName} had save to cache.`);
+          this.logger.log(
+            `GraphQueryService ${projectName} had save to cache.`,
+          );
         }
         this.projectTokenMap
           .get(projectName)
@@ -127,7 +129,7 @@ export class GraphQueryService implements OnModuleInit {
 
   public async queryPointsRedistributed(
     projectId: string,
-    ): Promise<[GraphPoint[], GraphTotalPoint]> {
+  ): Promise<[GraphPoint[], GraphTotalPoint]> {
     const id = ethers.keccak256(ethers.toUtf8Bytes(projectId));
     const query = `
 {
@@ -150,7 +152,12 @@ export class GraphQueryService implements OnModuleInit {
 }
     `;
     const data = await this.query(query);
-    if (data && data.data && data.data.totalPoint && Array.isArray(data.data.points)) {
+    if (
+      data &&
+      data.data &&
+      data.data.totalPoint &&
+      Array.isArray(data.data.points)
+    ) {
       return [
         data.data.points as GraphPoint[],
         data.data.totalPoint as GraphTotalPoint,
@@ -184,7 +191,12 @@ export class GraphQueryService implements OnModuleInit {
 }
     `;
     const data = await this.query(query);
-    if (data && data.data && data.data.totalPoint && Array.isArray(data.data.points)) {
+    if (
+      data &&
+      data.data &&
+      data.data.totalPoint &&
+      Array.isArray(data.data.points)
+    ) {
       return [
         data.data.points as GraphPoint[],
         data.data.totalPoint as GraphTotalPoint,
@@ -196,9 +208,9 @@ export class GraphQueryService implements OnModuleInit {
   public async queryPointsRedistributedByProjectName(
     projectName: string,
     page?: number,
-    limit?: number
+    limit?: number,
   ): Promise<[GraphPoint[], GraphTotalPoint[]]> {
-    const {_page = 1, _limit = 1000} = {_page: page, _limit: limit};
+    const { _page = 1, _limit = 1000 } = { _page: page, _limit: limit };
     let skip = (_page - 1) * _limit;
     skip = skip < 0 ? 0 : skip;
     const query = `
@@ -222,13 +234,20 @@ export class GraphQueryService implements OnModuleInit {
 }
     `;
     const data = await this.query(query);
-    if (data && data.data && Array.isArray(data.data.totalPoints) && Array.isArray(data.data.points)) {
+    if (
+      data &&
+      data.data &&
+      Array.isArray(data.data.totalPoints) &&
+      Array.isArray(data.data.points)
+    ) {
       return [
         data.data.points as GraphPoint[],
         data.data.totalPoints as GraphTotalPoint[],
       ];
-    }else{
-      throw new Error(`Exception in fetching GraphQL data, project is : ${projectName}, query is : ${query}.`);
+    } else {
+      throw new Error(
+        `Exception in fetching GraphQL data, project is : ${projectName}, query is : ${query}.`,
+      );
     }
   }
 
@@ -256,19 +275,29 @@ export class GraphQueryService implements OnModuleInit {
 }
     `;
     const data = await this.query(query);
-    if (data && data.data && Array.isArray(data.data.totalPoints) && Array.isArray(data.data.points)) {
+    if (
+      data &&
+      data.data &&
+      Array.isArray(data.data.totalPoints) &&
+      Array.isArray(data.data.points)
+    ) {
       return [
         data.data.points as GraphPoint[],
         data.data.totalPoints as GraphTotalPoint[],
       ];
-    }else{
-      throw new Error(`Exception in fetching GraphQL data, project is : ${projectName}, query is : ${query}.`);
+    } else {
+      throw new Error(
+        `Exception in fetching GraphQL data, project is : ${projectName}, query is : ${query}.`,
+      );
     }
   }
 
-  public async queryWithdrawPoints(page:number, limit:number): Promise<GraphWithdrawPoint[]> {
-    const {_page = 1, _limit = 1000} = {_page: page, _limit: limit};
-    let skip = (_page-1) * _limit;
+  public async queryWithdrawPoints(
+    page: number,
+    limit: number,
+  ): Promise<GraphWithdrawPoint[]> {
+    const { _page = 1, _limit = 1000 } = { _page: page, _limit: limit };
+    let skip = (_page - 1) * _limit;
     skip = skip < 0 ? 0 : skip;
     const query = `
 {
@@ -290,8 +319,10 @@ export class GraphQueryService implements OnModuleInit {
     const data = await this.query(query);
     if (data && data.data && Array.isArray(data.data.withdrawPoints)) {
       return data.data.withdrawPoints as GraphWithdrawPoint[];
-    }else{
-      throw new Error(`Exception in fetching GraphQL data, project is WithdrawPoints.`);
+    } else {
+      throw new Error(
+        `Exception in fetching GraphQL data, project is WithdrawPoints.`,
+      );
     }
   }
 
@@ -301,8 +332,8 @@ export class GraphQueryService implements OnModuleInit {
     };
 
     const response = await fetch(this.novaPointRedistributeGraphApi, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
 

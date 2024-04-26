@@ -12,7 +12,8 @@ export const typeOrmModuleOptions: DataSourceOptions = {
   database: process.env.DATABASE_NAME || "nova-points-distribute",
   poolSize: parseInt(process.env.DATABASE_CONNECTION_POOL_SIZE, 10) || 100,
   extra: {
-    idleTimeoutMillis: parseInt(process.env.DATABASE_CONNECTION_IDLE_TIMEOUT_MS, 10) || 12000,
+    idleTimeoutMillis:
+      parseInt(process.env.DATABASE_CONNECTION_IDLE_TIMEOUT_MS, 10) || 12000,
   },
   applicationName: "lrt-points-distribute",
   migrationsRun: false,

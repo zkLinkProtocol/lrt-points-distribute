@@ -13,7 +13,10 @@ export class ParseTransactionHashPipe implements PipeTransform<string> {
   private static transactionHashRegexp = new RegExp(TX_HASH_REGEX_PATTERN);
   public readonly options: ParamOptions;
 
-  constructor({ required = true, errorMessage = "Invalid transaction hash format" }: ParamOptions = {}) {
+  constructor({
+    required = true,
+    errorMessage = "Invalid transaction hash format",
+  }: ParamOptions = {}) {
     this.options = {
       required,
       errorMessage,

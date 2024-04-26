@@ -1,5 +1,5 @@
-import { Injectable, Logger, Module } from '@nestjs/common';
-import { GraphQueryService } from 'src/common/service/graphQuery.service';
+import { Injectable, Logger, Module } from "@nestjs/common";
+import { GraphQueryService } from "src/common/service/graphQuery.service";
 
 export interface NovaPoints {
   novaPoint: number;
@@ -13,9 +13,9 @@ export interface NovaPoints {
 export class NovaApiService {
   private readonly logger: Logger;
   private readonly novaApiBaseurl: string =
-    'https://app-api.zklink.io/points/addressTokenTvl/getAccountPoint?address=';
+    "https://app-api.zklink.io/points/addressTokenTvl/getAccountPoint?address=";
   private readonly graphQueryService: GraphQueryService;
-  private readonly projectName: string = 'nova';
+  private readonly projectName: string = "nova";
   private tokenNovaPoints: Map<string, NovaPoints> = new Map();
 
   public constructor(graphQueryService: GraphQueryService) {
@@ -24,12 +24,12 @@ export class NovaApiService {
   }
 
   public async onModuleInit() {
-    this.logger.log('NovaApiService has been initialized.');
+    this.logger.log("NovaApiService has been initialized.");
     const func = async () => {
       try {
         await this.loadData();
       } catch (err) {
-        this.logger.error('NovaApiService init failed', err.stack);
+        this.logger.error("NovaApiService init failed", err.stack);
       }
     };
     func();
@@ -51,13 +51,13 @@ export class NovaApiService {
 
   public async fetchNovaPoints(tokenAddress: string): Promise<NovaPoints> {
     const responseStr = await fetch(`${this.novaApiBaseurl}${tokenAddress}`, {
-      method: 'get',
+      method: "get",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
     });
     const response = await responseStr.json();
-    if (!response || response.status != '1' || !response.result) {
+    if (!response || response.status != "1" || !response.result) {
       this.logger.error(`No nova realpoints, tokenAddress: ${tokenAddress}`);
       return { novaPoint: 0, referPoint: 0 };
     }

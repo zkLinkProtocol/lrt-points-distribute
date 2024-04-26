@@ -3,7 +3,7 @@ import { setTimeout } from "timers/promises";
 export default async (
   conditionPredicate: () => boolean,
   maxWaitTime = 30000,
-  conditionCheckInterval = 5000
+  conditionCheckInterval = 5000,
 ): Promise<void> => {
   const checkInterval = Math.min(maxWaitTime, conditionCheckInterval);
   const checkIterations = Math.ceil(maxWaitTime / checkInterval);

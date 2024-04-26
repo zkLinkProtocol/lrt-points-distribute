@@ -14,7 +14,11 @@ export class ParseAddressPipe implements PipeTransform<string | string[]> {
   public static addressRegexp = new RegExp(ADDRESS_REGEX_PATTERN);
   public readonly options: ParamOptions;
 
-  constructor({ required = true, each = false, errorMessage = "Invalid Address format" }: ParamOptions = {}) {
+  constructor({
+    required = true,
+    each = false,
+    errorMessage = "Invalid Address format",
+  }: ParamOptions = {}) {
     this.options = {
       required,
       each,

@@ -11,7 +11,11 @@ interface ParamOptions {
 export class ParseProjectNamePipe implements PipeTransform<string | string[]> {
   public readonly options: ParamOptions;
 
-  constructor({ required = true, each = false, errorMessage = "projectName required" }: ParamOptions = {}) {
+  constructor({
+    required = true,
+    each = false,
+    errorMessage = "projectName required",
+  }: ParamOptions = {}) {
     this.options = {
       required,
       each,
@@ -23,7 +27,7 @@ export class ParseProjectNamePipe implements PipeTransform<string | string[]> {
     if (!this.options.required && !value) {
       return value;
     }
-    
+
     if (typeof value !== "string") {
       throw new BadRequestException(this.options.errorMessage);
     }

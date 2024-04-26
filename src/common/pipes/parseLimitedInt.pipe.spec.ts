@@ -12,7 +12,9 @@ describe("ParseLimitedIntPipe", () => {
           await pipe.transform("invalidAddressParam");
         } catch (error) {
           expect(error).toBeInstanceOf(BadRequestException);
-          expect(error.message).toBe("Validation failed (numeric string is expected)");
+          expect(error.message).toBe(
+            "Validation failed (numeric string is expected)",
+          );
         }
       });
 
@@ -24,7 +26,9 @@ describe("ParseLimitedIntPipe", () => {
           await pipe.transform("0");
         } catch (error) {
           expect(error).toBeInstanceOf(BadRequestException);
-          expect(error.message).toBe("Validation failed: specified int is out of defined boundaries: [1;10].");
+          expect(error.message).toBe(
+            "Validation failed: specified int is out of defined boundaries: [1;10].",
+          );
         }
       });
 
@@ -36,7 +40,9 @@ describe("ParseLimitedIntPipe", () => {
           await pipe.transform("11");
         } catch (error) {
           expect(error).toBeInstanceOf(BadRequestException);
-          expect(error.message).toBe("Validation failed: specified int is out of defined boundaries: [1;10].");
+          expect(error.message).toBe(
+            "Validation failed: specified int is out of defined boundaries: [1;10].",
+          );
         }
       });
 
@@ -48,7 +54,9 @@ describe("ParseLimitedIntPipe", () => {
           await pipe.transform("-10");
         } catch (error) {
           expect(error).toBeInstanceOf(BadRequestException);
-          expect(error.message).toBe("Validation failed: specified int is out of defined boundaries: [0;10].");
+          expect(error.message).toBe(
+            "Validation failed: specified int is out of defined boundaries: [0;10].",
+          );
         }
       });
 
@@ -61,7 +69,7 @@ describe("ParseLimitedIntPipe", () => {
         } catch (error) {
           expect(error).toBeInstanceOf(BadRequestException);
           expect(error.message).toBe(
-            "Validation failed: specified int is out of defined boundaries: [1;9007199254740991]."
+            "Validation failed: specified int is out of defined boundaries: [1;9007199254740991].",
           );
         }
       });

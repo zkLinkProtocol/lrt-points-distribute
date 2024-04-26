@@ -1,10 +1,10 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication } from '@nestjs/common';
-import { AppModule } from '../app.module';
-import { RenzoApiService } from '../renzo/renzoapi.service';
-import { ConfigService } from '@nestjs/config';
+import { Test, TestingModule } from "@nestjs/testing";
+import { INestApplication } from "@nestjs/common";
+import { AppModule } from "../app.module";
+import { RenzoApiService } from "../renzo/renzoapi.service";
+import { ConfigService } from "@nestjs/config";
 
-describe('RenzoApiService', () => {
+describe("RenzoApiService", () => {
   let app: INestApplication;
   let renzoApiService: RenzoApiService;
   let configService: ConfigService;
