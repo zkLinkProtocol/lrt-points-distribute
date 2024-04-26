@@ -1,8 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { Transfer } from 'src/type/transfer';
-import { Token } from 'src/type/token';
-import { UserBalances } from 'src/type/userBalances';
+import { Injectable, Logger } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { Transfer } from "src/type/transfer";
+import { Token } from "src/type/token";
+import { UserBalances } from "src/type/userBalances";
 
 @Injectable()
 export class ExplorerService {
@@ -10,7 +10,7 @@ export class ExplorerService {
   private readonly explorerApi: string;
   public constructor(configService: ConfigService) {
     this.logger = new Logger(ExplorerService.name);
-    this.explorerApi = configService.get<string>('explorerApiUrl');
+    this.explorerApi = configService.get<string>("explorerApiUrl");
   }
   public async getAllBalance(
     tokenAddress: string[] | string,
@@ -28,7 +28,7 @@ export class ExplorerService {
     const allBalancesRes: any = await fetch(
       `${this.explorerApi}/api?module=account&action=tokenbalanceall&contractaddress=${tokenAddress}`,
       {
-        method: 'get',
+        method: "get",
       },
     );
     const allBalances = await allBalancesRes.json();
@@ -51,7 +51,7 @@ export class ExplorerService {
     const checkDeposit = await fetch(
       `${this.explorerApi}/address/${address}/firstdeposit?token=${tokenAddress}`,
       {
-        method: 'get',
+        method: "get",
       },
     );
     const firstDeposit: Transfer = await checkDeposit.json();
@@ -69,14 +69,12 @@ export class ExplorerService {
     const response = await fetch(
       `${this.explorerApi}/tokens?page=1&limit=200`,
       {
-        method: 'get',
+        method: "get",
       },
     );
     const responseJson = await response.json();
     if (!responseJson || !responseJson.items) {
-      this.logger.error(
-        `No tokens`,
-      );
+      this.logger.error(`No tokens`);
       return null;
     }
     return responseJson.items;

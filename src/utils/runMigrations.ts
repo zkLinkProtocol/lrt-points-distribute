@@ -3,7 +3,8 @@ import { Logger } from "@nestjs/common";
 import { setTimeout } from "timers/promises";
 
 const MIGRATIONS_LOCK_CHECK_INTERVAL = 10000;
-const CREATE_LOCK_TABLE_SQL = "CREATE TABLE _lock (id bigint NOT NULL, PRIMARY KEY (id))";
+const CREATE_LOCK_TABLE_SQL =
+  "CREATE TABLE _lock (id bigint NOT NULL, PRIMARY KEY (id))";
 const DROP_LOCK_TABLE_SQL = "DROP TABLE _lock";
 
 export default async (connection: DataSource, logger: Logger) => {

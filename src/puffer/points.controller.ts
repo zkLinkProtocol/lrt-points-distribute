@@ -30,7 +30,7 @@ import { GraphQueryService } from "src/common/service/graphQuery.service";
 import { TokenPointsDto } from "./tokenPoints.dto";
 import { TokenPointsWithoutDecimalsDto } from "./tokenPointsWithoutDecimals.dto";
 import { PointsWithoutDecimalsDto } from "./pointsWithoutDecimals.dto";
-import { PointsDto } from "./points.dto";
+import { ElPointsDto, ElPointsDtoData, PointsDto } from "./points.dto";
 import { TokensDto } from "./tokens.dto";
 import { NovaService } from "src/nova/nova.service";
 
@@ -202,6 +202,99 @@ export class PointsController {
       ],
     };
     return res;
+  }
+
+  @Get(":address/puffer-el-points")
+  @ApiParam({
+    name: "address",
+    schema: { pattern: ADDRESS_REGEX_PATTERN },
+    description: "Valid hex address",
+  })
+  @ApiOkResponse({
+    description: "Return the user puff el points",
+    type: ElPointsDto,
+  })
+  @ApiBadRequestResponse({
+    description: '{ "message": "Not Found", "statusCode": 404 }',
+  })
+  public async pufferEigenLayerPoints(
+    @Param("address", new ParseAddressPipe()) address: string,
+  ): Promise<ElPointsDto> {
+    // let res: ElPointsDto;
+
+    try {
+      const layerbankPoint =
+        await this.puffPointsService.getLayerBankPoint(address);
+      const pufPointsData = this.puffPointsService.getPointsData(
+        address.toLocaleLowerCase(),
+      );
+
+      const points = (
+        pufPointsData.items[0]?.realPoints ?? 0 + layerbankPoint
+      ).toString();
+
+      const data =
+        await this.puffPointsService.getPuffElPointsByAddress(address);
+
+      const balanceFromDappTotal = data.userPosition.positions.reduce(
+        (prev, cur) => {
+          const pool = data.pools.find((pool) => pool.id === cur.pool);
+          if (pool.name === "LayerBank") {
+            const shareBalance =
+              (BigInt(pool.balance) * BigInt(cur.supplied)) /
+              BigInt(pool.totalSupplied);
+            return prev + shareBalance;
+          }
+          return prev;
+        },
+        BigInt(0),
+      );
+
+      const balanceFromDappTotalDetails = data.userPosition.positions
+        .map((position) => {
+          const pool = data.pools.find((pool) => pool.id === position.pool);
+          if (pool.name === "LayerBank")
+            return {
+              dappName: pool.name,
+              balance: Number(
+                ethers.formatEther(
+                  (BigInt(pool.balance) * BigInt(position.supplied)) /
+                    BigInt(pool.totalSupplied),
+                ),
+              ).toFixed(6),
+            };
+        })
+        .filter((i) => !!i);
+
+      const balanceDirect = pufPointsData.items[0]?.balance ?? BigInt(0);
+
+      const res = {
+        address: address,
+        points: points,
+        balanceDirect: Number(ethers.formatEther(balanceDirect)).toFixed(6),
+        balanceSum: Number(
+          ethers.formatEther(balanceDirect + balanceFromDappTotal),
+        ).toFixed(6),
+        tokenAddress: data.userPosition.positions[0].token,
+        balanceFromDappTotal: Number(
+          ethers.formatEther(balanceFromDappTotal),
+        ).toFixed(6),
+        balanceFromDappTotalDetails: balanceFromDappTotalDetails,
+      };
+
+      return {
+        errno: 0,
+        errmsg: "no error",
+        data: res,
+      };
+    } catch (e) {
+      this.logger.log(e.errmsg, e.stack);
+      return {
+        errno: 1,
+        errmsg: "Service exception",
+        data: null as ElPointsDtoData,
+      };
+    }
   }
 
   @Get("/allpufferpoints2")

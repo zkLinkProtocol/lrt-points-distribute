@@ -32,12 +32,13 @@ export default async () => {
     L1_ERC20_BRIDGE_BLAST,
 
     NOVA_POINT_REDISTRIBUTE_GRAPH_API,
+    NOVA_POINT_PUFFER_EL_POINTS_GRAPH_API,
   } = process.env;
 
   return {
     port: parseInt(PORT, 10) || 3001,
     blockchain: {
-      rpcUrl: BLOCKCHAIN_RPC_URL || 'http://localhost:3050',
+      rpcUrl: BLOCKCHAIN_RPC_URL || "http://localhost:3050",
       rpcCallDefaultRetryTimeout:
         parseInt(RPC_CALLS_DEFAULT_RETRY_TIMEOUT, 10) || 30000,
       rpcCallQuickRetryTimeout:
@@ -48,7 +49,7 @@ export default async () => {
         parseInt(RPC_CALLS_CONNECTION_QUICK_TIMEOUT, 10) || 10000,
     },
     dataFetcher: {
-      url: DATA_FETCHER_URL || 'http://localhost:3040',
+      url: DATA_FETCHER_URL || "http://localhost:3040",
       requestTimeout: parseInt(DATA_FETCHER_REQUEST_TIMEOUT, 10) || 120_000,
     },
     puffPoints: {
@@ -56,8 +57,8 @@ export default async () => {
       waitForRetry: parseInt(WAIT_FOR_PUFF_RETRY, 10) || 10_000,
       tokenAddress:
         PUFF_POINTS_TOKEN_ADDRESS ||
-        '0x1B49eCf1A8323Db4abf48b2F5EFaA33F7DdAB3Fc',
-      unitPoints: BigInt(PUFF_POINTS_UNIT_POINTS || '0') || 30n,
+        "0x1B49eCf1A8323Db4abf48b2F5EFaA33F7DdAB3Fc",
+      unitPoints: BigInt(PUFF_POINTS_UNIT_POINTS || "0") || 30n,
       unitInterval: parseInt(PUFF_POINTS_UNIT_INTERVAL, 10) || 3600_000,
     },
     renzo: {
@@ -65,19 +66,21 @@ export default async () => {
       waitForInterval: parseInt(RENZO_WAIT_FOR_INTERVAL, 10) || 10_000,
       tokenAddress: (
         RENZO_TOKEN_ADDRESS ||
-        '0x3FDB1939daB8e2d4F7a04212F142469Cd52d6402,0xdA7Fa837112511F6E353091D7e388A4c45Ce7D6C'
-      ).split(','),
-      unitPoints: BigInt(RENZO_UNIT_POINTS || '0') || 1n,
+        "0x3FDB1939daB8e2d4F7a04212F142469Cd52d6402,0xdA7Fa837112511F6E353091D7e388A4c45Ce7D6C"
+      ).split(","),
+      unitPoints: BigInt(RENZO_UNIT_POINTS || "0") || 1n,
       unitInterval: parseInt(RENZO_UNIT_INTERVAL, 10) || 3600_000,
     },
-    enablePuff: ENABLE_PUFF === 'true',
-    enableRenzo: ENABLE_RENZO === 'true',
-    explorerApiUrl: EXPLORER_API_URL || 'http://localhost:3020',
-    
-    novaPointRedistributeGraphApi: NOVA_POINT_REDISTRIBUTE_GRAPH_API || '',
-    l1Erc20BridgeEthereum: L1_ERC20_BRIDGE_ETHEREUM || '',
-    l1Erc20BridgeArbitrum: L1_ERC20_BRIDGE_ARBITRUM || '',
-    l1Erc20BridgeLinea: L1_ERC20_BRIDGE_LINEA || '',
-    l1Erc20BridgeBlast: L1_ERC20_BRIDGE_BLAST || '',
+    enablePuff: ENABLE_PUFF === "true",
+    enableRenzo: ENABLE_RENZO === "true",
+    explorerApiUrl: EXPLORER_API_URL || "http://localhost:3020",
+
+    novaPointRedistributeGraphApi: NOVA_POINT_REDISTRIBUTE_GRAPH_API || "",
+    novaPointPufferElPointsGraphApi:
+      NOVA_POINT_PUFFER_EL_POINTS_GRAPH_API || "",
+    l1Erc20BridgeEthereum: L1_ERC20_BRIDGE_ETHEREUM || "",
+    l1Erc20BridgeArbitrum: L1_ERC20_BRIDGE_ARBITRUM || "",
+    l1Erc20BridgeLinea: L1_ERC20_BRIDGE_LINEA || "",
+    l1Erc20BridgeBlast: L1_ERC20_BRIDGE_BLAST || "",
   };
 };

@@ -1,16 +1,16 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { Injectable, Logger } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import {
   LocalPointData,
   LocalPointsItem,
   ProjectGraphService,
-} from 'src/common/service/projectGraph.service';
-import { GraphQueryService } from 'src/common/service/graphQuery.service';
-import { RenzoApiService, RenzoPoints } from 'src/renzo/renzoapi.service';
-import { ExplorerService } from 'src/common/service/explorer.service';
-import { cloneDeep } from 'lodash';
-import BigNumber from 'bignumber.js';
-import waitFor from 'src/utils/waitFor';
+} from "src/common/service/projectGraph.service";
+import { GraphQueryService } from "src/common/service/graphQuery.service";
+import { RenzoApiService, RenzoPoints } from "src/renzo/renzoapi.service";
+import { ExplorerService } from "src/common/service/explorer.service";
+import { cloneDeep } from "lodash";
+import BigNumber from "bignumber.js";
+import waitFor from "src/utils/waitFor";
 
 export interface RenzoPointItem {
   address: string;
@@ -35,7 +35,7 @@ export interface RenzoData {
 @Injectable()
 export class RenzoService {
   public tokenAddress: string[];
-  private readonly projectName: string = 'renzo';
+  private readonly projectName: string = "renzo";
   private readonly logger: Logger;
 
   private renzoData: RenzoData = {
@@ -58,13 +58,13 @@ export class RenzoService {
   ) {
     this.logger = new Logger(RenzoService.name);
     this.l1Erc20BridgeEthereum = configService.get<string>(
-      'l1Erc20BridgeEthereum',
+      "l1Erc20BridgeEthereum",
     );
     this.l1Erc20BridgeArbitrum = configService.get<string>(
-      'l1Erc20BridgeArbitrum',
+      "l1Erc20BridgeArbitrum",
     );
-    this.l1Erc20BridgeLinea = configService.get<string>('l1Erc20BridgeLinea');
-    this.l1Erc20BridgeBlast = configService.get<string>('l1Erc20BridgeBlast');
+    this.l1Erc20BridgeLinea = configService.get<string>("l1Erc20BridgeLinea");
+    this.l1Erc20BridgeBlast = configService.get<string>("l1Erc20BridgeBlast");
   }
 
   public async onModuleInit() {
@@ -235,22 +235,22 @@ export class RenzoService {
     for (const item of allTokens) {
       const l2Address = item.l2Address?.toLocaleLowerCase();
       if (tokens.includes(l2Address)) {
-        let tmpBridgeToken = '';
+        let tmpBridgeToken = "";
         switch (item.networkKey) {
-          case 'ethereum':
+          case "ethereum":
             tmpBridgeToken = this.l1Erc20BridgeEthereum;
             break;
-          case 'arbitrum':
+          case "arbitrum":
             tmpBridgeToken = this.l1Erc20BridgeArbitrum;
             break;
-          case 'blast':
+          case "blast":
             tmpBridgeToken = this.l1Erc20BridgeBlast;
             break;
-          case 'primary':
+          case "primary":
             tmpBridgeToken = this.l1Erc20BridgeLinea;
             break;
         }
-        if (tmpBridgeToken == '') {
+        if (tmpBridgeToken == "") {
           throw new Error(`There is a unknown token : ${l2Address}`);
         }
         tokensMapBridgeTokens.set(

@@ -24,28 +24,28 @@ describe("ParseAddressPipe", () => {
 
     it("does not allow address list when each flag is false", () => {
       pipe = new ParseAddressPipe({ required: false });
-      expect(() => pipe.transform(["0XD754FF5E8a6F257E162f72578a4bB0493c068101"])).toThrowError(
-        new BadRequestException("Invalid Address format")
-      );
+      expect(() =>
+        pipe.transform(["0XD754FF5E8a6F257E162f72578a4bB0493c068101"]),
+      ).toThrowError(new BadRequestException("Invalid Address format"));
     });
 
     it("does not allow single address when each flag is true", () => {
       pipe = new ParseAddressPipe({ required: false, each: true });
-      expect(() => pipe.transform("0XD754FF5E8a6F257E162f72578a4bB0493c068101")).toThrowError(
-        new BadRequestException("Invalid Address format")
-      );
+      expect(() =>
+        pipe.transform("0XD754FF5E8a6F257E162f72578a4bB0493c068101"),
+      ).toThrowError(new BadRequestException("Invalid Address format"));
     });
 
     it("throws a BadRequestException if address is not valid", () => {
       expect(() => pipe.transform("invalidAddressParam")).toThrowError(
-        new BadRequestException("Invalid Address format")
+        new BadRequestException("Invalid Address format"),
       );
     });
 
     it("throws a BadRequestException if address starts with a capital 0X", () => {
-      expect(() => pipe.transform("0XD754FF5E8a6F257E162f72578a4bB0493c068101")).toThrowError(
-        new BadRequestException("Invalid Address format")
-      );
+      expect(() =>
+        pipe.transform("0XD754FF5E8a6F257E162f72578a4bB0493c068101"),
+      ).toThrowError(new BadRequestException("Invalid Address format"));
     });
 
     it("returns lower case address when called with a single address", () => {
@@ -57,17 +57,25 @@ describe("ParseAddressPipe", () => {
 
     it("returns lower case addresses when called with address list", () => {
       pipe = new ParseAddressPipe({ required: true, each: true });
-      const addresses = ["0xD754FF5E8a6F257E162f72578a4bB0493c068101", "0xD754FF5E8a6F257E162f72578a4bB0493c068102"];
+      const addresses = [
+        "0xD754FF5E8a6F257E162f72578a4bB0493c068101",
+        "0xD754FF5E8a6F257E162f72578a4bB0493c068102",
+      ];
 
       const transformedAddresses = pipe.transform(addresses);
-      expect(transformedAddresses).toEqual(addresses.map((addr) => addr.toLowerCase()));
+      expect(transformedAddresses).toEqual(
+        addresses.map((addr) => addr.toLowerCase()),
+      );
     });
 
     it("throws a BadRequestException with a custom message when it is provided", () => {
-      pipe = new ParseAddressPipe({ required: true, errorMessage: "Custom error message" });
-      expect(() => pipe.transform("0XD754FF5E8a6F257E162f72578a4bB0493c068101")).toThrowError(
-        new BadRequestException("Custom error message")
-      );
+      pipe = new ParseAddressPipe({
+        required: true,
+        errorMessage: "Custom error message",
+      });
+      expect(() =>
+        pipe.transform("0XD754FF5E8a6F257E162f72578a4bB0493c068101"),
+      ).toThrowError(new BadRequestException("Custom error message"));
     });
   });
 });

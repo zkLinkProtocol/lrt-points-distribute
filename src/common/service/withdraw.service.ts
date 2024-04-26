@@ -1,8 +1,8 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
 import {
   GraphQueryService,
   GraphWithdrawPoint,
-} from 'src/common/service/graphQuery.service';
+} from "src/common/service/graphQuery.service";
 
 export interface WithdrawPoint {
   project: string;

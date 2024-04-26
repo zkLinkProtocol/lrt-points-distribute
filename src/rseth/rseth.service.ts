@@ -1,15 +1,15 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { cloneDeep } from 'lodash';
+import { Injectable, Logger } from "@nestjs/common";
+import { cloneDeep } from "lodash";
 import {
   LocalPointData,
   ProjectGraphService,
-} from 'src/common/service/projectGraph.service';
-import { RsethApiService, RsethPoints } from './rseth.api.service';
-import { GraphQueryService } from 'src/common/service/graphQuery.service';
-import { ExplorerService } from 'src/common/service/explorer.service';
-import { ConfigService } from '@nestjs/config';
-import BigNumber from 'bignumber.js';
-import waitFor from 'src/utils/waitFor';
+} from "src/common/service/projectGraph.service";
+import { RsethApiService, RsethPoints } from "./rseth.api.service";
+import { GraphQueryService } from "src/common/service/graphQuery.service";
+import { ExplorerService } from "src/common/service/explorer.service";
+import { ConfigService } from "@nestjs/config";
+import BigNumber from "bignumber.js";
+import waitFor from "src/utils/waitFor";
 
 export interface RsethPointItemWithBalance {
   address: string;
@@ -40,7 +40,7 @@ export interface RsethData {
 
 @Injectable()
 export class RsethService {
-  private readonly projectName: string = 'rseth';
+  private readonly projectName: string = "rseth";
   private readonly logger: Logger;
 
   public tokenAddress: string[];
@@ -61,10 +61,10 @@ export class RsethService {
   ) {
     this.logger = new Logger(RsethService.name);
     this.l1Erc20BridgeEthereum = configService.get<string>(
-      'l1Erc20BridgeEthereum',
+      "l1Erc20BridgeEthereum",
     );
     this.l1Erc20BridgeArbitrum = configService.get<string>(
-      'l1Erc20BridgeArbitrum',
+      "l1Erc20BridgeArbitrum",
     );
   }
 
@@ -212,16 +212,16 @@ export class RsethService {
     for (const item of allTokens) {
       const l2Address = item.l2Address?.toLocaleLowerCase();
       if (tokens.includes(l2Address)) {
-        let tmpBridgeToken = '';
+        let tmpBridgeToken = "";
         switch (item.networkKey) {
-          case 'ethereum':
+          case "ethereum":
             tmpBridgeToken = this.l1Erc20BridgeEthereum;
             break;
-          case 'arbitrum':
+          case "arbitrum":
             tmpBridgeToken = this.l1Erc20BridgeArbitrum;
             break;
         }
-        if (tmpBridgeToken == '') {
+        if (tmpBridgeToken == "") {
           throw new Error(`There is a unknown token : ${l2Address}`);
         }
         tokensMapBridgeTokens.set(
