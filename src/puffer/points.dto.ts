@@ -33,7 +33,7 @@ export class PointsDto {
   public readonly updatedAt: Date;
 }
 
-class ElBalanceDetails {
+class LiquidityDetails {
   @ApiProperty({
     type: String,
     description: "dapp name",
@@ -44,56 +44,100 @@ class ElBalanceDetails {
   @ApiProperty({
     type: String,
     description: "el balance in the protocol",
-    example: "0xd754Ff5e8a6f257E162F72578A4bB0493c0681d8",
+    example: "1000000000",
   })
   balance: string;
 }
 
-export class ElPointsDtoData {
+export class ElPointsDtoItem {
   @ApiProperty({
     type: String,
     description: "user address",
     example: "0xd754Ff5e8a6f257E162F72578A4bB0493c0681d8",
   })
-  address: string;
-
-  @ApiProperty({
-    type: String,
-    description: "point",
-    example: "437936.234525",
-  })
-  points: string;
+  userAddress: string;
 
   @ApiProperty({
     type: String,
     description: "token address",
     example: "0x012726f9f458a63f86055b24e67ba0aa26505028",
   })
-  tokenAddress: string;
+  pufEthAddress: string;
 
   @ApiProperty({
     type: String,
-    description: "total puffer el balance",
-    example: "1000000000",
+    description: "usr total points",
+    example: "437936.234525",
   })
-  balanceSum: string;
+  points: string;
 
   @ApiProperty({
     type: String,
-    description: "user Account balance",
+    description: "total puffer balance",
     example: "1000000000",
   })
-  balanceDirect: string;
+  totalBalance: string;
 
   @ApiProperty({
     type: String,
-    description: "user Account balance",
+    description: "user account balance",
     example: "1000000000",
   })
-  balanceFromDappTotal: string;
+  userBalance: string;
 
-  @Type(() => ElBalanceDetails)
-  balanceFromDappTotalDetails: ElBalanceDetails[];
+  @ApiProperty({
+    type: String,
+    description: "user staked pufEth on protocols",
+    example: "1000000000",
+  })
+  liquidityBalance: string;
+
+  @ApiProperty({
+    type: LiquidityDetails,
+    description: "user staked details on protocols",
+    example: "1000000000",
+  })
+  @Type(() => LiquidityDetails)
+  liquidityDetails: LiquidityDetails[];
+}
+
+export class UserElPointsDto {
+  @ApiProperty({
+    type: Number,
+    description: "error code",
+    example: 0,
+  })
+  public readonly errno: number;
+  //errmsg
+  @ApiProperty({
+    type: String,
+    description: "error message",
+    example: "no error",
+  })
+  public readonly errmsg: string;
+
+  @ApiProperty({
+    type: ElPointsDtoItem,
+    description: "token address",
+    nullable: true,
+  })
+  public readonly data: ElPointsDtoItem;
+}
+
+export class ElPointsDtoData {
+  @ApiProperty({
+    type: String,
+    description: "total eigenlayer points",
+    example: "10000",
+  })
+  public readonly totalPoints: string;
+
+  @ApiProperty({
+    type: ElPointsDtoItem,
+    description: "eigenlayer points list",
+    example: "10000",
+  })
+  public readonly list: ElPointsDtoItem[];
 }
 
 export class ElPointsDto {
@@ -112,8 +156,8 @@ export class ElPointsDto {
   public readonly errmsg: string;
 
   @ApiProperty({
-    type: [ElPointsDto],
-    description: "token address",
+    type: ElPointsDtoData,
+    description: "eigenlayer points list",
     nullable: true,
   })
   public readonly data: ElPointsDtoData;
