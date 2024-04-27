@@ -35,7 +35,11 @@ import { PointsOfLp } from "./entities/pointsOfLp.entity";
 import { PointsOfLpRepository } from "./repositories/pointsOfLp.repository";
 import { BlockAddressPointOfLp } from "./entities/blockAddressPointOfLp.entity";
 import { BlockAddressPointOfLpRepository } from "./repositories/blockAddressPointOfLp.repository";
+import { Cache } from "./entities/cache.entity";
+import { CacheRepository } from "./repositories/cache.repository";
 import { NovaBalanceService } from "./nova/nova.balance.service";
+import { CacheController } from "./cache/cache.controller";
+import { CacheService } from "./cache/cache.service";
 
 @Module({
   imports: [
@@ -51,7 +55,12 @@ import { NovaBalanceService } from "./nova/nova.balance.service";
         };
       },
     }),
-    TypeOrmModule.forFeature([Project, PointsOfLp, BlockAddressPointOfLp]),
+    TypeOrmModule.forFeature([
+      Project,
+      PointsOfLp,
+      BlockAddressPointOfLp,
+      Cache,
+    ]),
     MetricsModule,
     UnitOfWorkModule,
   ],
@@ -64,6 +73,7 @@ import { NovaBalanceService } from "./nova/nova.balance.service";
     NovaController,
     RenzoPagingController,
     NovaPagingController,
+    CacheController,
   ],
   providers: [
     {
@@ -90,6 +100,8 @@ import { NovaBalanceService } from "./nova/nova.balance.service";
     ProjectRepository,
     PointsOfLpRepository,
     BlockAddressPointOfLpRepository,
+    CacheRepository,
+    CacheService,
   ],
 })
 export class AppModule {}
