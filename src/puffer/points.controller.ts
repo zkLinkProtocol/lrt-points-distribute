@@ -476,7 +476,7 @@ export class PointsController {
   @Get("/puffer/eigenlayer")
   @ApiOkResponse({
     description:
-      "Return paginated results of all users' PufferPoints. The rule is to add 30 points per hour.\nTiming starts from the user's first deposit, with each user having an independent timer.",
+      "Return paginated results of all users' Puffer Eigenlayer Points. The rule is to add 30 points per hour.\nTiming starts from the user's first deposit, with each user having an independent timer.",
     type: ElPointsDto,
   })
   @ApiBadRequestResponse({
