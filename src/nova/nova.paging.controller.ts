@@ -59,7 +59,7 @@ export class NovaPagingController {
   ): Promise<NovaPointsWithoutDecimalsDto> {
     let pointData: PointData;
     try {
-      pointData = await this.novaService.getPoints(tokenAddress, address);
+      pointData = await this.novaService.getPoints(tokenAddress, [address]);
       if (!pointData.finalPoints || !pointData.finalTotalPoints) {
         return NOT_FOUND_EXCEPTION;
       }
@@ -204,11 +204,13 @@ export class NovaPagingController {
       meta: meta,
       data: list.map((point) => {
         const tmpPoints = point.points;
-        point.points = this.novaService.getRealPoints(
-          tmpPoints,
-          pointData.finalTotalPoints,
-          novaPoint,
-        );
+        point.points = this.novaService
+          .getRealPoints(
+            BigInt(tmpPoints),
+            pointData.finalTotalPoints,
+            novaPoint,
+          )
+          .toString();
         return point;
       }),
     } as NovaPointsWithoutDecimalsDto;

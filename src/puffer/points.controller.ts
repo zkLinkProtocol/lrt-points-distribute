@@ -229,10 +229,15 @@ export class PointsController {
       const pufPointsData = this.puffPointsService.getPointsData(
         address.toLocaleLowerCase(),
       );
+      // layerbank point
+      const layerbankPoint =
+        await this.puffPointsService.getLayerBankPoint(address);
 
-      const pufferPoints = (pufPointsData.items[0]?.realPoints ?? 0).toString();
+      const pufferPoints = (
+        pufPointsData.items[0].realPoints + layerbankPoint
+      ).toString();
 
-      const { userPosition, pools } =
+      const { userPosition, pools, balance } =
         await this.puffPointsService.getPuffElPointsByAddress(address);
 
       const withdrawingBalance = userPosition.withdrawHistory.reduce(
@@ -271,21 +276,17 @@ export class PointsController {
           })
           .filter((i) => !!i) ?? [];
 
-      const balanceDirect = pufPointsData.items[0]?.balance ?? BigInt(0);
-
       const res = {
         userAddress: address,
-        pufEthAddress:
-          userPosition?.positions[0].token ??
-          "0x1b49ecf1a8323db4abf48b2f5efaa33f7ddab3fc",
+        pufEthAddress: "0x1b49ecf1a8323db4abf48b2f5efaa33f7ddab3fc",
         pufferPoints: pufferPoints,
         totalBalance: Number(
-          ethers.formatEther(balanceDirect + balanceFromDappTotal),
+          ethers.formatEther(balance + balanceFromDappTotal),
         ).toFixed(6),
         withdrawingBalance: Number(
           ethers.formatEther(withdrawingBalance),
         ).toFixed(6),
-        userBalance: Number(ethers.formatEther(balanceDirect)).toFixed(6),
+        userBalance: Number(ethers.formatEther(balance)).toFixed(6),
         liquidityBalance: Number(
           ethers.formatEther(balanceFromDappTotal),
         ).toFixed(6),
@@ -497,6 +498,11 @@ export class PointsController {
       const data = this.puffPointsService.getPointsData();
       const { pools, userPositions } =
         await this.puffPointsService.getPuffElPoints(pagingOptions);
+      // layerbank point
+      const layerbankPoints =
+        await this.puffPointsService.getLayerBankPointList(
+          userPositions.map((i) => i.id),
+        );
 
       res = {
         errno: 0,
@@ -505,6 +511,11 @@ export class PointsController {
           totalPoints: data.realTotalPoints.toString(),
           list: userPositions.map((p) => {
             const userPointData = data.items.find((i) => i.address === p.id);
+
+            const layerbankPoint =
+              layerbankPoints.find(
+                (layerbankPoint) => layerbankPoint.address === p.id,
+              )?.layerbankPoint ?? 0;
 
             const liquidityBalance = p.positions.reduce((prev, cur) => {
               const pool = pools.find((pool) => pool.id === cur.pool);
@@ -522,9 +533,7 @@ export class PointsController {
 
             const totalBalance = Number(
               ethers.formatEther(
-                liquidityBalance +
-                  (userPointData?.balance ?? BigInt(0)) +
-                  withdrawingBalance,
+                liquidityBalance + p.balance + withdrawingBalance,
               ),
             ).toFixed(6);
 
@@ -546,20 +555,22 @@ export class PointsController {
 
             return {
               userAddress: p.id,
-              pufEthAddress: p.positions[0].token,
-              pufferPoints: userPointData?.realPoints.toString() ?? "0",
+              pufEthAddress: "0x1B49eCf1A8323Db4abf48b2F5EFaA33F7DdAB3FC",
+              pufferPoints: (
+                userPointData?.realPoints ?? 0 + layerbankPoint
+              ).toString(),
               totalBalance: totalBalance,
               withdrawingBalance: Number(
                 ethers.formatEther(withdrawingBalance),
               ).toFixed(6),
               userBalance: Number(
-                ethers.formatEther(userPointData?.balance ?? 0),
+                ethers.formatEther(BigInt(p.balance)),
               ).toFixed(6),
               liquidityBalance: Number(
                 ethers.formatEther(liquidityBalance),
               ).toFixed(6),
               liquidityDetails: liquidityDetails,
-              updatedAt: new Date(userPointData.updatedAt * 1000),
+              updatedAt: new Date(userPointData?.updatedAt * 1000),
             };
           }),
         },

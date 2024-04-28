@@ -38,6 +38,7 @@ interface EigenlayerPool {
 
 interface EigenlayerPosition {
   id: string;
+  balance: string;
   positions: {
     id: string;
     pool: string;
@@ -48,6 +49,7 @@ interface EigenlayerPosition {
 }
 
 interface PufferElPointsByAddress {
+  balance: string;
   pools: EigenlayerPool[];
   userPosition: EigenlayerPosition | null;
 }
@@ -201,7 +203,7 @@ export class PuffPointsService {
     const lpuffer = _lpuffer[0];
     const lpufferPointData = await this.novaService.getPoints(
       LAYERBANK_LPUFFER,
-      address,
+      [address],
     );
     const lpufferFinalPoints = lpufferPointData.finalPoints;
     const lpufferFinalTotalPoints = lpufferPointData.finalTotalPoints;
@@ -214,6 +216,29 @@ export class PuffPointsService {
     return 0;
   }
 
+  //get layerbank point
+  public async getLayerBankPointList(
+    addresses: string[],
+  ): Promise<Array<{ layerbankPoint: number; address: string }>> {
+    const lpuffer = this.localPoints.find(
+      (item) => item.address === LAYERBANK_LPUFFER,
+    );
+
+    const lpufferPointData = await this.novaService.getPoints(
+      LAYERBANK_LPUFFER,
+      addresses,
+    );
+    const lpufferFinalPoints = lpufferPointData.finalPoints;
+    const lpufferFinalTotalPoints = lpufferPointData.finalTotalPoints;
+
+    return lpufferFinalPoints.map((lpufferFinalPoint) => ({
+      address: lpufferFinalPoint.address,
+      layerbankPoint: new BigNumber(lpufferFinalPoint.points.toString())
+        .multipliedBy(lpuffer?.realPoints ?? 0)
+        .div(lpufferFinalTotalPoints.toString())
+        .toNumber(),
+    }));
+  }
   public async getPuffElPointsByAddress(
     address: string,
   ): Promise<PufferElPointsByAddress> {
@@ -231,6 +256,7 @@ export class PuffPointsService {
           }
           userPosition(id: "${address}") {
             id
+            balance
             positions {
               id
               pool
@@ -261,7 +287,7 @@ export class PuffPointsService {
     const { limit = 10, page = 1 } = pagingOption;
     const protocolName = "LayerBank";
     const withdrawTime = Math.floor(
-      (new Date().getTime() - 8 * 24 * 60 * 60 * 1000) / 1000,
+      (new Date().getTime() - 7 * 24 * 60 * 60 * 1000) / 1000,
     );
     try {
       const body = {
@@ -278,23 +304,20 @@ export class PuffPointsService {
           userPositions(
             where: {
               id_not: "0x000000000000000000000000000000000000dead",
-              positions_: {
-                poolName: ${JSON.stringify(protocolName)},
-                supplied_gt: "0", 
-              }
             }
             first: ${limit}
             skip: ${(page - 1) * limit}
           ) {
             id
-            positions(where: {poolName: ${JSON.stringify(protocolName)}}) {
+            balance
+            positions(first: 1000, where: {poolName: ${JSON.stringify(protocolName)}}) {
               id
               pool
               poolName
               supplied
               token
             }
-            withdrawHistory(where: {blockTimestamp_gt: "${withdrawTime}", token: "0x1B49eCf1A8323Db4abf48b2F5EFaA33F7DdAB3FC"}) {
+            withdrawHistory(first: 1000, where: {blockTimestamp_gt: "${withdrawTime}", token: "0x1B49eCf1A8323Db4abf48b2F5EFaA33F7DdAB3FC"}) {
               token
               id
               blockTimestamp

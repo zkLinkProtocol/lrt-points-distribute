@@ -130,7 +130,9 @@ export class NovaController {
   ): Promise<NovaPointsWithoutDecimalsDto> {
     let finalPoints: any[], finalTotalPoints: bigint;
     try {
-      const pointData = await this.novaService.getPoints(tokenAddress, address);
+      const pointData = await this.novaService.getPoints(tokenAddress, [
+        address,
+      ]);
       finalPoints = pointData.finalPoints;
       finalTotalPoints = pointData.finalTotalPoints;
     } catch (err) {
@@ -169,7 +171,9 @@ export class NovaController {
   ): Promise<NovaPointsWithoutDecimalsDto> {
     let finalPoints: any[], finalTotalPoints: bigint;
     try {
-      const pointData = await this.novaService.getPoints(tokenAddress, address);
+      const pointData = await this.novaService.getPoints(tokenAddress, [
+        address,
+      ]);
       finalPoints = pointData.finalPoints;
       finalTotalPoints = pointData.finalTotalPoints;
     } catch (err) {
