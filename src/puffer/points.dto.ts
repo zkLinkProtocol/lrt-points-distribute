@@ -80,6 +80,13 @@ export class ElPointsDtoItem {
 
   @ApiProperty({
     type: String,
+    description: "total withdrawn puffer balance in progress to l1",
+    example: "1000000000",
+  })
+  withdrawingBalance: string;
+
+  @ApiProperty({
+    type: String,
     description: "user account balance",
     example: "1000000000",
   })

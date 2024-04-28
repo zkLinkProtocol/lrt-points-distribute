@@ -235,6 +235,13 @@ export class PointsController {
       const { userPosition, pools } =
         await this.puffPointsService.getPuffElPointsByAddress(address);
 
+      const withdrawingBalance = userPosition.withdrawHistory.reduce(
+        (prev, cur) => {
+          return prev + BigInt(cur.balance);
+        },
+        BigInt(0),
+      );
+
       const balanceFromDappTotal =
         userPosition?.positions.reduce((prev, cur) => {
           const pool = pools.find((pool) => pool.id === cur.pool);
@@ -274,6 +281,9 @@ export class PointsController {
         pufferPoints: pufferPoints,
         totalBalance: Number(
           ethers.formatEther(balanceDirect + balanceFromDappTotal),
+        ).toFixed(6),
+        withdrawingBalance: Number(
+          ethers.formatEther(withdrawingBalance),
         ).toFixed(6),
         userBalance: Number(ethers.formatEther(balanceDirect)).toFixed(6),
         liquidityBalance: Number(
