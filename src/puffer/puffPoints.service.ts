@@ -44,11 +44,18 @@ interface EigenlayerPosition {
     supplied: string;
     token: string;
   }[];
+  withdrawHistory: WithdrawnItem[];
 }
 
 interface PufferElPointsByAddress {
   pools: EigenlayerPool[];
   userPosition: EigenlayerPosition | null;
+}
+
+interface WithdrawnItem {
+  token: string;
+  balance: string;
+  blockTimestamp: string;
 }
 
 interface PufferElPoints {
@@ -251,8 +258,11 @@ export class PuffPointsService {
   public async getPuffElPoints(
     pagingOption: PagingOptionsDto,
   ): Promise<PufferElPoints> {
-    const { limit, page } = pagingOption;
+    const { limit = 10, page = 1 } = pagingOption;
     const protocolName = "LayerBank";
+    const withdrawTime = Math.floor(
+      (new Date().getTime() - 8 * 24 * 60 * 60 * 1000) / 1000,
+    );
     try {
       const body = {
         query: `{
@@ -284,9 +294,17 @@ export class PuffPointsService {
               supplied
               token
             }
+            withdrawHistory(where: {blockTimestamp_gt: "${withdrawTime}", token: "0x1B49eCf1A8323Db4abf48b2F5EFaA33F7DdAB3FC"}) {
+              token
+              id
+              blockTimestamp
+              blockNumber
+              balance
+            }
           }
         }`,
       };
+
       const response = await fetch(this.puffElPointsGraphApi, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -296,7 +314,10 @@ export class PuffPointsService {
 
       return data.data;
     } catch (err) {
-      this.logger.error("Fetch magpie graph query data faild", err.stack);
+      this.logger.error(
+        "Fetch getPuffElPoints graph query data fail",
+        err.stack,
+      );
       return undefined;
     }
   }

@@ -232,7 +232,7 @@ export class PointsController {
         address.toLocaleLowerCase(),
       );
 
-      const points = (
+      const pufferPoints = (
         pufPointsData.items[0]?.realPoints ?? 0 + layerbankPoint
       ).toString();
 
@@ -275,7 +275,7 @@ export class PointsController {
         pufEthAddress:
           userPosition?.positions[0].token ??
           "0x1b49ecf1a8323db4abf48b2f5efaa33f7ddab3fc",
-        points: points,
+        pufferPoints: pufferPoints,
         totalBalance: Number(
           ethers.formatEther(balanceDirect + balanceFromDappTotal),
         ).toFixed(6),
@@ -284,6 +284,7 @@ export class PointsController {
           ethers.formatEther(balanceFromDappTotal),
         ).toFixed(6),
         liquidityDetails,
+        updatedAt: new Date(pufPointsData.items[0].updatedAt * 1000),
       };
 
       return {
@@ -509,9 +510,15 @@ export class PointsController {
               return prev + shareBalance;
             }, BigInt(0));
 
+            const withdrawingBalance = p.withdrawHistory.reduce((prev, cur) => {
+              return prev + BigInt(cur.balance);
+            }, BigInt(0));
+
             const totalBalance = Number(
               ethers.formatEther(
-                liquidityBalance + (userPointData?.balance ?? BigInt(0)),
+                liquidityBalance +
+                  (userPointData?.balance ?? BigInt(0)) +
+                  withdrawingBalance,
               ),
             ).toFixed(6);
 
@@ -534,8 +541,11 @@ export class PointsController {
             return {
               userAddress: p.id,
               pufEthAddress: p.positions[0].token,
-              points: userPointData?.realPoints.toString() ?? "0",
+              pufferPoints: userPointData?.realPoints.toString() ?? "0",
               totalBalance: totalBalance,
+              withdrawingBalance: Number(
+                ethers.formatEther(withdrawingBalance),
+              ).toFixed(6),
               userBalance: Number(
                 ethers.formatEther(userPointData?.balance ?? 0),
               ).toFixed(6),
@@ -543,6 +553,7 @@ export class PointsController {
                 ethers.formatEther(liquidityBalance),
               ).toFixed(6),
               liquidityDetails: liquidityDetails,
+              updatedAt: new Date(userPointData.updatedAt * 1000),
             };
           }),
         },

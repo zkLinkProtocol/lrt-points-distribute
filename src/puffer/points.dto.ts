@@ -66,10 +66,10 @@ export class ElPointsDtoItem {
 
   @ApiProperty({
     type: String,
-    description: "usr total points",
+    description: "user puffer points",
     example: "437936.234525",
   })
-  points: string;
+  pufferPoints: string;
 
   @ApiProperty({
     type: String,
@@ -99,6 +99,13 @@ export class ElPointsDtoItem {
   })
   @Type(() => LiquidityDetails)
   liquidityDetails: LiquidityDetails[];
+
+  @ApiProperty({
+    type: Date,
+    description: "The timestamp when the points was updated",
+    example: new Date("2023-11-21T18:16:51.000Z"),
+  })
+  public readonly updatedAt: Date;
 }
 
 export class UserElPointsDto {
