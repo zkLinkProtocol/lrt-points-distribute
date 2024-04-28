@@ -226,15 +226,11 @@ export class PointsController {
     @Param("address", new ParseAddressPipe()) address: string,
   ): Promise<UserElPointsDto> {
     try {
-      const layerbankPoint =
-        await this.puffPointsService.getLayerBankPoint(address);
       const pufPointsData = this.puffPointsService.getPointsData(
         address.toLocaleLowerCase(),
       );
 
-      const pufferPoints = (
-        pufPointsData.items[0]?.realPoints ?? 0 + layerbankPoint
-      ).toString();
+      const pufferPoints = (pufPointsData.items[0]?.realPoints ?? 0).toString();
 
       const { userPosition, pools } =
         await this.puffPointsService.getPuffElPointsByAddress(address);
