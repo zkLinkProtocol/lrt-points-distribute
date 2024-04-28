@@ -30,7 +30,12 @@ import { GraphQueryService } from "src/common/service/graphQuery.service";
 import { TokenPointsDto } from "./tokenPoints.dto";
 import { TokenPointsWithoutDecimalsDto } from "./tokenPointsWithoutDecimals.dto";
 import { PointsWithoutDecimalsDto } from "./pointsWithoutDecimals.dto";
-import { ElPointsDto, ElPointsDtoData, PointsDto } from "./points.dto";
+import {
+  UserElPointsDto,
+  ElPointsDto,
+  PointsDto,
+  ElPointsDtoItem,
+} from "./points.dto";
 import { TokensDto } from "./tokens.dto";
 import { NovaService } from "src/nova/nova.service";
 
@@ -204,82 +209,88 @@ export class PointsController {
     return res;
   }
 
-  @Get(":address/puffer-el-points")
+  @Get("puffer/eigenlayer/:address")
   @ApiParam({
     name: "address",
     schema: { pattern: ADDRESS_REGEX_PATTERN },
     description: "Valid hex address",
   })
   @ApiOkResponse({
-    description: "Return the user puff el points",
-    type: ElPointsDto,
+    description: "Return the user puff eigenlayer points",
+    type: UserElPointsDto,
   })
   @ApiBadRequestResponse({
     description: '{ "message": "Not Found", "statusCode": 404 }',
   })
   public async pufferEigenLayerPoints(
     @Param("address", new ParseAddressPipe()) address: string,
-  ): Promise<ElPointsDto> {
-    // let res: ElPointsDto;
-
+  ): Promise<UserElPointsDto> {
     try {
-      const layerbankPoint =
-        await this.puffPointsService.getLayerBankPoint(address);
       const pufPointsData = this.puffPointsService.getPointsData(
         address.toLocaleLowerCase(),
       );
 
-      const points = (
-        pufPointsData.items[0]?.realPoints ?? 0 + layerbankPoint
-      ).toString();
+      const pufferPoints = (pufPointsData.items[0]?.realPoints ?? 0).toString();
 
-      const data =
+      const { userPosition, pools } =
         await this.puffPointsService.getPuffElPointsByAddress(address);
 
-      const balanceFromDappTotal = data.userPosition.positions.reduce(
+      const withdrawingBalance = userPosition.withdrawHistory.reduce(
         (prev, cur) => {
-          const pool = data.pools.find((pool) => pool.id === cur.pool);
-          if (pool.name === "LayerBank") {
+          return prev + BigInt(cur.balance);
+        },
+        BigInt(0),
+      );
+
+      const balanceFromDappTotal =
+        userPosition?.positions.reduce((prev, cur) => {
+          const pool = pools.find((pool) => pool.id === cur.pool);
+          if (pool?.name === "LayerBank") {
             const shareBalance =
               (BigInt(pool.balance) * BigInt(cur.supplied)) /
               BigInt(pool.totalSupplied);
             return prev + shareBalance;
           }
           return prev;
-        },
-        BigInt(0),
-      );
+        }, BigInt(0)) ?? BigInt(0);
 
-      const balanceFromDappTotalDetails = data.userPosition.positions
-        .map((position) => {
-          const pool = data.pools.find((pool) => pool.id === position.pool);
-          if (pool.name === "LayerBank")
-            return {
-              dappName: pool.name,
-              balance: Number(
-                ethers.formatEther(
-                  (BigInt(pool.balance) * BigInt(position.supplied)) /
-                    BigInt(pool.totalSupplied),
-                ),
-              ).toFixed(6),
-            };
-        })
-        .filter((i) => !!i);
+      const liquidityDetails =
+        userPosition?.positions
+          .map((position) => {
+            const pool = pools.find((pool) => pool.id === position.pool);
+            if (pool?.name === "LayerBank")
+              return {
+                dappName: pool.name,
+                balance: Number(
+                  ethers.formatEther(
+                    (BigInt(pool.balance) * BigInt(position.supplied)) /
+                      BigInt(pool.totalSupplied),
+                  ),
+                ).toFixed(6),
+              };
+          })
+          .filter((i) => !!i) ?? [];
 
       const balanceDirect = pufPointsData.items[0]?.balance ?? BigInt(0);
 
       const res = {
-        address: address,
-        points: points,
-        balanceDirect: Number(ethers.formatEther(balanceDirect)).toFixed(6),
-        balanceSum: Number(
+        userAddress: address,
+        pufEthAddress:
+          userPosition?.positions[0].token ??
+          "0x1b49ecf1a8323db4abf48b2f5efaa33f7ddab3fc",
+        pufferPoints: pufferPoints,
+        totalBalance: Number(
           ethers.formatEther(balanceDirect + balanceFromDappTotal),
         ).toFixed(6),
-        tokenAddress: data.userPosition.positions[0].token,
-        balanceFromDappTotal: Number(
+        withdrawingBalance: Number(
+          ethers.formatEther(withdrawingBalance),
+        ).toFixed(6),
+        userBalance: Number(ethers.formatEther(balanceDirect)).toFixed(6),
+        liquidityBalance: Number(
           ethers.formatEther(balanceFromDappTotal),
         ).toFixed(6),
-        balanceFromDappTotalDetails: balanceFromDappTotalDetails,
+        liquidityDetails,
+        updatedAt: new Date(pufPointsData.items[0].updatedAt * 1000),
       };
 
       return {
@@ -292,7 +303,7 @@ export class PointsController {
       return {
         errno: 1,
         errmsg: "Service exception",
-        data: null as ElPointsDtoData,
+        data: null as unknown as ElPointsDtoItem,
       };
     }
   }
@@ -463,6 +474,104 @@ export class PointsController {
         errmsg: "Not Found",
         total_points: "0",
         data: [] as PointsWithoutDecimalsDto[],
+      };
+    }
+
+    return res;
+  }
+
+  @Get("/puffer/eigenlayer")
+  @ApiOkResponse({
+    description:
+      "Return paginated results of all users' Puffer Eigenlayer Points. The rule is to add 30 points per hour.\nTiming starts from the user's first deposit, with each user having an independent timer.",
+    type: ElPointsDto,
+  })
+  @ApiBadRequestResponse({
+    description: '{ "message": "Not Found", "statusCode": 404 }',
+  })
+  public async queryPufferEigenlayerPoints(
+    @Query() pagingOptions: PagingOptionsDto,
+  ): Promise<ElPointsDto> {
+    let res: ElPointsDto;
+    try {
+      const data = this.puffPointsService.getPointsData();
+      const { pools, userPositions } =
+        await this.puffPointsService.getPuffElPoints(pagingOptions);
+
+      res = {
+        errno: 0,
+        errmsg: "no error",
+        data: {
+          totalPoints: data.realTotalPoints.toString(),
+          list: userPositions.map((p) => {
+            const userPointData = data.items.find((i) => i.address === p.id);
+
+            const liquidityBalance = p.positions.reduce((prev, cur) => {
+              const pool = pools.find((pool) => pool.id === cur.pool);
+              if (!pool) return prev;
+
+              const shareBalance =
+                (BigInt(pool.balance) * BigInt(cur.supplied)) /
+                BigInt(pool.totalSupplied);
+              return prev + shareBalance;
+            }, BigInt(0));
+
+            const withdrawingBalance = p.withdrawHistory.reduce((prev, cur) => {
+              return prev + BigInt(cur.balance);
+            }, BigInt(0));
+
+            const totalBalance = Number(
+              ethers.formatEther(
+                liquidityBalance +
+                  (userPointData?.balance ?? BigInt(0)) +
+                  withdrawingBalance,
+              ),
+            ).toFixed(6);
+
+            const liquidityDetails = p.positions
+              .map((position) => {
+                const pool = pools.find((pool) => pool.id === position.pool);
+                if (!pool) return;
+                return {
+                  dappName: pool?.name,
+                  balance: Number(
+                    ethers.formatEther(
+                      (BigInt(pool.balance) * BigInt(position.supplied)) /
+                        BigInt(pool.totalSupplied),
+                    ),
+                  ).toFixed(6),
+                };
+              })
+              .filter((i) => !!i);
+
+            return {
+              userAddress: p.id,
+              pufEthAddress: p.positions[0].token,
+              pufferPoints: userPointData?.realPoints.toString() ?? "0",
+              totalBalance: totalBalance,
+              withdrawingBalance: Number(
+                ethers.formatEther(withdrawingBalance),
+              ).toFixed(6),
+              userBalance: Number(
+                ethers.formatEther(userPointData?.balance ?? 0),
+              ).toFixed(6),
+              liquidityBalance: Number(
+                ethers.formatEther(liquidityBalance),
+              ).toFixed(6),
+              liquidityDetails: liquidityDetails,
+              updatedAt: new Date(userPointData.updatedAt * 1000),
+            };
+          }),
+        },
+      };
+    } catch (e) {
+      res = {
+        errno: 1,
+        errmsg: "Not Found",
+        data: {
+          totalPoints: "0",
+          list: [],
+        },
       };
     }
 

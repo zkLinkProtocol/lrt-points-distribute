@@ -7,6 +7,7 @@ import { GraphQueryService } from "src/common/service/graphQuery.service";
 import BigNumber from "bignumber.js";
 import { NovaService } from "src/nova/nova.service";
 import { ConfigService } from "@nestjs/config";
+import { PagingOptionsDto } from "src/common/pagingOptionsDto.dto";
 
 export interface PufferPointItem {
   address: string;
@@ -25,24 +26,41 @@ export interface PufferData {
   items: PufferPointItem[];
 }
 
-interface PufferElPoints {
-  pools: {
-    balance: string;
-    decimals: string;
+interface EigenlayerPool {
+  balance: string;
+  decimals: string;
+  id: string;
+  name: string;
+  symbol: string;
+  totalSupplied: string;
+  underlying: string;
+}
+
+interface EigenlayerPosition {
+  id: string;
+  positions: {
     id: string;
-    name: string;
-    symbol: string;
-    totalSupplied: string;
-    underlying: string;
+    pool: string;
+    supplied: string;
+    token: string;
   }[];
-  userPosition: {
-    positions: {
-      id: string;
-      pool: string;
-      supplied: string;
-      token: string;
-    }[];
-  };
+  withdrawHistory: WithdrawnItem[];
+}
+
+interface PufferElPointsByAddress {
+  pools: EigenlayerPool[];
+  userPosition: EigenlayerPosition | null;
+}
+
+interface WithdrawnItem {
+  token: string;
+  balance: string;
+  blockTimestamp: string;
+}
+
+interface PufferElPoints {
+  pools: EigenlayerPool[];
+  userPositions: EigenlayerPosition[];
 }
 
 const LAYERBANK_LPUFFER =
@@ -198,7 +216,7 @@ export class PuffPointsService {
 
   public async getPuffElPointsByAddress(
     address: string,
-  ): Promise<PufferElPoints> {
+  ): Promise<PufferElPointsByAddress> {
     try {
       const body = {
         query: `{
@@ -233,6 +251,73 @@ export class PuffPointsService {
       return data.data;
     } catch (err) {
       this.logger.error("Fetch magpie graph query data faild", err.stack);
+      return undefined;
+    }
+  }
+
+  public async getPuffElPoints(
+    pagingOption: PagingOptionsDto,
+  ): Promise<PufferElPoints> {
+    const { limit = 10, page = 1 } = pagingOption;
+    const protocolName = "LayerBank";
+    const withdrawTime = Math.floor(
+      (new Date().getTime() - 8 * 24 * 60 * 60 * 1000) / 1000,
+    );
+    try {
+      const body = {
+        query: `{
+          pools(first: 1000) {
+            decimals
+            id
+            name
+            symbol
+            totalSupplied
+            underlying
+            balance
+          }
+          userPositions(
+            where: {
+              id_not: "0x000000000000000000000000000000000000dead",
+              positions_: {
+                poolName: ${JSON.stringify(protocolName)},
+                supplied_gt: "0", 
+              }
+            }
+            first: ${limit}
+            skip: ${(page - 1) * limit}
+          ) {
+            id
+            positions(where: {poolName: ${JSON.stringify(protocolName)}}) {
+              id
+              pool
+              poolName
+              supplied
+              token
+            }
+            withdrawHistory(where: {blockTimestamp_gt: "${withdrawTime}", token: "0x1B49eCf1A8323Db4abf48b2F5EFaA33F7DdAB3FC"}) {
+              token
+              id
+              blockTimestamp
+              blockNumber
+              balance
+            }
+          }
+        }`,
+      };
+
+      const response = await fetch(this.puffElPointsGraphApi, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await response.json();
+
+      return data.data;
+    } catch (err) {
+      this.logger.error(
+        "Fetch getPuffElPoints graph query data fail",
+        err.stack,
+      );
       return undefined;
     }
   }
