@@ -52,8 +52,6 @@ export class NovaService {
         project,
       );
 
-    console.log(111, addresses.length, points.length);
-
     if (Array.isArray(points) && totalPoints) {
       return this.getPointData(points, totalPoints);
     } else {

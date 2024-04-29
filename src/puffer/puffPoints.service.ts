@@ -304,6 +304,7 @@ export class PuffPointsService {
           userPositions(
             where: {
               id_not: "0x000000000000000000000000000000000000dead",
+              validate: true
             }
             first: ${limit}
             skip: ${(page - 1) * limit}
