@@ -198,6 +198,30 @@ export class NovaController {
     return this.getReturnData(finalPoints, finalTotalPoints, points);
   }
 
+  @Get("/points/address/all/projects")
+  @ApiOperation({ summary: "Get all address's project points" })
+  @ApiBadRequestResponse({
+    description: '{ "errno": 1, "errmsg": "Service exception" }',
+  })
+  @ApiNotFoundResponse({
+    description: '{ "errno": 1, "errmsg": "not found" }',
+  })
+  public async getAllAddressProjectPoints(): Promise<any> {
+    let pointData;
+    try {
+      pointData = await this.novaBalanceService.getAddressByTotalPoints(1, 10);
+    } catch (err) {
+      this.logger.error("Get nova all points failed", err.stack);
+      return SERVICE_EXCEPTION;
+    }
+
+    return {
+      errno: 0,
+      errmsg: "no error",
+      data: pointData,
+    };
+  }
+
   @Get("/all/points")
   @ApiOperation({
     summary:
@@ -222,9 +246,7 @@ export class NovaController {
       return allPoints;
     }
 
-    let cacheData: NovaPointsWithoutDecimalsDto,
-      finalPoints: any[],
-      finalTotalPoints: bigint;
+    let finalPoints: any[], finalTotalPoints: bigint;
     try {
       const pointData = await this.novaService.getAllPoints(tokenAddress);
       finalPoints = pointData.finalPoints;
@@ -250,7 +272,7 @@ export class NovaController {
     if (!points) {
       return NOT_FOUND_EXCEPTION;
     }
-    cacheData = this.getReturnData(
+    const cacheData = this.getReturnData(
       finalPoints,
       finalTotalPoints,
       points.novaPoint,
@@ -283,9 +305,7 @@ export class NovaController {
       return allPoints;
     }
 
-    let cacheData: NovaPointsWithoutDecimalsDto,
-      finalPoints: any[],
-      finalTotalPoints: bigint;
+    let finalPoints: any[], finalTotalPoints: bigint;
     try {
       const pointData =
         await this.novaService.getAllPointsWithBalance(tokenAddress);
@@ -311,7 +331,7 @@ export class NovaController {
     if (!points) {
       return NOT_FOUND_EXCEPTION;
     }
-    cacheData = this.getReturnData(
+    const cacheData = this.getReturnData(
       finalPoints,
       finalTotalPoints,
       points.novaPoint,

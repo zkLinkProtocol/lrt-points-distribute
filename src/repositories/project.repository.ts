@@ -18,4 +18,13 @@ export class ProjectRepository extends BaseRepository<Project> {
     );
     return result.map((row: any) => row.pairAddress);
   }
+
+  // get all projects
+  public async getAllProjects(): Promise<string[]> {
+    const transactionManager = this.unitOfWork.getTransactionManager();
+    const result = await transactionManager.query(
+      `select DISTINCT name from project`,
+    );
+    return result.map((row: any) => (row.name == "owlet" ? "owlto" : row.name));
+  }
 }
