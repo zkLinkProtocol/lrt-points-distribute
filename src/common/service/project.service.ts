@@ -36,7 +36,7 @@ export class ProjectService {
         const projectId = projectIds[key];
         [points, totalPoints] =
           await this.graphQueryService.queryPointsRedistributedByAddress(
-            address,
+            [address],
             projectId,
           );
         if (Array.isArray(points) && totalPoints) {
@@ -78,7 +78,7 @@ export class ProjectService {
         for (const point of points) {
           const tmpPoint = GraphQueryService.getPoints(point, now);
           if (!addressPoints.has(point.address)) {
-            let tmpMap = new Map();
+            const tmpMap = new Map();
             tmpMap.set("points", tmpPoint);
             tmpMap.set("updateAt", now);
             addressPoints.set(point.address, tmpMap);
@@ -141,7 +141,7 @@ export class ProjectService {
     points: GraphPoint[],
     totalPoints: GraphTotalPoint,
   ): [any[], bigint] {
-    let finalPoints = [];
+    const finalPoints = [];
     const now = (new Date().getTime() / 1000) | 0;
     const finalTotalPoints = GraphQueryService.getTotalPoints(totalPoints, now);
 

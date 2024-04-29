@@ -167,29 +167,30 @@ export class GraphQueryService implements OnModuleInit {
   }
 
   public async queryPointsRedistributedByAddress(
-    address: string,
+    addresses: string[],
     projectId: string,
   ): Promise<[GraphPoint[], GraphTotalPoint]> {
     const id = ethers.keccak256(ethers.toUtf8Bytes(projectId));
     const query = `
-{
-  totalPoint(id: "${id}") {
-    project
-    totalBalance
-    totalWeightBalance
-    totalTimeWeightAmountIn
-    totalTimeWeightAmountOut
-  }
-  points(first:1000, where: {project: "${projectId}", address: "${address}"}) {
-    address
-    balance
-    weightBalance
-    timeWeightAmountIn
-    timeWeightAmountOut
-    project
-  }
-}
+      {
+        totalPoint(id: "${id}") {
+          project
+          totalBalance
+          totalWeightBalance
+          totalTimeWeightAmountIn
+          totalTimeWeightAmountOut
+        }
+        points(first:1000, where: {project: "${projectId}", address_in: ${JSON.stringify(addresses)}}) {
+          address
+          balance
+          weightBalance
+          timeWeightAmountIn
+          timeWeightAmountOut
+          project
+        }
+      }
     `;
+
     const data = await this.query(query);
     if (
       data &&

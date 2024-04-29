@@ -8,7 +8,13 @@ import { NovaApiService, NovaPoints } from "src/nova/novaapi.service";
 import { BigNumber } from "bignumber.js";
 
 export interface PointData {
-  finalPoints: any[];
+  finalPoints: Array<{
+    address: string;
+    points: string;
+    tokenAddress: string;
+    balance: string;
+    updated_at: number;
+  }>;
   finalTotalPoints: bigint;
 }
 
@@ -28,12 +34,10 @@ export class NovaService {
 
   public async getPoints(
     tokenAddress: string,
-    address: string,
+    addresses: string[],
   ): Promise<PointData> {
-    let finalTotalPoints = BigInt(0),
-      finalPoints = [],
-      points: GraphPoint[],
-      totalPoints: GraphTotalPoint;
+    const finalPoints = [];
+    const finalTotalPoints = BigInt(0);
 
     const projects = this.graphQueryService.getAllProjectIds(this.projectName);
     const project = `${this.projectName}-${tokenAddress}`;
@@ -42,11 +46,12 @@ export class NovaService {
       return { finalPoints, finalTotalPoints };
     }
 
-    [points, totalPoints] =
+    const [points, totalPoints] =
       await this.graphQueryService.queryPointsRedistributedByAddress(
-        address,
+        addresses,
         project,
       );
+
     if (Array.isArray(points) && totalPoints) {
       return this.getPointData(points, totalPoints);
     } else {
@@ -64,8 +69,8 @@ export class NovaService {
         this.projectName,
       );
 
-    let tempProjectIdGraphTotalPoint: Map<string, bigint> = new Map();
-    let tempProjectIdTotalPoints: Map<string, number> = new Map();
+    const tempProjectIdGraphTotalPoint: Map<string, bigint> = new Map();
+    const tempProjectIdTotalPoints: Map<string, number> = new Map();
     let finalTotalPoints: bigint = BigInt(0);
     for (const item of totalPoints) {
       const projectArr = item.project.split("-");
@@ -84,7 +89,7 @@ export class NovaService {
       finalTotalPoints += tempFinalTotalPoints;
     }
 
-    let finalPoints = [];
+    const finalPoints = [];
     const now = (new Date().getTime() / 1000) | 0;
     for (const point of points) {
       const projectArr = point.project.split("-");
@@ -132,7 +137,7 @@ export class NovaService {
       for (const point of points) {
         const tmpPoint = GraphQueryService.getPoints(point, now);
         if (!addressPoints.has(point.address)) {
-          let tmpMap = new Map();
+          const tmpMap = new Map();
           tmpMap.set("points", tmpPoint);
           tmpMap.set("updateAt", now);
           addressPoints.set(point.address, tmpMap);
@@ -194,7 +199,7 @@ export class NovaService {
     points: GraphPoint[],
     totalPoints: GraphTotalPoint,
   ): PointData {
-    let finalPoints = [];
+    const finalPoints = [];
     const now = (new Date().getTime() / 1000) | 0;
     const finalTotalPoints = GraphQueryService.getTotalPoints(totalPoints, now);
 
