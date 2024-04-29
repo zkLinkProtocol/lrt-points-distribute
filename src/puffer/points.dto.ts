@@ -144,7 +144,7 @@ export class ElPointsDtoData {
     description: "total eigenlayer points",
     example: "10000",
   })
-  public readonly totalPoints: string;
+  public readonly totalPufferPoints: string;
 
   @ApiProperty({
     type: ElPointsDtoItem,

@@ -237,7 +237,7 @@ export class PointsController {
         pufPointsData.items[0].realPoints + layerbankPoint
       ).toString();
 
-      const { userPosition, pools, balance } =
+      const { userPosition, pools } =
         await this.puffPointsService.getPuffElPointsByAddress(address);
 
       const withdrawingBalance = userPosition.withdrawHistory.reduce(
@@ -281,12 +281,18 @@ export class PointsController {
         pufEthAddress: "0x1b49ecf1a8323db4abf48b2f5efaa33f7ddab3fc",
         pufferPoints: pufferPoints,
         totalBalance: Number(
-          ethers.formatEther(balance + balanceFromDappTotal),
+          ethers.formatEther(
+            BigInt(userPosition.balance) +
+              balanceFromDappTotal +
+              withdrawingBalance,
+          ),
         ).toFixed(6),
         withdrawingBalance: Number(
           ethers.formatEther(withdrawingBalance),
         ).toFixed(6),
-        userBalance: Number(ethers.formatEther(balance)).toFixed(6),
+        userBalance: Number(ethers.formatEther(userPosition.balance)).toFixed(
+          6,
+        ),
         liquidityBalance: Number(
           ethers.formatEther(balanceFromDappTotal),
         ).toFixed(6),
@@ -508,7 +514,7 @@ export class PointsController {
         errno: 0,
         errmsg: "no error",
         data: {
-          totalPoints: data.realTotalPoints.toString(),
+          totalPufferPoints: data.realTotalPoints.toString(),
           list: userPositions.map((p) => {
             const userPointData = data.items.find((i) => i.address === p.id);
 
@@ -533,7 +539,7 @@ export class PointsController {
 
             const totalBalance = Number(
               ethers.formatEther(
-                liquidityBalance + p.balance + withdrawingBalance,
+                liquidityBalance + BigInt(p.balance) + withdrawingBalance,
               ),
             ).toFixed(6);
 
@@ -580,7 +586,7 @@ export class PointsController {
         errno: 1,
         errmsg: "Not Found",
         data: {
-          totalPoints: "0",
+          totalPufferPoints: "0",
           list: [],
         },
       };
