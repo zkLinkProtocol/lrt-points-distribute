@@ -93,7 +93,7 @@ export class PointsController {
     const result = data.items.map((point: RenzoPointItem) => {
       const dto: PointsDto = {
         address: point.address,
-        updatedAt: new Date(point.updatedAt * 1000),
+        updatedAt: point.updatedAt,
         points: point.realRenzoPoints.toFixed(6),
         tokenAddress: point.tokenAddress,
       };
@@ -209,7 +209,7 @@ export class PointsController {
     return res;
   }
 
-  @Get("puffer/eigenlayer/:address")
+  @Get("puffer/:address")
   @ApiParam({
     name: "address",
     schema: { pattern: ADDRESS_REGEX_PATTERN },
@@ -297,7 +297,7 @@ export class PointsController {
           ethers.formatEther(balanceFromDappTotal),
         ).toFixed(6),
         liquidityDetails,
-        updatedAt: new Date(pufPointsData.items[0].updatedAt * 1000),
+        updatedAt: pufPointsData.items[0].updatedAt,
       };
 
       return {
@@ -395,7 +395,7 @@ export class PointsController {
     const result = allPointsFilter.map((p) => {
       return {
         address: p.address,
-        updatedAt: new Date(p.updatedAt * 1000),
+        updatedAt: p.updatedAt,
         tokenAddress: p.tokenAddress,
         points: p.localPoints.toString(),
       };
@@ -487,7 +487,7 @@ export class PointsController {
     return res;
   }
 
-  @Get("/puffer/eigenlayer")
+  @Get("/puffer")
   @ApiOkResponse({
     description:
       "Return paginated results of all users' Puffer Eigenlayer Points. The rule is to add 30 points per hour.\nTiming starts from the user's first deposit, with each user having an independent timer.",
@@ -576,7 +576,7 @@ export class PointsController {
                 ethers.formatEther(liquidityBalance),
               ).toFixed(6),
               liquidityDetails: liquidityDetails,
-              updatedAt: new Date(userPointData?.updatedAt * 1000),
+              updatedAt: userPointData?.updatedAt,
             };
           }),
         },
