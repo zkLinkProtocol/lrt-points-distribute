@@ -19,7 +19,9 @@ import { NovaService } from "src/nova/nova.service";
 import { NovaApiService, NovaPoints } from "src/nova/novaapi.service";
 import { BigNumber } from "bignumber.js";
 import { PuffPointsService } from "src/puffer/puffPoints.service";
-import { NovaBalanceService } from "./nova.balance.service";
+import { NovaBalanceService } from './nova.balance.service';
+import { PagingOptionsDto } from '../common/pagingOptionsDto.dto';
+import { PagingMetaDto } from '../common/paging.dto';
 
 const options = {
   // how long to live in ms
@@ -198,7 +200,7 @@ export class NovaController {
     return this.getReturnData(finalPoints, finalTotalPoints, points);
   }
 
-  @Get("/points/address/all/projects")
+  @Get("/points/address/projects/all")
   @ApiOperation({ summary: "Get all address's project points" })
   @ApiBadRequestResponse({
     description: '{ "errno": 1, "errmsg": "Service exception" }',
@@ -206,20 +208,70 @@ export class NovaController {
   @ApiNotFoundResponse({
     description: '{ "errno": 1, "errmsg": "not found" }',
   })
-  public async getAllAddressProjectPoints(): Promise<any> {
-    let pointData;
+  public async getAllAddressProjectPoints(
+    @Query() pagingOptions: PagingOptionsDto
+    ): Promise<any> {
+    let pointData, totalCount;
+    const { page = 1, limit = 100 } = pagingOptions;
     try {
-      pointData = await this.novaBalanceService.getAddressByTotalPoints(1, 10);
+      pointData = await this.novaBalanceService.getAddressByTotalPoints(page, limit);
+      totalCount = await this.novaBalanceService.getAddressCount();
     } catch (err) {
       this.logger.error("Get nova all points failed", err.stack);
       return SERVICE_EXCEPTION;
     }
 
+    const pagingMeta = {
+        currentPage: Number(page),
+        itemCount: pointData.length,
+        itemsPerPage: Number(limit),
+        totalItems: totalCount,
+        totalPages: Math.ceil(totalCount / limit),
+      } as PagingMetaDto;
+
     return {
-      errno: 0,
-      errmsg: "no error",
-      data: pointData,
-    };
+        errno: 0,
+        errmsg: "no error",
+        meta: pagingMeta,
+        data: pointData,
+      };
+  }
+
+  @Get("/points/address/projects/daily")
+  @ApiOperation({ summary: "Get all address's project daily points" })
+  @ApiBadRequestResponse({
+    description: '{ "errno": 1, "errmsg": "Service exception" }',
+  })
+  @ApiNotFoundResponse({
+    description: '{ "errno": 1, "errmsg": "not found" }',
+  })
+  public async getAllAddressProjectDailyPoints(
+    @Query() pagingOptions: PagingOptionsDto
+    ): Promise<any> {
+    let pointData, totalCount;
+    const { page = 1, limit = 100 } = pagingOptions;
+    try {
+      pointData = await this.novaBalanceService.getAddressByDailyTotalPoints(page, limit);
+      totalCount = await this.novaBalanceService.getAddressDailyCount();
+    } catch (err) {
+      this.logger.error("Get nova all points failed", err.stack);
+      return SERVICE_EXCEPTION;
+    }
+
+    const pagingMeta = {
+        currentPage: Number(page),
+        itemCount: pointData.length,
+        itemsPerPage: Number(limit),
+        totalItems: totalCount,
+        totalPages: Math.ceil(totalCount / limit),
+      } as PagingMetaDto;
+
+    return {
+        errno: 0,
+        errmsg: "no error",
+        meta: pagingMeta,
+        data: pointData,
+      };
   }
 
   @Get("/all/points")
@@ -238,7 +290,7 @@ export class NovaController {
     description: '{ "errno": 1, "errmsg": "not found" }',
   })
   public async getAllNovaPoints(
-    @Query("tokenAddress", new ParseAddressPipe()) tokenAddress: string,
+    @Query("tokenAddress", new ParseAddressPipe()) tokenAddress: string
   ): Promise<Partial<NovaPointsWithoutDecimalsDto>> {
     const cacheKey = NOVA_ALL_POINTS_CACHE_KEY + tokenAddress;
     const allPoints = cache.get(cacheKey) as NovaPointsWithoutDecimalsDto;

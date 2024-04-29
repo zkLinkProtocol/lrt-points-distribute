@@ -1,13 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { UnitOfWork } from "../unitOfWork";
 import { PointsOfLp } from "../entities/pointsOfLp.entity";
-
-export interface SumPointsGroupByProjectNameAndAddress {
-  name: string;
-  address: string;
-  totalPoints: number;
-}
-
+import { SumPointsGroupByProjectNameAndAddress } from "../type/sumPointsGroupByProjectNameAndAddress";
 @Injectable()
 export class PointsOfLpRepository {
   public constructor(private readonly unitOfWork: UnitOfWork) {}
@@ -45,8 +39,9 @@ export class PointsOfLpRepository {
     page: number,
     limit: number,
   ): Promise<Buffer[]> {
+    page = page - 1;
     const transactionManager = this.unitOfWork.getTransactionManager();
-    const query = `SELECT "pointsOfLp"."address", SUM("pointsOfLp"."stakePoint") as "totalPoints" FROM "pointsOfLp" left join project on "pointsOfLp"."pairAddress" = project."pairAddress" where project.name is not null GROUP BY "address" ORDER BY "totalPoints" DESC LIMIT ${limit} OFFSET ${page * limit}`;
+    const query = `SELECT * FROM (SELECT "address", SUM("stakePoint") AS "totalPoints" FROM "pointsOfLp" GROUP BY "address") AS a ORDER BY "totalPoints" DESC LIMIT ${limit} OFFSET ${page * limit}`;
     const result = await transactionManager.query(query);
     return result.map((row: any) => row.address);
   }
@@ -63,7 +58,7 @@ export class PointsOfLpRepository {
     addresses: Buffer[],
   ): Promise<SumPointsGroupByProjectNameAndAddress[]> {
     const transactionManager = this.unitOfWork.getTransactionManager();
-    const query = `SELECT project.name, "pointsOfLp"."address", SUM("pointsOfLp"."stakePoint") as "totalPoints" FROM "pointsOfLp" LEFT JOIN project ON project."pairAddress" = "pointsOfLp"."pairAddress" WHERE project.name is not null and "pointsOfLp".address = ANY($1) GROUP BY project.name, "pointsOfLp"."address"`;
+    const query = `SELECT b.name, a."address", SUM(a."stakePoint") AS "totalPoints" FROM "pointsOfLp" AS a LEFT JOIN project AS b ON a."pairAddress" = b."pairAddress" WHERE a.address = ANY($1) GROUP BY b.name, a."address"`;
     const result = await transactionManager.query(query, [addresses]);
     return result.map((row: any) => {
       row.name = row.name == "owlet" ? "owlto" : row.name;
