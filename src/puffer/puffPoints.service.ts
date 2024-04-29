@@ -242,6 +242,10 @@ export class PuffPointsService {
   public async getPuffElPointsByAddress(
     address: string,
   ): Promise<PufferElPointsByAddress> {
+    const protocolName = "LayerBank";
+    const withdrawTime = Math.floor(
+      (new Date().getTime() - 7 * 24 * 60 * 60 * 1000) / 1000,
+    );
     try {
       const body = {
         query: `{
@@ -257,11 +261,18 @@ export class PuffPointsService {
           userPosition(id: "${address}") {
             id
             balance
-            positions {
+            positions( where: {poolName: ${JSON.stringify(protocolName)}}) {
               id
               pool
               supplied
               token
+            }
+            withdrawHistory(first: 1000, where: {blockTimestamp_gt: "${withdrawTime}", token: "0x1B49eCf1A8323Db4abf48b2F5EFaA33F7DdAB3FC"}) {
+              token
+              id
+              blockTimestamp
+              blockNumber
+              balance
             }
           }
         }`,
@@ -276,7 +287,7 @@ export class PuffPointsService {
 
       return data.data;
     } catch (err) {
-      this.logger.error("Fetch magpie graph query data faild", err.stack);
+      this.logger.error("Fetch puffer points by address data fail", err.stack);
       return undefined;
     }
   }
