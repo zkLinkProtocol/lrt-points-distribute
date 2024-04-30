@@ -31,6 +31,7 @@ export class BlockAddressPointOfLpRepository extends BaseRepository<BlockAddress
     endTime: string,
   ): Promise<Buffer[]> {
     page = page - 1;
+    page = page < 0 ? 0 : page;
     const transactionManager = this.unitOfWork.getTransactionManager();
     const query = `SELECT * FROM (
             SELECT "address", SUM("holdPoint") as "totalPoints"

@@ -66,16 +66,16 @@ export class NovaBalanceService {
       const address = item.address;
       const project = {
         name: item.name,
-        totalPoints: item.totalPoints,
+        totalPoints: Number(item.totalPoints),
       };
       const addressPoint = addrssPoints.find((x) => x.address === address);
       if (addressPoint) {
-        addressPoint.totalPoints += item.totalPoints;
+        addressPoint.totalPoints += Number(item.totalPoints);
         addressPoint.projects.push(project);
       } else {
         addrssPoints.push({
           address,
-          totalPoints: item.totalPoints,
+          totalPoints: Number(item.totalPoints),
           projects: [project],
         });
       }
@@ -93,7 +93,7 @@ export class NovaBalanceService {
         }
       }
     }
-    return addrssPoints;
+    return addrssPoints.reverse();
   }
 
   public async getAddressCount(): Promise<number> {
@@ -108,8 +108,6 @@ export class NovaBalanceService {
     const yesterday = new Date(new Date().getTime() - 24 * 3600 * 1000);
     const yesterdayStartStr = `${yesterday.getFullYear()}-${yesterday.getMonth() + 1}-${yesterday.getDate()} 00:00:00`;
     const yesterdayEndStr = `${yesterday.getFullYear()}-${yesterday.getMonth() + 1}-${yesterday.getDate()} 23:59:59`;
-    console.log("yesterdayStartStr:", yesterdayStartStr);
-    console.log("yesterdayEndStr:", yesterdayEndStr);
 
     // 1. select address from pointsOfLp group by address order by totalPoints desc
     const addresses =
@@ -132,16 +130,16 @@ export class NovaBalanceService {
       const address = item.address;
       const project = {
         name: item.name,
-        totalPoints: item.totalPoints,
+        totalPoints: Number(item.totalPoints),
       };
       const addressPoint = addrssPoints.find((x) => x.address === address);
       if (addressPoint) {
-        addressPoint.totalPoints += item.totalPoints;
+        addressPoint.totalPoints += Number(item.totalPoints);
         addressPoint.projects.push(project);
       } else {
         addrssPoints.push({
           address,
-          totalPoints: item.totalPoints,
+          totalPoints: Number(item.totalPoints),
           projects: [project],
         });
       }
@@ -159,7 +157,7 @@ export class NovaBalanceService {
         }
       }
     }
-    return addrssPoints;
+    return addrssPoints.reverse();
   }
 
   public async getAddressDailyCount(): Promise<number> {
@@ -167,6 +165,9 @@ export class NovaBalanceService {
     const yesterday = new Date(new Date().getTime() - 24 * 3600 * 1000);
     const yesterdayStartStr = `${yesterday.getFullYear()}-${yesterday.getMonth() + 1}-${yesterday.getDate()} 00:00:00`;
     const yesterdayEndStr = `${yesterday.getFullYear()}-${yesterday.getMonth() + 1}-${yesterday.getDate()} 23:59:59`;
-    return await this.blockAddressPointOfLpRepository.getAddressDailyCount(yesterdayStartStr, yesterdayEndStr);
+    return await this.blockAddressPointOfLpRepository.getAddressDailyCount(
+      yesterdayStartStr,
+      yesterdayEndStr,
+    );
   }
 }
