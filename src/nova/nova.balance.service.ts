@@ -105,9 +105,10 @@ export class NovaBalanceService {
     limit: number,
   ): Promise<AddressPoints[]> {
     // calculate yesterday start and end time
-    const yesterday = new Date(new Date().getTime() - 24 * 3600 * 1000);
-    const yesterdayStartStr = `${yesterday.getFullYear()}-${yesterday.getMonth() + 1}-${yesterday.getDate()} 00:00:00`;
-    const yesterdayEndStr = `${yesterday.getFullYear()}-${yesterday.getMonth() + 1}-${yesterday.getDate()} 23:59:59`;
+    const today = new Date();
+    const yesterday = new Date(today.getTime() - 24 * 3600 * 1000);
+    const yesterdayStartStr = `${yesterday.getFullYear()}-${yesterday.getMonth() + 1}-${yesterday.getDate()} 10:00:00`;
+    const yesterdayEndStr = `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()} 10:00:00`;
 
     // 1. select address from pointsOfLp group by address order by totalPoints desc
     const addresses =
@@ -162,9 +163,10 @@ export class NovaBalanceService {
 
   public async getAddressDailyCount(): Promise<number> {
     // calculate yesterday start and end time
-    const yesterday = new Date(new Date().getTime() - 24 * 3600 * 1000);
-    const yesterdayStartStr = `${yesterday.getFullYear()}-${yesterday.getMonth() + 1}-${yesterday.getDate()} 00:00:00`;
-    const yesterdayEndStr = `${yesterday.getFullYear()}-${yesterday.getMonth() + 1}-${yesterday.getDate()} 23:59:59`;
+    const today = new Date();
+    const yesterday = new Date(today.getTime() - 24 * 3600 * 1000);
+    const yesterdayStartStr = `${yesterday.getFullYear()}-${yesterday.getMonth() + 1}-${yesterday.getDate()} 10:00:00`;
+    const yesterdayEndStr = `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()} 10:00:00`;
     return await this.blockAddressPointOfLpRepository.getAddressDailyCount(
       yesterdayStartStr,
       yesterdayEndStr,
