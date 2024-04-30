@@ -83,6 +83,13 @@ export class NovaService {
         this.logger.error("Get nova real points failed.", err.stack);
         throw new Error(`Get nova real points failed: ${tokenAddress}.`);
       }
+      // if points.novaPoint is undefined, continue
+      if (points?.novaPoint ?? 0) {
+        this.logger.error(
+          `Get nova real points failed, novaPoint is undefined: ${tokenAddress}.`,
+        );
+        continue;
+      }
       const tempFinalTotalPoints = this.caulTotalPoint(item);
       tempProjectIdGraphTotalPoint.set(item.project, tempFinalTotalPoints);
       tempProjectIdTotalPoints.set(item.project, points.novaPoint);
