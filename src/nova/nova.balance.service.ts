@@ -2,10 +2,17 @@ import { Injectable, Logger } from "@nestjs/common";
 import { ProjectRepository } from "src/repositories/project.repository";
 import { PointsOfLpRepository } from "src/repositories/pointsOfLp.repository";
 import { PointsOfLp } from "src/entities/pointsOfLp.entity";
+import { BlockAddressPointOfLpRepository } from "src/repositories/blockAddressPointOfLp.repository";
 
-export interface PointData {
-  finalPoints: any[];
-  finalTotalPoints: bigint;
+interface ProjectPoints {
+  name: string;
+  totalPoints: number;
+}
+
+export interface AddressPoints {
+  address: string;
+  totalPoints: number;
+  projects: ProjectPoints[];
 }
 
 @Injectable()
@@ -15,6 +22,7 @@ export class NovaBalanceService {
   public constructor(
     private readonly projectRepository: ProjectRepository,
     private readonly pointsOfLpRepository: PointsOfLpRepository,
+    private readonly blockAddressPointOfLpRepository: BlockAddressPointOfLpRepository,
   ) {
     this.logger = new Logger(NovaBalanceService.name);
   }
@@ -34,6 +42,132 @@ export class NovaBalanceService {
     return await this.pointsOfLpRepository.getStakePoints(
       pairAddresses,
       address,
+    );
+  }
+
+  public async getAddressByTotalPoints(
+    page: number,
+    limit: number,
+  ): Promise<AddressPoints[]> {
+    // 1. select address from pointsOfLp group by address order by totalPoints desc
+    const addresses =
+      await this.pointsOfLpRepository.getAddressPagingOrderBySumPoints(
+        page,
+        limit,
+      );
+    // 2. select name, address, sum(totalPoints) as totalPoints from pointsOfLp where address in (addresses) group by name, address
+    const addressPointsList =
+      await this.pointsOfLpRepository.getSumPointsGroupByProjectNameAndAddress(
+        addresses,
+      );
+    // 3. loop addressPointsList, group by address, put name into address
+    const addrssPoints: AddressPoints[] = [];
+    for (const item of addressPointsList) {
+      const address = item.address;
+      const project = {
+        name: item.name,
+        totalPoints: Number(item.totalPoints),
+      };
+      const addressPoint = addrssPoints.find((x) => x.address === address);
+      if (addressPoint) {
+        addressPoint.totalPoints += Number(item.totalPoints);
+        addressPoint.projects.push(project);
+      } else {
+        addrssPoints.push({
+          address,
+          totalPoints: Number(item.totalPoints),
+          projects: [project],
+        });
+      }
+    }
+    // 4. get all project
+    const projects = await this.projectRepository.getAllProjects();
+    // 5. fill missing project with 0 points into addrssPoints
+    for (const addressPoint of addrssPoints) {
+      for (const project of projects) {
+        if (!addressPoint.projects.find((x) => x.name === project)) {
+          addressPoint.projects.push({
+            name: project,
+            totalPoints: 0,
+          });
+        }
+      }
+    }
+    return addrssPoints.reverse();
+  }
+
+  public async getAddressCount(): Promise<number> {
+    return await this.pointsOfLpRepository.getAddressCount();
+  }
+
+  public async getAddressByDailyTotalPoints(
+    page: number,
+    limit: number,
+  ): Promise<AddressPoints[]> {
+    // calculate yesterday start and end time
+    const yesterday = new Date(new Date().getTime() - 24 * 3600 * 1000);
+    const yesterdayStartStr = `${yesterday.getFullYear()}-${yesterday.getMonth() + 1}-${yesterday.getDate()} 00:00:00`;
+    const yesterdayEndStr = `${yesterday.getFullYear()}-${yesterday.getMonth() + 1}-${yesterday.getDate()} 23:59:59`;
+
+    // 1. select address from pointsOfLp group by address order by totalPoints desc
+    const addresses =
+      await this.blockAddressPointOfLpRepository.getAddressPagingOrderBySumDailyPoints(
+        page,
+        limit,
+        yesterdayStartStr,
+        yesterdayEndStr,
+      );
+    // 2. select name, address, sum(totalPoints) as totalPoints from pointsOfLp where address in (addresses) group by name, address
+    const addressPointsList =
+      await this.blockAddressPointOfLpRepository.getSumDailyPointsGroupByProjectNameAndAddress(
+        addresses,
+        yesterdayStartStr,
+        yesterdayEndStr,
+      );
+    // 3. loop addressPointsList, group by address, put name into address
+    const addrssPoints: AddressPoints[] = [];
+    for (const item of addressPointsList) {
+      const address = item.address;
+      const project = {
+        name: item.name,
+        totalPoints: Number(item.totalPoints),
+      };
+      const addressPoint = addrssPoints.find((x) => x.address === address);
+      if (addressPoint) {
+        addressPoint.totalPoints += Number(item.totalPoints);
+        addressPoint.projects.push(project);
+      } else {
+        addrssPoints.push({
+          address,
+          totalPoints: Number(item.totalPoints),
+          projects: [project],
+        });
+      }
+    }
+    // 4. get all project
+    const projects = await this.projectRepository.getAllProjects();
+    // 5. fill missing project with 0 points into addrssPoints
+    for (const addressPoint of addrssPoints) {
+      for (const project of projects) {
+        if (!addressPoint.projects.find((x) => x.name === project)) {
+          addressPoint.projects.push({
+            name: project,
+            totalPoints: 0,
+          });
+        }
+      }
+    }
+    return addrssPoints.reverse();
+  }
+
+  public async getAddressDailyCount(): Promise<number> {
+    // calculate yesterday start and end time
+    const yesterday = new Date(new Date().getTime() - 24 * 3600 * 1000);
+    const yesterdayStartStr = `${yesterday.getFullYear()}-${yesterday.getMonth() + 1}-${yesterday.getDate()} 00:00:00`;
+    const yesterdayEndStr = `${yesterday.getFullYear()}-${yesterday.getMonth() + 1}-${yesterday.getDate()} 23:59:59`;
+    return await this.blockAddressPointOfLpRepository.getAddressDailyCount(
+      yesterdayStartStr,
+      yesterdayEndStr,
     );
   }
 }

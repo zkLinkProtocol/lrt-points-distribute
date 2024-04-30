@@ -19,7 +19,7 @@ export class PagingOptionsDto {
   @ApiPropertyOptional({
     type: "integer",
     minimum: 1,
-    maximum: 100,
+    maximum: 500,
     default: 100,
     description: "The number of items returned per page",
     example: 10,
@@ -27,7 +27,7 @@ export class PagingOptionsDto {
   @Type(() => Number)
   @IsInt()
   @Min(1)
-  @Max(100)
+  @Max(500)
   @IsOptional()
   public readonly limit: number = 100;
 }
