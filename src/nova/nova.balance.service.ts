@@ -93,7 +93,8 @@ export class NovaBalanceService {
         }
       }
     }
-    return addrssPoints.reverse();
+    addrssPoints.sort((a, b) => b.totalPoints - a.totalPoints);
+    return addrssPoints;
   }
 
   public async getAddressCount(): Promise<number> {
@@ -158,7 +159,8 @@ export class NovaBalanceService {
         }
       }
     }
-    return addrssPoints.reverse();
+    addrssPoints.sort((a, b) => b.totalPoints - a.totalPoints);
+    return addrssPoints;
   }
 
   public async getAddressDailyCount(): Promise<number> {
