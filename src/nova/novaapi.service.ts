@@ -46,7 +46,13 @@ export class NovaApiService {
   }
 
   public getNovaPoint(tokenAddress: string): NovaPoints {
-    return this.tokenNovaPoints.get(tokenAddress);
+    for (const [key, value] of this.tokenNovaPoints) {
+      if (key == tokenAddress) {
+        return value;
+      }
+    }
+    return { novaPoint: 0, referPoint: 0 };
+    // return this.tokenNovaPoints.get(tokenAddress);
   }
 
   public async fetchNovaPoints(tokenAddress: string): Promise<NovaPoints> {
