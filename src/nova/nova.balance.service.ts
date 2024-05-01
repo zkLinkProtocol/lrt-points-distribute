@@ -106,7 +106,7 @@ export class NovaBalanceService {
     limit: number,
   ): Promise<AddressPoints[]> {
     // calculate yesterday start and end time
-    const today = new Date();
+    const today = new Date(new Date().getTime() - 10 * 3600 * 1000);
     const yesterday = new Date(today.getTime() - 24 * 3600 * 1000);
     const yesterdayStartStr = `${yesterday.getFullYear()}-${yesterday.getMonth() + 1}-${yesterday.getDate()} 10:00:00`;
     const yesterdayEndStr = `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()} 10:00:00`;
@@ -165,7 +165,7 @@ export class NovaBalanceService {
 
   public async getAddressDailyCount(): Promise<number> {
     // calculate yesterday start and end time
-    const today = new Date();
+    const today = new Date(new Date().getTime() - 10 * 3600 * 1000);
     const yesterday = new Date(today.getTime() - 24 * 3600 * 1000);
     const yesterdayStartStr = `${yesterday.getFullYear()}-${yesterday.getMonth() + 1}-${yesterday.getDate()} 10:00:00`;
     const yesterdayEndStr = `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()} 10:00:00`;
