@@ -36,7 +36,7 @@ export class BlockAddressPointOfLpRepository extends BaseRepository<BlockAddress
     const query = `SELECT * FROM (
             SELECT "address", SUM("holdPoint") as "totalPoints"
             FROM "blockAddressPointOfLp"
-            WHERE "createdAt" >= '${startTime}' AND "createdAt" <= '${endTime}'
+            WHERE "createdAt" >= '${startTime}' AND "createdAt" < '${endTime}'
             GROUP BY "address"
         ) AS a ORDER BY "totalPoints" DESC LIMIT ${limit} OFFSET ${page * limit}`;
     const result = await transactionManager.query(query);
@@ -48,7 +48,7 @@ export class BlockAddressPointOfLpRepository extends BaseRepository<BlockAddress
     endTime: string,
   ): Promise<number> {
     const transactionManager = this.unitOfWork.getTransactionManager();
-    const query = `SELECT COUNT(DISTINCT "address") FROM "blockAddressPointOfLp" WHERE "createdAt" >= '${startTime}' AND "createdAt" <= '${endTime}'`;
+    const query = `SELECT COUNT(DISTINCT "address") FROM "blockAddressPointOfLp" WHERE "createdAt" >= '${startTime}' AND "createdAt" < '${endTime}'`;
     const result = await transactionManager.query(query);
     return parseInt(result[0].count);
   }
