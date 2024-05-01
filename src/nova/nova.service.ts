@@ -84,7 +84,7 @@ export class NovaService {
         throw new Error(`Get nova real points failed: ${tokenAddress}.`);
       }
       // if points.novaPoint is undefined, continue
-      if (points?.novaPoint ?? 0) {
+      if (!points) {
         this.logger.error(
           `Get nova real points failed, novaPoint is undefined: ${tokenAddress}.`,
         );
