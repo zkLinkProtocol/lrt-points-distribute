@@ -8,6 +8,7 @@ import BigNumber from "bignumber.js";
 import { NovaService } from "src/nova/nova.service";
 import { ConfigService } from "@nestjs/config";
 import { PagingOptionsDto } from "src/common/pagingOptionsDto.dto";
+import { LocalPointsItem } from "../common/service/projectGraph.service";
 
 export interface PufferPointItem {
   address: string;
@@ -67,6 +68,10 @@ interface PufferElPoints {
 
 const LAYERBANK_LPUFFER =
   "0xdd6105865380984716C6B2a1591F9643e6ED1C48".toLocaleLowerCase();
+const LPUFFER_POOL_ADDRESS = [
+  LAYERBANK_LPUFFER,
+  "0xc2be3CC06Ab964f9E22e492414399DC4A58f96D3".toLocaleUpperCase(), //aqua
+];
 
 @Injectable()
 export class PuffPointsService {
@@ -109,17 +114,58 @@ export class PuffPointsService {
     const tokens = this.graphQueryService.getAllTokenAddresses(
       this.projectName,
     );
-    if (tokens.length > 0) {
-      this.tokenAddress = tokens[0];
+    if (tokens.length <= 0) {
+      this.logger.log(`Graph don't have ${this.projectName} tokens`);
+      return;
     }
+    this.tokenAddress = tokens[0].toLowerCase();
 
     this.realTotalPoints = await this.getRealPointsData();
     const pointsData = await this.getLocalPointsData();
     this.localTotalPoints = pointsData.localTotalPoints;
     const _localPoints = pointsData.localPoints;
+
+    // start added transferFaildPoint
+    const transferFaildPoints = this.projectGraphService.getTransferFaildPoints(
+      [this.tokenAddress],
+    );
+    const localPointsMap = new Map<string, LocalPointsItem>();
+    const totalPointsPerTokenMap = new Map<string, bigint>();
+    const now = (new Date().getTime() / 1000) | 0;
+    for (const item of _localPoints) {
+      const key = `${item.address}_${item.token}`;
+      totalPointsPerTokenMap.set(item.token, item.totalPointsPerToken);
+      localPointsMap.set(key, item);
+    }
+    // loop transferFaildData, and added transferFaildPoint to localPoints
+    for (const item of transferFaildPoints) {
+      const key = `${item.address}_${item.tokenAddress}`;
+      const transferFaildTotalPoint =
+        this.projectGraphService.getTransferFaildTotalPoint(item.tokenAddress);
+      if (!localPointsMap.has(key)) {
+        const tmpTotalPointsPerToken =
+          totalPointsPerTokenMap.get(item.tokenAddress) ?? BigInt(0);
+        localPointsMap.set(key, {
+          address: item.address,
+          points: item.points,
+          withdrawPoints: BigInt(0),
+          withdrawTotalPointsPerToken: BigInt(0),
+          totalPointsPerToken: tmpTotalPointsPerToken + transferFaildTotalPoint,
+          balance: BigInt(0),
+          token: item.tokenAddress,
+          updatedAt: now,
+        });
+      } else {
+        const localPoint = localPointsMap.get(key);
+        localPoint.totalPointsPerToken =
+          localPoint.totalPointsPerToken + transferFaildTotalPoint;
+        localPoint.points = localPoint.points + item.points;
+      }
+    }
+    // end added transferFaildPoint
+
     const localPoints = [];
-    for (let i = 0; i < _localPoints.length; i++) {
-      const item = _localPoints[i];
+    for (const [, item] of localPointsMap) {
       const realPoints = new BigNumber(item.points.toString())
         .multipliedBy(this.realTotalPoints)
         .div(item.totalPointsPerToken.toString())
@@ -149,7 +195,9 @@ export class PuffPointsService {
     if (address && this.localPoints.length > 0) {
       const _address = address.toLocaleLowerCase();
       result.items = this.localPoints.filter(
-        (item) => item.address === _address,
+        (item) =>
+          item.address === _address &&
+          !LPUFFER_POOL_ADDRESS.includes(item.address),
       );
     }
     return result;

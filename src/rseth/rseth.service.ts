@@ -10,6 +10,7 @@ import { ExplorerService } from "src/common/service/explorer.service";
 import { ConfigService } from "@nestjs/config";
 import BigNumber from "bignumber.js";
 import waitFor from "src/utils/waitFor";
+import { LocalPointsItem } from "../common/service/projectGraph.service";
 
 export interface RsethPointItemWithBalance {
   address: string;
@@ -99,6 +100,45 @@ export class RsethService {
     const localPoints = localPointsData.localPoints;
     const localTotalPoints = localPointsData.localTotalPoints;
 
+    // start added transferFaildPoint
+    const transferFaildPoints = this.projectGraphService.getTransferFaildPoints(
+      this.tokenAddress,
+    );
+    const localPointsMap = new Map<string, LocalPointsItem>();
+    const totalPointsPerTokenMap = new Map<string, bigint>();
+    const now = (new Date().getTime() / 1000) | 0;
+    for (const item of localPoints) {
+      const key = `${item.address}_${item.token}`;
+      totalPointsPerTokenMap.set(item.token, item.totalPointsPerToken);
+      localPointsMap.set(key, item);
+    }
+    // loop transferFaildData, and added transferFaildPoint to localPoints
+    for (const item of transferFaildPoints) {
+      const key = `${item.address}_${item.tokenAddress}`;
+      const transferFaildTotalPoint =
+        this.projectGraphService.getTransferFaildTotalPoint(item.tokenAddress);
+      if (!localPointsMap.has(key)) {
+        const tmpTotalPointsPerToken =
+          totalPointsPerTokenMap.get(item.tokenAddress) ?? BigInt(0);
+        localPointsMap.set(key, {
+          address: item.address,
+          points: item.points,
+          withdrawPoints: BigInt(0),
+          withdrawTotalPointsPerToken: BigInt(0),
+          totalPointsPerToken: tmpTotalPointsPerToken + transferFaildTotalPoint,
+          balance: BigInt(0),
+          token: item.tokenAddress,
+          updatedAt: now,
+        });
+      } else {
+        const localPoint = localPointsMap.get(key);
+        localPoint.totalPointsPerToken =
+          localPoint.totalPointsPerToken + transferFaildTotalPoint;
+        localPoint.points = localPoint.points + item.points;
+      }
+    }
+    // end added transferFaildPoint
+
     // define a variable to store the matched bridge token
     const tokensMapBridgeTokens = await this.getTokensMapBriageTokens();
     // define a variable to store the real total el points and kelp miles
@@ -107,7 +147,7 @@ export class RsethService {
 
     const data: RsethPointItemWithBalance[] = [];
     // calculate real points  = local points * real total points / local total points
-    for (const item of localPoints) {
+    for (const [, item] of localPointsMap) {
       const bridgeToken = tokensMapBridgeTokens.get(item.token);
       // if the token is not in the bridge token list, skip it
       if (!bridgeToken) {

@@ -1,5 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { cloneDeep } from "lodash";
+import { GraphQueryService } from "../common/service/graphQuery.service";
+import { LocalPointsItem } from "../common/service/projectGraph.service";
 import {
   LocalPointData,
   ProjectGraphService,
@@ -40,6 +42,7 @@ export interface MagpieData {
 export class MagpieService {
   private readonly projectName: string = "magpie";
   private readonly logger: Logger;
+  public tokenAddress: string[];
 
   private magpieData: MagpieData = {
     localTotalPoints: 0n,
@@ -49,6 +52,7 @@ export class MagpieService {
   };
 
   public constructor(
+    private readonly graphQueryService: GraphQueryService,
     private readonly projectGraphService: ProjectGraphService,
     private readonly magpieGraphQueryService: MagpieGraphQueryService,
   ) {
@@ -70,13 +74,62 @@ export class MagpieService {
 
   // load points data
   public async loadPointsData() {
+    // get tokens from graph
+    const tokens = this.graphQueryService.getAllTokenAddresses(
+      this.projectName,
+    );
+    if (tokens.length <= 0) {
+      this.logger.log(`Graph don't have ${this.projectName} tokens`);
+      return;
+    }
+    this.tokenAddress = tokens;
+
     const realTotalPointsData = await this.getRealPointsData();
     const localPointsData = await this.getLocalPointsData();
     const localPoints = localPointsData.localPoints;
     const localTotalPoints = localPointsData.localTotalPoints;
 
-    let data: MagpiePointItemWithBalance[] = [];
+    // start added transferFaildPoint
+    const transferFaildPoints = this.projectGraphService.getTransferFaildPoints(
+      this.tokenAddress,
+    );
+    const localPointsMap = new Map<string, LocalPointsItem>();
+    const totalPointsPerTokenMap = new Map<string, bigint>();
+    const now = (new Date().getTime() / 1000) | 0;
     for (const item of localPoints) {
+      const key = `${item.address}_${item.token}`;
+      totalPointsPerTokenMap.set(item.token, item.totalPointsPerToken);
+      localPointsMap.set(key, item);
+    }
+    // loop transferFaildData, and added transferFaildPoint to localPoints
+    for (const item of transferFaildPoints) {
+      const key = `${item.address}_${item.tokenAddress}`;
+      const transferFaildTotalPoint =
+        this.projectGraphService.getTransferFaildTotalPoint(item.tokenAddress);
+      if (!localPointsMap.has(key)) {
+        const tmpTotalPointsPerToken =
+          totalPointsPerTokenMap.get(item.tokenAddress) ?? BigInt(0);
+        localPointsMap.set(key, {
+          address: item.address,
+          points: item.points,
+          withdrawPoints: BigInt(0),
+          withdrawTotalPointsPerToken: BigInt(0),
+          totalPointsPerToken: tmpTotalPointsPerToken + transferFaildTotalPoint,
+          balance: BigInt(0),
+          token: item.tokenAddress,
+          updatedAt: now,
+        });
+      } else {
+        const localPoint = localPointsMap.get(key);
+        localPoint.totalPointsPerToken =
+          localPoint.totalPointsPerToken + transferFaildTotalPoint;
+        localPoint.points = localPoint.points + item.points;
+      }
+    }
+    // end added transferFaildPoint
+
+    let data: MagpiePointItemWithBalance[] = [];
+    for (const [, item] of localPointsMap) {
       const realEigenpiePoints =
         (BigInt(item.points) * BigInt(realTotalPointsData.eigenpiePoints)) /
         BigInt(localTotalPoints);

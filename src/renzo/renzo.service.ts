@@ -138,7 +138,7 @@ export class RenzoService {
           withdrawPoints: BigInt(0),
           withdrawTotalPointsPerToken: BigInt(0),
           totalPointsPerToken: tmpTotalPointsPerToken + transferFaildTotalPoint,
-          balance: item.balance,
+          balance: BigInt(0),
           token: item.tokenAddress,
           updatedAt: now,
         });
