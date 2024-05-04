@@ -35,6 +35,8 @@ import {
   ElPointsDto,
   PointsDto,
   ElPointsDtoItem,
+  LayerBankPufferPointQueryOptionsDto,
+  PufferPointUserBalance,
 } from "./points.dto";
 import { TokensDto } from "./tokens.dto";
 import { NovaService } from "src/nova/nova.service";
@@ -588,6 +590,68 @@ export class PointsController {
         data: {
           totalPufferPoints: "0",
           list: [],
+        },
+      };
+    }
+
+    return res;
+  }
+
+  @Get("/puffer/:address/balances")
+  @ApiOkResponse({
+    description:
+      "Return paginated results of all users' puffer points. The rule is to add 30 points per hour.\nTiming starts from the user's first deposit, with each user having an independent timer.",
+    type: ElPointsDto,
+  })
+  @ApiBadRequestResponse({
+    description: '{ "message": "Not Found", "statusCode": 404 }',
+  })
+  public async queryUserPufferHistoricData(
+    @Param("address", new ParseAddressPipe()) address: string,
+    @Query() queryOptions: LayerBankPufferPointQueryOptionsDto,
+  ): Promise<PufferPointUserBalance> {
+    let res: PufferPointUserBalance;
+    try {
+      const [userPosition, pools] =
+        await this.puffPointsService.getPufferLBPoints(
+          address,
+          queryOptions.time,
+        );
+
+      console.log(userPosition, pools);
+      const dappBalance = userPosition.positionHistory.map((item) => {
+        const pool = pools.find((i) => i.id === item.pool);
+        return {
+          dappName: item.poolName,
+          balance: Number(
+            ethers.formatEther(
+              (BigInt(pool.balance) * BigInt(item.supplied)) /
+                BigInt(pool.totalSupplied),
+            ),
+          ).toFixed(6),
+        };
+      });
+      res = {
+        errno: 0,
+        errmsg: "no error",
+        data: {
+          dappBalance: dappBalance,
+          withdrawingBalance: Number(
+            ethers.formatEther(
+              userPosition.withdrawHistory.reduce((prev, cur) => {
+                return prev + BigInt(cur.balance);
+              }, BigInt(0)),
+            ),
+          ).toFixed(6),
+        },
+      };
+    } catch (e) {
+      res = {
+        errno: 1,
+        errmsg: "Not Found",
+        data: {
+          dappBalance: [],
+          withdrawingBalance: "0",
         },
       };
     }

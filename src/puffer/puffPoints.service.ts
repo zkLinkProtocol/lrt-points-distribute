@@ -65,6 +65,22 @@ interface PufferElPoints {
   userPositions: EigenlayerPosition[];
 }
 
+type PufferUserBalance = [
+  {
+    id: string;
+    balance: string;
+    positionHistory: {
+      id: string;
+      pool: string;
+      supplied: string;
+      token: string;
+      poolName: string;
+    }[];
+    withdrawHistory: WithdrawnItem[];
+  },
+  EigenlayerPool[],
+];
+
 const LAYERBANK_LPUFFER =
   "0xdd6105865380984716C6B2a1591F9643e6ED1C48".toLocaleLowerCase();
 
@@ -239,6 +255,7 @@ export class PuffPointsService {
         .toNumber(),
     }));
   }
+
   public async getPuffElPointsByAddress(
     address: string,
   ): Promise<PufferElPointsByAddress> {
@@ -286,6 +303,106 @@ export class PuffPointsService {
       const data = await response.json();
 
       return data.data;
+    } catch (err) {
+      this.logger.error("Fetch puffer points by address data fail", err.stack);
+      return undefined;
+    }
+  }
+
+  public async getPufferLBPoints(
+    address: string,
+    date: string,
+  ): Promise<PufferUserBalance> {
+    const protocolName = ["LayerBank"]; // "Aqua" to be added
+
+    const specialDateTime = new Date("2015-07-30 00:00:00").getTime();
+    const queryDateTime = new Date(date).getTime();
+
+    const queryUnixTime =
+      queryDateTime > specialDateTime
+        ? Math.floor((queryDateTime - 7 * 24 * 60 * 60 * 1000) / 1000)
+        : Math.floor((queryDateTime - 14 * 24 * 60 * 60 * 1000) / 1000);
+
+    try {
+      const balanceQueryBody = {
+        query: `{
+          userPosition(id: "${address}") {
+            id
+            balance
+            positionHistory( 
+              where: {
+                poolName_in: ${JSON.stringify(protocolName)}
+                blockTimestamp_lte: "${queryUnixTime}"
+              }
+              first: 1
+              orderBy: blockNumber
+              orderDirection: desc
+            ) {
+              id
+              pool
+              supplied
+              token
+              poolName
+              blockNumber
+              blockTimestamp
+            }
+            withdrawHistory(first: 1000, where: {blockTimestamp_gt: "${queryUnixTime}", token: "0x1B49eCf1A8323Db4abf48b2F5EFaA33F7DdAB3FC"}) {
+              token
+              id
+              blockTimestamp
+              blockNumber
+              balance
+            }
+          }
+        }`,
+      };
+
+      const response = await fetch(
+        "http://3.114.68.110:8000/subgraphs/name/puffer-el-points-v2",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(balanceQueryBody),
+        },
+      );
+      const { data } = await response.json();
+
+      const historicData = data.userPosition.positionHistory.map((i) => ({
+        poolId: i.pool,
+        blockNumber: i.blockNumber,
+      }));
+
+      const genPoolQueryBody = (id: string, blockNumber: number) => ({
+        query: `{
+          pool(block: {number: ${blockNumber}}, id: "${id}") {
+            decimals
+            id
+            name
+            symbol
+            totalSupplied
+            underlying
+            balance
+          }
+        }`,
+      });
+
+      const poolData = await Promise.all(
+        historicData.map(async (item) => {
+          const queryString = genPoolQueryBody(item.poolId, item.blockNumber);
+          const response = await fetch(
+            "http://3.114.68.110:8000/subgraphs/name/puffer-el-points-v2",
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(queryString),
+            },
+          );
+          const { data } = await response.json();
+          return data.pool;
+        }),
+      );
+
+      return [data.userPosition, poolData];
     } catch (err) {
       this.logger.error("Fetch puffer points by address data fail", err.stack);
       return undefined;
