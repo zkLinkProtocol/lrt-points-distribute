@@ -613,12 +613,11 @@ export class PointsController {
     let res: PufferPointUserBalance;
     try {
       const [userPosition, pools] =
-        await this.puffPointsService.getPufferLBPoints(
+        await this.puffPointsService.getPufferUserBalance(
           address,
           queryOptions.time,
         );
 
-      console.log(userPosition, pools);
       const dappBalance = userPosition.positionHistory.map((item) => {
         const pool = pools.find((i) => i.id === item.pool);
         return {

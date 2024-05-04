@@ -309,13 +309,13 @@ export class PuffPointsService {
     }
   }
 
-  public async getPufferLBPoints(
+  public async getPufferUserBalance(
     address: string,
     date: string,
   ): Promise<PufferUserBalance> {
     const protocolName = ["LayerBank"]; // "Aqua" to be added
 
-    const specialDateTime = new Date("2015-07-30 00:00:00").getTime();
+    const specialDateTime = new Date("2024-05-05 00:00:00").getTime();
     const queryDateTime = new Date(date).getTime();
 
     const queryUnixTime =
@@ -357,14 +357,11 @@ export class PuffPointsService {
         }`,
       };
 
-      const response = await fetch(
-        "http://3.114.68.110:8000/subgraphs/name/puffer-el-points-v2",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(balanceQueryBody),
-        },
-      );
+      const response = await fetch(this.puffElPointsGraphApi, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(balanceQueryBody),
+      });
       const { data } = await response.json();
 
       const historicData = data.userPosition.positionHistory.map((i) => ({
@@ -389,14 +386,11 @@ export class PuffPointsService {
       const poolData = await Promise.all(
         historicData.map(async (item) => {
           const queryString = genPoolQueryBody(item.poolId, item.blockNumber);
-          const response = await fetch(
-            "http://3.114.68.110:8000/subgraphs/name/puffer-el-points-v2",
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(queryString),
-            },
-          );
+          const response = await fetch(this.puffElPointsGraphApi, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(queryString),
+          });
           const { data } = await response.json();
           return data.pool;
         }),
