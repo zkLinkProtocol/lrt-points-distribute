@@ -76,7 +76,7 @@ export default async () => {
 
     novaPointRedistributeGraphApi: NOVA_POINT_REDISTRIBUTE_GRAPH_API || "",
     novaPointPufferElPointsGraphApi:
-      "https://graph.zklink.io/subgraphs/name/puffer-el-points-v2",
+      "http://3.114.68.110:8000/subgraphs/name/puffer-el-points-v2",
     l1Erc20BridgeEthereum: L1_ERC20_BRIDGE_ETHEREUM || "",
     l1Erc20BridgeArbitrum: L1_ERC20_BRIDGE_ARBITRUM || "",
     l1Erc20BridgeLinea: L1_ERC20_BRIDGE_LINEA || "",

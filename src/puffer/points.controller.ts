@@ -619,7 +619,7 @@ export class PointsController {
         );
 
       const dappBalance = userPosition.positionHistory.map((item) => {
-        const pool = pools.find((i) => i.id === item.pool);
+        const pool = pools.find((i) => i.pool === item.pool);
         return {
           dappName: item.poolName,
           balance: Number(

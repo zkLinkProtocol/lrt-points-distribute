@@ -78,7 +78,7 @@ type PufferUserBalance = [
     }[];
     withdrawHistory: WithdrawnItem[];
   },
-  EigenlayerPool[],
+  Array<EigenlayerPool & { pool: string }>,
 ];
 
 const LAYERBANK_LPUFFER =
@@ -318,7 +318,8 @@ export class PuffPointsService {
     const specialDateTime = new Date("2024-05-05 00:00:00").getTime();
     const queryDateTime = new Date(date).getTime();
 
-    const queryUnixTime =
+    const queryUnixTime = Math.floor(queryDateTime) / 1000;
+    const queryWithdrawnUnixTime =
       queryDateTime > specialDateTime
         ? Math.floor((queryDateTime - 7 * 24 * 60 * 60 * 1000) / 1000)
         : Math.floor((queryDateTime - 14 * 24 * 60 * 60 * 1000) / 1000);
@@ -346,7 +347,11 @@ export class PuffPointsService {
               blockNumber
               blockTimestamp
             }
-            withdrawHistory(first: 1000, where: {blockTimestamp_gt: "${queryUnixTime}", token: "0x1B49eCf1A8323Db4abf48b2F5EFaA33F7DdAB3FC"}) {
+            withdrawHistory(first: 1000, where: {
+                blockTimestamp_gte: "${queryWithdrawnUnixTime}",
+                blockTimestamp_lte: "${queryUnixTime}",
+                token: "0x1B49eCf1A8323Db4abf48b2F5EFaA33F7DdAB3FC"}
+              ) {
               token
               id
               blockTimestamp
@@ -366,33 +371,43 @@ export class PuffPointsService {
 
       const historicData = data.userPosition.positionHistory.map((i) => ({
         poolId: i.pool,
-        blockNumber: i.blockNumber,
       }));
 
-      const genPoolQueryBody = (id: string, blockNumber: number) => ({
+      const genPoolQueryBody = (poolId: string) => ({
         query: `{
-          pool(block: {number: ${blockNumber}}, id: "${id}") {
+          poolHistoricItems(
+            where: {
+              pool: "${poolId}"
+              blockTimestamp_lte: "${queryUnixTime}"
+            }
+            orderBy: blockTimestamp
+            orderDirection: desc
+            first: 1
+          ) {
             decimals
             id
+            pool
             name
             symbol
             totalSupplied
             underlying
             balance
+            blockTimestamp
+            blockNumber
           }
         }`,
       });
 
       const poolData = await Promise.all(
         historicData.map(async (item) => {
-          const queryString = genPoolQueryBody(item.poolId, item.blockNumber);
+          const queryString = genPoolQueryBody(item.poolId);
           const response = await fetch(this.puffElPointsGraphApi, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(queryString),
           });
           const { data } = await response.json();
-          return data.pool;
+          return data.poolHistoricItems[0];
         }),
       );
 
