@@ -32,6 +32,7 @@ export default async () => {
     L1_ERC20_BRIDGE_BLAST,
 
     NOVA_POINT_REDISTRIBUTE_GRAPH_API,
+    NOVA_POINT_PUFFER_EL_POINTS_GRAPH_API,
   } = process.env;
 
   return {
@@ -76,7 +77,7 @@ export default async () => {
 
     novaPointRedistributeGraphApi: NOVA_POINT_REDISTRIBUTE_GRAPH_API || "",
     novaPointPufferElPointsGraphApi:
-      "https://graph.zklink.io/subgraphs/name/puffer-el-points-v2",
+      NOVA_POINT_PUFFER_EL_POINTS_GRAPH_API || "",
     l1Erc20BridgeEthereum: L1_ERC20_BRIDGE_ETHEREUM || "",
     l1Erc20BridgeArbitrum: L1_ERC20_BRIDGE_ARBITRUM || "",
     l1Erc20BridgeLinea: L1_ERC20_BRIDGE_LINEA || "",
