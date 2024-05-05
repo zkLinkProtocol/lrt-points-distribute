@@ -2,13 +2,14 @@ import { Injectable, Logger } from "@nestjs/common";
 import {
   LocalPointData,
   ProjectGraphService,
-} from "src/common/service/projectGraph.service";
-import { GraphQueryService } from "src/common/service/graphQuery.service";
+  LocalPointsItem,
+} from "../common/service/projectGraph.service";
+import { GraphQueryService } from "../common/service/graphQuery.service";
 import BigNumber from "bignumber.js";
-import { NovaService } from "src/nova/nova.service";
+import { NovaService } from "../nova/nova.service";
 import { ConfigService } from "@nestjs/config";
-import { PagingOptionsDto } from "src/common/pagingOptionsDto.dto";
-import { LocalPointsItem } from "../common/service/projectGraph.service";
+import { PagingOptionsDto } from "../common/pagingOptionsDto.dto";
+import { AquaService } from "../nova/aqua.service";
 
 export interface PufferPointItem {
   address: string;
@@ -68,11 +69,10 @@ interface PufferElPoints {
 
 const LAYERBANK_LPUFFER =
   "0xdd6105865380984716C6B2a1591F9643e6ED1C48".toLocaleLowerCase();
-const LPUFFER_POOL_ADDRESS = [
-  LAYERBANK_LPUFFER,
-  "0xc2be3CC06Ab964f9E22e492414399DC4A58f96D3".toLocaleUpperCase(), //aqua
-];
-
+const AQUA_LPUFFER =
+  "0xc2be3CC06Ab964f9E22e492414399DC4A58f96D3".toLocaleLowerCase();
+const AQUA_VAULT =
+  "0x4AC97E2727B0e92AE32F5796b97b7f98dc47F059".toLocaleLowerCase();
 @Injectable()
 export class PuffPointsService {
   public tokenAddress: string;
@@ -82,11 +82,13 @@ export class PuffPointsService {
   private localTotalPoints: bigint = BigInt(0);
   private localPoints: PufferPointItem[] = [];
   private puffElPointsGraphApi: string;
+  private readonly poolsName = ["LayerBank", "Aqua"];
 
   public constructor(
     private readonly projectGraphService: ProjectGraphService,
     private readonly graphQueryService: GraphQueryService,
     private readonly novaService: NovaService,
+    private readonly aquaService: AquaService,
     private readonly configService: ConfigService,
   ) {
     this.logger = new Logger(PuffPointsService.name);
@@ -192,13 +194,16 @@ export class PuffPointsService {
       realTotalPoints: this.realTotalPoints,
       items: this.localPoints,
     } as PufferData;
+    const needRemoveAddress = [LAYERBANK_LPUFFER, AQUA_VAULT];
     if (address && this.localPoints.length > 0) {
       const _address = address.toLocaleLowerCase();
-      result.items = this.localPoints.filter(
-        (item) =>
-          item.address === _address &&
-          !LPUFFER_POOL_ADDRESS.includes(item.address),
-      );
+      if (needRemoveAddress.includes(_address)) {
+        result.items = [];
+      } else {
+        result.items = this.localPoints.filter(
+          (item) => item.address === _address,
+        );
+      }
     }
     return result;
   }
@@ -264,6 +269,29 @@ export class PuffPointsService {
     return 0;
   }
 
+  //get aqua point
+  public async getAquaPoint(address: string): Promise<number> {
+    const _lpuffer = this.localPoints.filter(
+      (item) => item.address === AQUA_VAULT,
+    );
+    if (_lpuffer.length == 0) {
+      return 0;
+    }
+    const lpuffer = _lpuffer[0];
+    const lpufferPointData = await this.aquaService.getPoints(AQUA_LPUFFER, [
+      address,
+    ]);
+    const lpufferFinalPoints = lpufferPointData.finalPoints;
+    const lpufferFinalTotalPoints = lpufferPointData.finalTotalPoints;
+    if (lpufferFinalPoints.length > 0) {
+      return new BigNumber(lpufferFinalPoints[0].points.toString())
+        .multipliedBy(lpuffer.realPoints)
+        .div(lpufferFinalTotalPoints.toString())
+        .toNumber();
+    }
+    return 0;
+  }
+
   //get layerbank point
   public async getLayerBankPointList(
     addresses: string[],
@@ -287,10 +315,35 @@ export class PuffPointsService {
         .toNumber(),
     }));
   }
+
+  //get aqua point
+  public async getAquaPointList(
+    addresses: string[],
+  ): Promise<Array<{ aquaPoint: number; address: string }>> {
+    const lpuffer = this.localPoints.find(
+      (item) => item.address === AQUA_VAULT,
+    );
+
+    const lpufferPointData = await this.aquaService.getPoints(
+      AQUA_LPUFFER,
+      addresses,
+    );
+    const lpufferFinalPoints = lpufferPointData.finalPoints;
+    const lpufferFinalTotalPoints = lpufferPointData.finalTotalPoints;
+
+    return lpufferFinalPoints.map((lpufferFinalPoint) => ({
+      address: lpufferFinalPoint.address,
+      aquaPoint: new BigNumber(lpufferFinalPoint.points.toString())
+        .multipliedBy(lpuffer?.realPoints ?? 0)
+        .div(lpufferFinalTotalPoints.toString())
+        .toNumber(),
+    }));
+  }
+
   public async getPuffElPointsByAddress(
     address: string,
   ): Promise<PufferElPointsByAddress> {
-    const protocolName = "LayerBank";
+    const protocolName = this.poolsName; //"LayerBank";
     const withdrawTime = Math.floor(
       (new Date().getTime() - 7 * 24 * 60 * 60 * 1000) / 1000,
     );
@@ -309,7 +362,7 @@ export class PuffPointsService {
           userPosition(id: "${address}") {
             id
             balance
-            positions( where: {poolName: ${JSON.stringify(protocolName)}}) {
+            positions( where: {poolName_in: ${JSON.stringify(protocolName)}}) {
               id
               pool
               supplied
@@ -344,7 +397,7 @@ export class PuffPointsService {
     pagingOption: PagingOptionsDto,
   ): Promise<PufferElPoints> {
     const { limit = 10, page = 1 } = pagingOption;
-    const protocolName = "LayerBank";
+    const protocolName = this.poolsName; //"LayerBank";
     const withdrawTime = Math.floor(
       (new Date().getTime() - 7 * 24 * 60 * 60 * 1000) / 1000,
     );
@@ -370,7 +423,7 @@ export class PuffPointsService {
           ) {
             id
             balance
-            positions(first: 1000, where: {poolName: ${JSON.stringify(protocolName)}}) {
+            positions(first: 1000, where: {poolName_in: ${JSON.stringify(protocolName)}}) {
               id
               pool
               poolName

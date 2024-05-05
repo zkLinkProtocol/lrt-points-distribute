@@ -3,9 +3,9 @@ import {
   GraphPoint,
   GraphQueryService,
   GraphTotalPoint,
-} from "src/common/service/graphQuery.service";
+} from "./graphQuery.service";
 import { BigNumber } from "bignumber.js";
-import { WithdrawService } from "src/common/service/withdraw.service";
+import { WithdrawService } from "./withdraw.service";
 import transferFaildData from "../transferFaild.json";
 
 export interface LocalPointsItem {
