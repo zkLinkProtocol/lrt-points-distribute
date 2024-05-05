@@ -1,6 +1,6 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-// import { IsArray, IsNumber, IsString } from "class-validator";
+import { IsDateString } from "class-validator";
 
 export class PointsDto {
   @ApiProperty({
@@ -219,4 +219,62 @@ export class ElPointsDto {
     nullable: true,
   })
   public readonly data: ElPointsDtoData;
+}
+
+export class LayerBankPufferPointQueryOptionsDto {
+  @ApiProperty({
+    type: Number,
+    description: "date time to query",
+    example: "2024-04-28 10:20:22",
+  })
+  @IsDateString()
+  public readonly time: string;
+}
+
+export class PufferPointUserBalanceData {
+  @ApiProperty({
+    type: String,
+    description: "withdrawing balance",
+    example: "0.020000",
+  })
+  public readonly withdrawingBalance: string;
+
+  @ApiProperty({
+    type: LiquidityDetails,
+    description: "user staked details on dapps",
+    example: [
+      {
+        dappName: "LayerBank",
+        balance: "0.000023",
+      },
+      {
+        dappName: "Aqua",
+        balance: "0.010000",
+      },
+    ],
+  })
+  public readonly dappBalance: LiquidityDetails[];
+}
+
+export class PufferPointUserBalance {
+  @ApiProperty({
+    type: Number,
+    description: "error code",
+    example: 0,
+  })
+  public readonly errno: number;
+  //err msg
+  @ApiProperty({
+    type: String,
+    description: "error message",
+    example: "no error",
+  })
+  public readonly errmsg: string;
+
+  @ApiProperty({
+    type: PufferPointUserBalanceData,
+    description: "puffer points data",
+    nullable: true,
+  })
+  public readonly data: PufferPointUserBalanceData;
 }
