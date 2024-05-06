@@ -331,7 +331,7 @@ export class PuffPointsService {
         .toNumber(),
     }));
   }
-  
+
   //get aqua point
   public async getAquaPointList(
     addresses: string[],
@@ -355,11 +355,11 @@ export class PuffPointsService {
         .toNumber(),
     }));
   }
-  
+
   public async getPuffElPointsByAddress(
     address: string,
   ): Promise<PufferElPointsByAddress> {
-    const protocolName = this.poolsName; //"LayerBank";
+    const protocolName = this.poolsName;
     const withdrawTime = Math.floor(
       (new Date().getTime() - 7 * 24 * 60 * 60 * 1000) / 1000,
     );
@@ -413,7 +413,7 @@ export class PuffPointsService {
     address: string,
     date: string,
   ): Promise<PufferUserBalance> {
-    const protocolName = ["LayerBank"]; // "Aqua" to be added
+    const protocolName = this.poolsName; // "Aqua" to be added
 
     const specialDateTime = new Date("2024-05-05 00:00:00").getTime();
     const queryDateTime = new Date(date).getTime();
@@ -522,7 +522,7 @@ export class PuffPointsService {
     pagingOption: PagingOptionsDto,
   ): Promise<PufferElPoints> {
     const { limit = 10, page = 1 } = pagingOption;
-    const protocolName = this.poolsName; //"LayerBank";
+    const protocolName = this.poolsName;
     const withdrawTime = Math.floor(
       (new Date().getTime() - 7 * 24 * 60 * 60 * 1000) / 1000,
     );
