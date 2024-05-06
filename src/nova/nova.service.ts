@@ -202,7 +202,7 @@ export class NovaService {
     }
   }
 
-  private getPointData(
+  public getPointData(
     points: GraphPoint[],
     totalPoints: GraphTotalPoint,
   ): PointData {
