@@ -3,6 +3,7 @@ import { ProjectRepository } from "src/repositories/project.repository";
 import { PointsOfLpRepository } from "src/repositories/pointsOfLp.repository";
 import { PointsOfLp } from "src/entities/pointsOfLp.entity";
 import { BlockAddressPointOfLpRepository } from "src/repositories/blockAddressPointOfLp.repository";
+import { BalanceOfLpRepository } from "src/repositories/balanceOfLp.repository";
 
 interface ProjectPoints {
   name: string;
@@ -23,6 +24,7 @@ export class NovaBalanceService {
     private readonly projectRepository: ProjectRepository,
     private readonly pointsOfLpRepository: PointsOfLpRepository,
     private readonly blockAddressPointOfLpRepository: BlockAddressPointOfLpRepository,
+    private readonly balanceOfLp: BalanceOfLpRepository,
   ) {
     this.logger = new Logger(NovaBalanceService.name);
   }
@@ -173,5 +175,34 @@ export class NovaBalanceService {
       yesterdayStartStr,
       yesterdayEndStr,
     );
+  }
+
+  /**
+   * Get the balance of the address in the pair by blockNumber
+   */
+  public async getBalanceByBlockNumber(
+    addresses: string[],
+    tokenAddress: string,
+    pairAddress: string,
+    blockNumber: number = 0,
+  ): Promise<bigint> {
+    // if blockNumber is 0, get the latest balance
+    let data;
+    if (blockNumber == 0) {
+      data = await this.balanceOfLp.getLastList(
+        addresses,
+        tokenAddress,
+        pairAddress,
+      );
+    } else {
+      data = await this.balanceOfLp.getListByBlockNumber(
+        addresses,
+        tokenAddress,
+        pairAddress,
+        blockNumber,
+      );
+    }
+
+    return data ? BigInt(data.balance) : BigInt(0);
   }
 }

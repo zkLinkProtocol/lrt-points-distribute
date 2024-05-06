@@ -1,8 +1,5 @@
 import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
-import {
-  GraphQueryService,
-  GraphWithdrawPoint,
-} from "src/common/service/graphQuery.service";
+import { GraphQueryService, GraphWithdrawPoint } from "./graphQuery.service";
 
 export interface WithdrawPoint {
   project: string;
@@ -54,6 +51,11 @@ const timeToPeriod = [
   {
     start: 1714147200, // 2024-04-27 00:00:00
     end: 1714233600, // 2024-04-28 00:00:00
+    period: 7 * 24 * 3600,
+  },
+  {
+    start: 1714147200, // 2024-04-28 00:00:00
+    end: 2029766400, // 2034-04-28 00:00:00
     period: 7 * 24 * 3600,
   },
 ];

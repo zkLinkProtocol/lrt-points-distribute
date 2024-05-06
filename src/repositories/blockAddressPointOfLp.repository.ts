@@ -48,7 +48,7 @@ export class BlockAddressPointOfLpRepository extends BaseRepository<BlockAddress
     endTime: string,
   ): Promise<number> {
     const transactionManager = this.unitOfWork.getTransactionManager();
-    const query = `SELECT COUNT(DISTINCT "address") FROM "blockAddressPointOfLp" WHERE "createdAt" >= '${startTime}' AND "createdAt" <= '${endTime}'`;
+    const query = `SELECT COUNT(DISTINCT "address") FROM "blockAddressPointOfLp" WHERE "createdAt" >= '${startTime}' AND "createdAt" < '${endTime}'`;
     const result = await transactionManager.query(query);
     return parseInt(result[0].count);
   }
@@ -59,7 +59,7 @@ export class BlockAddressPointOfLpRepository extends BaseRepository<BlockAddress
     endTime: string,
   ): Promise<SumPointsGroupByProjectNameAndAddress[]> {
     const transactionManager = this.unitOfWork.getTransactionManager();
-    const query = `SELECT b.name, a."address", SUM(a."holdPoint") as "totalPoints" FROM "blockAddressPointOfLp" AS a LEFT JOIN project AS b ON a."pairAddress" = b."pairAddress" WHERE a.address = ANY($1) AND a."createdAt" >= '${startTime}' AND a."createdAt" <= '${endTime}' GROUP BY b.name, a."address"`;
+    const query = `SELECT b.name, a."address", SUM(a."holdPoint") as "totalPoints" FROM "blockAddressPointOfLp" AS a LEFT JOIN project AS b ON a."pairAddress" = b."pairAddress" WHERE a.address = ANY($1) AND a."createdAt" >= '${startTime}' AND a."createdAt" < '${endTime}' GROUP BY b.name, a."address"`;
     const result = await transactionManager.query(query, [addresses]);
     return result.map((row: any) => {
       row.name = row.name == "owlet" ? "owlto" : row.name;

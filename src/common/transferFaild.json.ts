@@ -1,5 +1,6 @@
 // address, tokenAddress, balance, decimal
 const transferFaildData = [
+  // puffer
   [
     "0x590f4590487Bd83D7A456b5DD2863810A076D1eC",
     "0x1B49eCf1A8323Db4abf48b2F5EFaA33F7DdAB3FC",
@@ -7,27 +8,9 @@ const transferFaildData = [
     "18",
   ],
   [
-    "0xF74BAC410bcF3c55af7A9A0CAef8F9c83087a3A4",
-    "0xdA7Fa837112511F6E353091D7e388A4c45Ce7D6C",
-    "1.85",
-    "18",
-  ],
-  [
-    "0xB84F419FD6DC9C30cCAA6ecbF5d194Af065A33ff",
-    "0x7b1fcd81F8b91C5eF3743c4d56bf7C1E52c93360",
-    "1.0499",
-    "18",
-  ],
-  [
     "0x04c82fFd5dbA2ac0e00dD1F9Be955bd025Dec048",
     "0x1B49eCf1A8323Db4abf48b2F5EFaA33F7DdAB3FC",
     "0.9992",
-    "18",
-  ],
-  [
-    "0xd79ac3c872500fae339796227c0dFD16B38bD8b3",
-    "0x7b1fcd81F8b91C5eF3743c4d56bf7C1E52c93360",
-    "1.036",
     "18",
   ],
   [
@@ -40,6 +23,63 @@ const transferFaildData = [
     "0xE26E90e8F6f1170fda099B771e483cD30d5ba2Af",
     "0x1B49eCf1A8323Db4abf48b2F5EFaA33F7DdAB3FC",
     "0.489",
+    "18",
+  ],
+  // magpie
+  [
+    "0xB84F419FD6DC9C30cCAA6ecbF5d194Af065A33ff",
+    "0x7b1fcd81F8b91C5eF3743c4d56bf7C1E52c93360",
+    "1.0499",
+    "18",
+  ],
+  [
+    "0xd79ac3c872500fae339796227c0dFD16B38bD8b3",
+    "0x7b1fcd81F8b91C5eF3743c4d56bf7C1E52c93360",
+    "1.036",
+    "18",
+  ],
+  [
+    "0x90fe3e64530B81D5613698cBAA5d99E8AebaDc69",
+    "0x7F62B7a0A9848D5e261960Ff4B4009206aD00bd5",
+    "19.9966",
+    "18",
+  ],
+  [
+    "0xB84F419FD6DC9C30cCAA6ecbF5d194Af065A33ff",
+    "0xBB68f4548A1c26B6611cbB8087c25A616eDd8569",
+    "0.572",
+    "18",
+  ],
+  // rseth
+  [
+    "0xbd2ca315098e13e91f9a91a4744052d62c8e9092",
+    "0x4A2da287deB06163fB4D77c52901683d69bD06f4",
+    "0.25",
+    "18",
+  ],
+  [
+    "0x9f90230b05a8f3802923038eb99538000fc5a1cc",
+    "0x4A2da287deB06163fB4D77c52901683d69bD06f4",
+    "0.25055",
+    "18",
+  ],
+  [
+    "0x2c443310faa7d98c95d3d44e7e43965ef74e184d",
+    "0x4A2da287deB06163fB4D77c52901683d69bD06f4",
+    "0.25",
+    "18",
+  ],
+  [
+    "0x137eb1280e77ea4bec921644eb575e87356a474e",
+    "0x4A2da287deB06163fB4D77c52901683d69bD06f4",
+    "0.25065",
+    "18",
+  ],
+  // renzo
+  [
+    "0xF74BAC410bcF3c55af7A9A0CAef8F9c83087a3A4",
+    "0xdA7Fa837112511F6E353091D7e388A4c45Ce7D6C",
+    "1.85",
     "18",
   ],
   [
@@ -67,12 +107,6 @@ const transferFaildData = [
     "18",
   ],
   [
-    "0xbd2ca315098e13e91f9a91a4744052d62c8e9092",
-    "0x4A2da287deB06163fB4D77c52901683d69bD06f4",
-    "0.25",
-    "18",
-  ],
-  [
     "0x75411b249de43f61f138eedf775f2f5df1509ba1",
     "0x3FDB1939daB8e2d4F7a04212F142469Cd52d6402",
     "0.2651",
@@ -94,12 +128,6 @@ const transferFaildData = [
     "0xd9135485f89a7020458702593881a0ec35cb20ab",
     "0x3FDB1939daB8e2d4F7a04212F142469Cd52d6402",
     "0.2463",
-    "18",
-  ],
-  [
-    "0x9f90230b05a8f3802923038eb99538000fc5a1cc",
-    "0x4A2da287deB06163fB4D77c52901683d69bD06f4",
-    "0.25055",
     "18",
   ],
   [

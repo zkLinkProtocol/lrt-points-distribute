@@ -40,6 +40,7 @@ import {
 } from "./points.dto";
 import { TokensDto } from "./tokens.dto";
 import { NovaService } from "src/nova/nova.service";
+import { NovaBalanceService } from "../nova/nova.balance.service";
 
 const options = {
   // how long to live in ms
@@ -66,6 +67,7 @@ export class PointsController {
     private readonly graphQueryService: GraphQueryService,
     private configService: ConfigService,
     private readonly novaService: NovaService,
+    private readonly novaBalanceService: NovaBalanceService,
   ) {
     this.puffPointsTokenAddress = configService.get<string>(
       "puffPoints.tokenAddress",
@@ -193,6 +195,11 @@ export class PointsController {
     // layerbank point
     const layerbankPoint =
       await this.puffPointsService.getLayerBankPoint(address);
+    // aqua point
+    const aquaPoint = await this.puffPointsService.getAquaPoint(address);
+    this.logger.log(
+      `layerbankPoint: ${layerbankPoint}, aquaPoint: ${aquaPoint}`,
+    );
     const point = data.items[0];
     res = {
       errno: 0,
@@ -202,7 +209,7 @@ export class PointsController {
         {
           address: point.address,
           tokenAddress: point.tokenAddress,
-          points: (point.realPoints + layerbankPoint).toString(),
+          points: (point.realPoints + layerbankPoint + aquaPoint).toString(),
           balance: Number(ethers.formatEther(point.balance)).toFixed(6),
           updated_at: point.updatedAt,
         },
@@ -231,12 +238,20 @@ export class PointsController {
       const pufPointsData = this.puffPointsService.getPointsData(
         address.toLocaleLowerCase(),
       );
+      if (pufPointsData.items.length == 0) {
+        throw new NotFoundException();
+      }
       // layerbank point
       const layerbankPoint =
         await this.puffPointsService.getLayerBankPoint(address);
 
+      // aqua point
+      const aquaPoint = await this.puffPointsService.getAquaPoint(address);
+
       const pufferPoints = (
-        pufPointsData.items[0].realPoints + layerbankPoint
+        pufPointsData.items[0].realPoints +
+        layerbankPoint +
+        aquaPoint
       ).toString();
 
       const { userPosition, pools } =
@@ -252,29 +267,25 @@ export class PointsController {
       const balanceFromDappTotal =
         userPosition?.positions.reduce((prev, cur) => {
           const pool = pools.find((pool) => pool.id === cur.pool);
-          if (pool?.name === "LayerBank") {
-            const shareBalance =
-              (BigInt(pool.balance) * BigInt(cur.supplied)) /
-              BigInt(pool.totalSupplied);
-            return prev + shareBalance;
-          }
-          return prev;
+          const shareBalance =
+            (BigInt(pool.balance) * BigInt(cur.supplied)) /
+            BigInt(pool.totalSupplied);
+          return prev + shareBalance;
         }, BigInt(0)) ?? BigInt(0);
 
       const liquidityDetails =
         userPosition?.positions
           .map((position) => {
             const pool = pools.find((pool) => pool.id === position.pool);
-            if (pool?.name === "LayerBank")
-              return {
-                dappName: pool.name,
-                balance: Number(
-                  ethers.formatEther(
-                    (BigInt(pool.balance) * BigInt(position.supplied)) /
-                      BigInt(pool.totalSupplied),
-                  ),
-                ).toFixed(6),
-              };
+            return {
+              dappName: pool.name,
+              balance: Number(
+                ethers.formatEther(
+                  (BigInt(pool.balance) * BigInt(position.supplied)) /
+                    BigInt(pool.totalSupplied),
+                ),
+              ).toFixed(6),
+            };
           })
           .filter((i) => !!i) ?? [];
 
@@ -506,11 +517,13 @@ export class PointsController {
       const data = this.puffPointsService.getPointsData();
       const { pools, userPositions } =
         await this.puffPointsService.getPuffElPoints(pagingOptions);
+      const addresses = userPositions.map((i) => i.id);
       // layerbank point
       const layerbankPoints =
-        await this.puffPointsService.getLayerBankPointList(
-          userPositions.map((i) => i.id),
-        );
+        await this.puffPointsService.getLayerBankPointList(addresses);
+      // aqua point
+      const aquaPoints =
+        await this.puffPointsService.getAquaPointList(addresses);
 
       res = {
         errno: 0,
@@ -524,6 +537,10 @@ export class PointsController {
               layerbankPoints.find(
                 (layerbankPoint) => layerbankPoint.address === p.id,
               )?.layerbankPoint ?? 0;
+
+            const aquaPoint =
+              aquaPoints.find((aquaPoint) => aquaPoint.address === p.id)
+                ?.aquaPoint ?? 0;
 
             const liquidityBalance = p.positions.reduce((prev, cur) => {
               const pool = pools.find((pool) => pool.id === cur.pool);
@@ -565,7 +582,7 @@ export class PointsController {
               userAddress: p.id,
               pufEthAddress: "0x1B49eCf1A8323Db4abf48b2F5EFaA33F7DdAB3FC",
               pufferPoints: (
-                userPointData?.realPoints ?? 0 + layerbankPoint
+                userPointData?.realPoints ?? 0 + layerbankPoint + aquaPoint
               ).toString(),
               totalBalance: totalBalance,
               withdrawingBalance: Number(
