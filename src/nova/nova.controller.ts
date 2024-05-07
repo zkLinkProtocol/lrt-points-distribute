@@ -77,7 +77,7 @@ export class NovaController {
       errmsg: "no error",
       total_points: finalTotalPoints.toString(),
       data: finalPoints.map((point) => {
-        point.points = BigNumber(ethers.formatEther(point.points)).toFixed(6);
+        point.points = BigNumber(point.points);
         point.balance = BigNumber(ethers.formatEther(point.balance)).toFixed(6);
         return point;
       }),
