@@ -234,13 +234,19 @@ export class PointsController {
   public async pufferEigenLayerPoints(
     @Param("address", new ParseAddressPipe()) address: string,
   ): Promise<UserElPointsDto> {
+    const pufPointsData = this.puffPointsService.getPointsData(
+      address.toLocaleLowerCase(),
+    );
+    if (pufPointsData.items.length == 0) {
+      throw new NotFoundException();
+    }
+
+    const data = await this.puffPointsService.getPuffElPointsByAddress(address);
+    if (!data) {
+      throw new NotFoundException();
+    }
+    const { userPosition, pools } = data;
     try {
-      const pufPointsData = this.puffPointsService.getPointsData(
-        address.toLocaleLowerCase(),
-      );
-      if (pufPointsData.items.length == 0) {
-        throw new NotFoundException();
-      }
       // layerbank point
       const layerbankPoint =
         await this.puffPointsService.getLayerBankPoint(address);
@@ -253,9 +259,6 @@ export class PointsController {
         layerbankPoint +
         aquaPoint
       ).toString();
-
-      const { userPosition, pools } =
-        await this.puffPointsService.getPuffElPointsByAddress(address);
 
       const withdrawingBalance = userPosition.withdrawHistory.reduce(
         (prev, cur) => {
@@ -513,103 +516,91 @@ export class PointsController {
     @Query() pagingOptions: PagingOptionsDto,
   ): Promise<ElPointsDto> {
     let res: ElPointsDto;
-    try {
-      const data = this.puffPointsService.getPointsData();
-      const { pools, userPositions } =
-        await this.puffPointsService.getPuffElPoints(pagingOptions);
-      const addresses = userPositions.map((i) => i.id);
-      // layerbank point
-      const layerbankPoints =
-        await this.puffPointsService.getLayerBankPointList(addresses);
-      // aqua point
-      const aquaPoints =
-        await this.puffPointsService.getAquaPointList(addresses);
+    const data = this.puffPointsService.getPointsData();
+    const { pools, userPositions } =
+      await this.puffPointsService.getPuffElPoints(pagingOptions);
+    const addresses = userPositions.map((i) => i.id);
+    // layerbank point
+    const layerbankPoints =
+      await this.puffPointsService.getLayerBankPointList(addresses);
+    // aqua point
+    const aquaPoints = await this.puffPointsService.getAquaPointList(addresses);
 
-      res = {
-        errno: 0,
-        errmsg: "no error",
-        data: {
-          totalPufferPoints: data.realTotalPoints.toString(),
-          list: userPositions.map((p) => {
-            const userPointData = data.items.find((i) => i.address === p.id);
+    res = {
+      errno: 0,
+      errmsg: "no error",
+      data: {
+        totalPufferPoints: data.realTotalPoints.toString(),
+        list: userPositions.map((p) => {
+          const userPointData = data.items.find((i) => i.address === p.id);
 
-            const layerbankPoint =
-              layerbankPoints.find(
-                (layerbankPoint) => layerbankPoint.address === p.id,
-              )?.layerbankPoint ?? 0;
+          const layerbankPoint =
+            layerbankPoints.find(
+              (layerbankPoint) => layerbankPoint.address === p.id,
+            )?.layerbankPoint ?? 0;
 
-            const aquaPoint =
-              aquaPoints.find((aquaPoint) => aquaPoint.address === p.id)
-                ?.aquaPoint ?? 0;
+          const aquaPoint =
+            aquaPoints.find((aquaPoint) => aquaPoint.address === p.id)
+              ?.aquaPoint ?? 0;
 
-            const liquidityBalance = p.positions.reduce((prev, cur) => {
-              const pool = pools.find((pool) => pool.id === cur.pool);
-              if (!pool) return prev;
+          const liquidityBalance = p.positions.reduce((prev, cur) => {
+            const pool = pools.find((pool) => pool.id === cur.pool);
+            if (!pool) return prev;
 
-              const shareBalance =
-                (BigInt(pool.balance) * BigInt(cur.supplied)) /
-                BigInt(pool.totalSupplied);
-              return prev + shareBalance;
-            }, BigInt(0));
+            const shareBalance =
+              (BigInt(pool.balance) * BigInt(cur.supplied)) /
+              BigInt(pool.totalSupplied);
+            return prev + shareBalance;
+          }, BigInt(0));
 
-            const withdrawingBalance = p.withdrawHistory.reduce((prev, cur) => {
-              return prev + BigInt(cur.balance);
-            }, BigInt(0));
+          const withdrawingBalance = p.withdrawHistory.reduce((prev, cur) => {
+            return prev + BigInt(cur.balance);
+          }, BigInt(0));
 
-            const totalBalance = Number(
-              ethers.formatEther(
-                liquidityBalance + BigInt(p.balance) + withdrawingBalance,
-              ),
-            ).toFixed(6);
+          const totalBalance = Number(
+            ethers.formatEther(
+              liquidityBalance + BigInt(p.balance) + withdrawingBalance,
+            ),
+          ).toFixed(6);
 
-            const liquidityDetails = p.positions
-              .map((position) => {
-                const pool = pools.find((pool) => pool.id === position.pool);
-                if (!pool) return;
-                return {
-                  dappName: pool?.name,
-                  balance: Number(
-                    ethers.formatEther(
-                      (BigInt(pool.balance) * BigInt(position.supplied)) /
-                        BigInt(pool.totalSupplied),
-                    ),
-                  ).toFixed(6),
-                };
-              })
-              .filter((i) => !!i);
+          const liquidityDetails = p.positions
+            .map((position) => {
+              const pool = pools.find((pool) => pool.id === position.pool);
+              if (!pool) return;
+              return {
+                dappName: pool?.name,
+                balance: Number(
+                  ethers.formatEther(
+                    (BigInt(pool.balance) * BigInt(position.supplied)) /
+                      BigInt(pool.totalSupplied),
+                  ),
+                ).toFixed(6),
+              };
+            })
+            .filter((i) => !!i);
 
-            return {
-              userAddress: p.id,
-              pufEthAddress: "0x1B49eCf1A8323Db4abf48b2F5EFaA33F7DdAB3FC",
-              pufferPoints: (
-                userPointData?.realPoints ?? 0 + layerbankPoint + aquaPoint
-              ).toString(),
-              totalBalance: totalBalance,
-              withdrawingBalance: Number(
-                ethers.formatEther(withdrawingBalance),
-              ).toFixed(6),
-              userBalance: Number(
-                ethers.formatEther(BigInt(p.balance)),
-              ).toFixed(6),
-              liquidityBalance: Number(
-                ethers.formatEther(liquidityBalance),
-              ).toFixed(6),
-              liquidityDetails: liquidityDetails,
-              updatedAt: userPointData?.updatedAt,
-            };
-          }),
-        },
-      };
-    } catch (e) {
-      res = {
-        errno: 1,
-        errmsg: "Not Found",
-        data: {
-          totalPufferPoints: "0",
-          list: [],
-        },
-      };
-    }
+          return {
+            userAddress: p.id,
+            pufEthAddress: "0x1B49eCf1A8323Db4abf48b2F5EFaA33F7DdAB3FC",
+            pufferPoints: (
+              userPointData?.realPoints ?? 0 + layerbankPoint + aquaPoint
+            ).toString(),
+            totalBalance: totalBalance,
+            withdrawingBalance: Number(
+              ethers.formatEther(withdrawingBalance),
+            ).toFixed(6),
+            userBalance: Number(ethers.formatEther(BigInt(p.balance))).toFixed(
+              6,
+            ),
+            liquidityBalance: Number(
+              ethers.formatEther(liquidityBalance),
+            ).toFixed(6),
+            liquidityDetails: liquidityDetails,
+            updatedAt: userPointData?.updatedAt,
+          };
+        }),
+      },
+    };
 
     return res;
   }
