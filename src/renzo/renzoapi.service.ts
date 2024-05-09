@@ -43,7 +43,7 @@ export class RenzoApiService {
     for (const bridgeAddress of this.l1Erc20Bridges) {
       const renzoPoints = await this._fetchRenzoPoints(bridgeAddress);
       allRenzoPoints.set(bridgeAddress.toLocaleLowerCase(), renzoPoints);
-      //await new Promise((resolve) => setTimeout(resolve, 1000)); // wait 1s
+      await new Promise((resolve) => setTimeout(resolve, 1000)); // wait 1s
     }
     return allRenzoPoints;
   }

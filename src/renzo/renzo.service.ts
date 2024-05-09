@@ -8,7 +8,6 @@ import {
 import { GraphQueryService } from "src/common/service/graphQuery.service";
 import { RenzoApiService, RenzoPoints } from "src/renzo/renzoapi.service";
 import { ExplorerService } from "src/common/service/explorer.service";
-import { cloneDeep } from "lodash";
 import BigNumber from "bignumber.js";
 import waitFor from "src/utils/waitFor";
 import { Worker } from "src/common/worker";
@@ -30,6 +29,7 @@ export interface RenzoData {
   localTotalPoints: bigint;
   realTotalRenzoPoints: number;
   realTotalEigenLayerPoints: number;
+  itemMaps?: Map<string, RenzoPointItem[]>;
   items: RenzoPointItem[];
 }
 
@@ -43,6 +43,7 @@ export class RenzoService extends Worker {
     localTotalPoints: BigInt(0),
     realTotalRenzoPoints: 0,
     realTotalEigenLayerPoints: 0,
+    itemMaps: new Map(),
     items: [],
   };
   private readonly l1Erc20BridgeEthereum: string;
@@ -84,7 +85,7 @@ export class RenzoService extends Worker {
   }
 
   // load points data
-  public async loadPointsData() {
+  private async loadPointsData() {
     // get tokens from graph
     const tokens = this.graphQueryService.getAllTokenAddresses(
       this.projectName,
@@ -96,19 +97,10 @@ export class RenzoService extends Worker {
     this.tokenAddress = tokens;
 
     const realTokenTotalPoints = await this.getRealPointsData();
-    this.logger.log(
-      "renzoLog: realTokenTotalPoints:",
-      realTokenTotalPoints.size,
-    );
     const pointsData = await this.getLocalPointsData();
-    this.logger.log("renzoLog: pointsData");
     const localPoints = pointsData.localPoints;
     const localTotalPoints = pointsData.localTotalPoints;
     const tokensMapBridgeTokens = await this.getTokensMapBriageTokens();
-    this.logger.log(
-      "renzoLog: tokensMapBridgeTokens:",
-      tokensMapBridgeTokens.size,
-    );
     if (
       tokensMapBridgeTokens.size < 1 ||
       localPoints.length < 1 ||
@@ -127,10 +119,6 @@ export class RenzoService extends Worker {
     const transferFaildPoints = this.projectGraphService.getTransferFaildPoints(
       this.tokenAddress,
     );
-    this.logger.log(
-      "renzoLog: transferFaildPoints:",
-      transferFaildPoints.length,
-    );
     const localPointsMap = new Map<string, LocalPointsItem>();
     const totalPointsPerTokenMap = new Map<string, bigint>();
     const now = (new Date().getTime() / 1000) | 0;
@@ -139,7 +127,7 @@ export class RenzoService extends Worker {
       totalPointsPerTokenMap.set(item.token, item.totalPointsPerToken);
       localPointsMap.set(key, item);
     }
-    this.logger.log("renzoLog: localPointsMap:", localPointsMap.size);
+
     // loop transferFaildData, and added transferFaildPoint to localPoints
     for (const item of transferFaildPoints) {
       const key = `${item.address}_${item.tokenAddress}`;
@@ -166,7 +154,6 @@ export class RenzoService extends Worker {
       }
     }
     // end added transferFaildPoint
-    this.logger.log("renzoLog: end added transferFaildPoint");
     for (const [, point] of localPointsMap) {
       const tokenAddress = point.token.toLocaleLowerCase();
       if (!tokenAddress) {
@@ -210,12 +197,23 @@ export class RenzoService extends Worker {
       };
       data.push(pointsItem);
     }
-    this.logger.log("renzoLog: data", data.length);
+
+    const itemMaps = new Map();
+    for (let i = 0; i < data.length; i++) {
+      const item = data[i];
+      if (!itemMaps.has(item.address)) {
+        itemMaps.set(item.address, [item]);
+      } else {
+        const tmpItems = itemMaps.get(item.address);
+        itemMaps.set(item.address, [...tmpItems, item]);
+      }
+    }
     if (data.length > 0) {
       this.renzoData = {
         localTotalPoints: localTotalPoints,
         realTotalRenzoPoints: realTotalRenzoPoints,
         realTotalEigenLayerPoints: realTotalEigenLayerPoints,
+        itemMaps: itemMaps,
         items: data,
       };
     } else {
@@ -225,23 +223,24 @@ export class RenzoService extends Worker {
 
   // return points data
   public getPointsData(address?: string): RenzoData {
-    const result: RenzoData = cloneDeep(this.renzoData);
-    if (address) {
-      const _address = address.toLocaleLowerCase();
-      result.items = this.renzoData.items.filter(
-        (item) => item.address === _address,
-      );
-    }
+    const result: RenzoData = {
+      localTotalPoints: this.renzoData.localTotalPoints,
+      realTotalRenzoPoints: this.renzoData.realTotalRenzoPoints,
+      realTotalEigenLayerPoints: this.renzoData.realTotalEigenLayerPoints,
+      items: address
+        ? this.renzoData.itemMaps.get(address) ?? []
+        : this.renzoData.items,
+    };
     return result;
   }
 
   // return local points and totalPoints
-  public async getLocalPointsData(): Promise<LocalPointData> {
+  private async getLocalPointsData(): Promise<LocalPointData> {
     return await this.projectGraphService.getPoints(this.projectName);
   }
 
   // return real totalPoints
-  public async getRealPointsData(): Promise<Map<string, RenzoPoints>> {
+  private async getRealPointsData(): Promise<Map<string, RenzoPoints>> {
     return await this.renzoApiService.fetchTokensRenzoPoints();
   }
 

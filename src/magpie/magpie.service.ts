@@ -1,5 +1,4 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { cloneDeep } from "lodash";
 import { GraphQueryService } from "../common/service/graphQuery.service";
 import { LocalPointsItem } from "../common/service/projectGraph.service";
 import waitFor from "src/utils/waitFor";
@@ -37,6 +36,10 @@ export interface MagpieData {
   localTotalPoints: bigint;
   realTotalEigenpiePoints: bigint;
   realTotalEigenLayerPoints: bigint;
+  itemMaps?: Map<
+    string,
+    MagpiePointItemWithBalance[] | MagpiePointItemWithoutBalance[]
+  >;
   items: MagpiePointItemWithBalance[] | MagpiePointItemWithoutBalance[];
 }
 
@@ -50,6 +53,7 @@ export class MagpieService extends Worker {
     localTotalPoints: 0n,
     realTotalEigenpiePoints: 0n,
     realTotalEigenLayerPoints: 0n,
+    itemMaps: new Map(),
     items: [],
   };
 
@@ -154,11 +158,23 @@ export class MagpieService extends Worker {
       };
       data.push(pointsItem);
     }
+
+    const itemMaps = new Map();
+    for (let i = 0; i < data.length; i++) {
+      const item = data[i];
+      if (!itemMaps.has(item.address)) {
+        itemMaps.set(item.address, [item]);
+      } else {
+        const tmpItems = itemMaps.get(item.address);
+        itemMaps.set(item.address, [...tmpItems, item]);
+      }
+    }
     if (data.length > 0) {
       this.magpieData = {
         localTotalPoints: localTotalPoints,
         realTotalEigenpiePoints: realTotalPointsData.eigenpiePoints,
         realTotalEigenLayerPoints: realTotalPointsData.eigenLayerPoints,
+        itemMaps: itemMaps,
         items: data,
       };
     } else {
@@ -168,14 +184,14 @@ export class MagpieService extends Worker {
 
   // return points data
   public getPointsData(address?: string): MagpieData {
-    let result: MagpieData = cloneDeep(this.magpieData);
-    if (address) {
-      const _address = address.toLocaleLowerCase();
-      result.items = this.magpieData.items.filter(
-        (item) => item.address === _address,
-      );
-    }
-    return result;
+    return {
+      localTotalPoints: this.magpieData.localTotalPoints,
+      realTotalEigenpiePoints: this.magpieData.realTotalEigenpiePoints,
+      realTotalEigenLayerPoints: this.magpieData.realTotalEigenLayerPoints,
+      items: address
+        ? this.magpieData.itemMaps.get(address) ?? []
+        : this.magpieData.items,
+    };
   }
 
   // return local points and totalPoints
@@ -190,7 +206,6 @@ export class MagpieService extends Worker {
 
   // return real points group by address
   public getPointsDataGroupByAddress(): MagpieData {
-    let result: MagpieData = cloneDeep(this.magpieData);
     let data: Map<string, MagpiePointItemWithoutBalance> = new Map();
     const now = (new Date().getTime() / 1000) | 0;
     for (let i = 0; i < this.magpieData.items.length; i++) {
@@ -208,7 +223,11 @@ export class MagpieService extends Worker {
         tmpItem.realEigenpiePoints += item.realEigenpiePoints;
       }
     }
-    result.items = Array.from(data.values());
-    return result;
+    return {
+      localTotalPoints: this.magpieData.localTotalPoints,
+      realTotalEigenpiePoints: this.magpieData.realTotalEigenpiePoints,
+      realTotalEigenLayerPoints: this.magpieData.realTotalEigenLayerPoints,
+      items: Array.from(data.values()),
+    };
   }
 }
