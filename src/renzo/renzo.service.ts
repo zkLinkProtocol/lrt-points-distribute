@@ -96,10 +96,19 @@ export class RenzoService extends Worker {
     this.tokenAddress = tokens;
 
     const realTokenTotalPoints = await this.getRealPointsData();
+    this.logger.log(
+      "renzoLog: realTokenTotalPoints:",
+      realTokenTotalPoints.size,
+    );
     const pointsData = await this.getLocalPointsData();
+    this.logger.log("renzoLog: pointsData");
     const localPoints = pointsData.localPoints;
     const localTotalPoints = pointsData.localTotalPoints;
     const tokensMapBridgeTokens = await this.getTokensMapBriageTokens();
+    this.logger.log(
+      "renzoLog: tokensMapBridgeTokens:",
+      tokensMapBridgeTokens.size,
+    );
     if (
       tokensMapBridgeTokens.size < 1 ||
       localPoints.length < 1 ||
@@ -118,6 +127,10 @@ export class RenzoService extends Worker {
     const transferFaildPoints = this.projectGraphService.getTransferFaildPoints(
       this.tokenAddress,
     );
+    this.logger.log(
+      "renzoLog: transferFaildPoints:",
+      transferFaildPoints.length,
+    );
     const localPointsMap = new Map<string, LocalPointsItem>();
     const totalPointsPerTokenMap = new Map<string, bigint>();
     const now = (new Date().getTime() / 1000) | 0;
@@ -126,6 +139,7 @@ export class RenzoService extends Worker {
       totalPointsPerTokenMap.set(item.token, item.totalPointsPerToken);
       localPointsMap.set(key, item);
     }
+    this.logger.log("renzoLog: localPointsMap:", localPointsMap.size);
     // loop transferFaildData, and added transferFaildPoint to localPoints
     for (const item of transferFaildPoints) {
       const key = `${item.address}_${item.tokenAddress}`;
@@ -152,7 +166,7 @@ export class RenzoService extends Worker {
       }
     }
     // end added transferFaildPoint
-
+    this.logger.log("renzoLog: end added transferFaildPoint");
     for (const [, point] of localPointsMap) {
       const tokenAddress = point.token.toLocaleLowerCase();
       if (!tokenAddress) {
@@ -196,6 +210,7 @@ export class RenzoService extends Worker {
       };
       data.push(pointsItem);
     }
+    this.logger.log("renzoLog: data", data.length);
     if (data.length > 0) {
       this.renzoData = {
         localTotalPoints: localTotalPoints,
