@@ -2,6 +2,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { cloneDeep } from "lodash";
 import { GraphQueryService } from "../common/service/graphQuery.service";
 import { LocalPointsItem } from "../common/service/projectGraph.service";
+import waitFor from "src/utils/waitFor";
 import {
   LocalPointData,
   ProjectGraphService,
@@ -10,6 +11,7 @@ import {
   MagpieGraphQueryService,
   MagpieGraphTotalPoint,
 } from "./magpieGraphQuery.service";
+import { Worker } from "src/common/worker";
 
 export interface MagpiePointItemWithBalance {
   address: string;
@@ -39,7 +41,7 @@ export interface MagpieData {
 }
 
 @Injectable()
-export class MagpieService {
+export class MagpieService extends Worker {
   private readonly projectName: string = "magpie";
   private readonly logger: Logger;
   public tokenAddress: string[];
@@ -56,20 +58,22 @@ export class MagpieService {
     private readonly projectGraphService: ProjectGraphService,
     private readonly magpieGraphQueryService: MagpieGraphQueryService,
   ) {
+    super();
     this.logger = new Logger(MagpieService.name);
   }
 
-  public async onModuleInit() {
+  public async runProcess() {
     this.logger.log(`Init ${MagpieService.name} onmoduleinit`);
-    const func = async () => {
-      try {
-        await this.loadPointsData();
-      } catch (err) {
-        this.logger.error(`${MagpieService.name} init failed.`, err.stack);
-      }
-    };
-    func();
-    setInterval(func, 1000 * 60);
+    try {
+      await this.loadPointsData();
+    } catch (err) {
+      this.logger.error(`${MagpieService.name} init failed.`, err.stack);
+    }
+    await waitFor(() => !this.currentProcessPromise, 60 * 1000, 60 * 1000);
+    if (!this.currentProcessPromise) {
+      return;
+    }
+    return this.runProcess();
   }
 
   // load points data

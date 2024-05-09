@@ -11,6 +11,7 @@ import { ExplorerService } from "src/common/service/explorer.service";
 import { cloneDeep } from "lodash";
 import BigNumber from "bignumber.js";
 import waitFor from "src/utils/waitFor";
+import { Worker } from "src/common/worker";
 
 export interface RenzoPointItem {
   address: string;
@@ -33,7 +34,7 @@ export interface RenzoData {
 }
 
 @Injectable()
-export class RenzoService {
+export class RenzoService extends Worker {
   public tokenAddress: string[];
   private readonly projectName: string = "renzo";
   private readonly logger: Logger;
@@ -56,6 +57,7 @@ export class RenzoService {
     private readonly graphQueryService: GraphQueryService,
     private readonly configService: ConfigService,
   ) {
+    super();
     this.logger = new Logger(RenzoService.name);
     this.l1Erc20BridgeEthereum = configService.get<string>(
       "l1Erc20BridgeEthereum",
@@ -67,18 +69,18 @@ export class RenzoService {
     this.l1Erc20BridgeBlast = configService.get<string>("l1Erc20BridgeBlast");
   }
 
-  public async onModuleInit() {
-    await waitFor(() => false, 5 * 1000, 5 * 1000);
+  public async runProcess() {
     this.logger.log(`Init ${RenzoService.name} onmoduleinit`);
-    const func = async () => {
-      try {
-        await this.loadPointsData();
-      } catch (err) {
-        this.logger.error(`${RenzoService.name} init failed.`, err.stack);
-      }
-    };
-    func();
-    setInterval(func, 1000 * 200);
+    try {
+      await this.loadPointsData();
+    } catch (err) {
+      this.logger.error(`${RenzoService.name} init failed.`, err.stack);
+    }
+    await waitFor(() => !this.currentProcessPromise, 60 * 1000, 60 * 1000);
+    if (!this.currentProcessPromise) {
+      return;
+    }
+    return this.runProcess();
   }
 
   // load points data
