@@ -1,5 +1,4 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { cloneDeep } from "lodash";
 import {
   LocalPointData,
   ProjectGraphService,
@@ -37,6 +36,10 @@ export interface RsethData {
   localTotalPoints: bigint;
   realTotalElPoints: number;
   realTotalKelpMiles: number;
+  itemMaps?: Map<
+    string,
+    RsethPointItemWithBalance[] | RsethPointItemWithoutBalance[]
+  >;
   items: RsethPointItemWithBalance[] | RsethPointItemWithoutBalance[];
 }
 
@@ -50,6 +53,7 @@ export class RsethService extends Worker {
     localTotalPoints: BigInt(0),
     realTotalElPoints: 0,
     realTotalKelpMiles: 0,
+    itemMaps: new Map(),
     items: [],
   };
   private readonly l1Erc20BridgeEthereum: string;
@@ -188,11 +192,23 @@ export class RsethService extends Worker {
       };
       data.push(pointsItem);
     }
+
+    const itemMaps = new Map();
+    for (let i = 0; i < data.length; i++) {
+      const item = data[i];
+      if (!itemMaps.has(item.address)) {
+        itemMaps.set(item.address, [item]);
+      } else {
+        const tmpItems = itemMaps.get(item.address);
+        itemMaps.set(item.address, [...tmpItems, item]);
+      }
+    }
     if (data.length > 0) {
       this.rsethData = {
         localTotalPoints: localTotalPoints,
         realTotalElPoints: realTotalElPoints,
         realTotalKelpMiles: realTotalKelpMiles,
+        itemMaps: itemMaps,
         items: data,
       };
     } else {
@@ -202,14 +218,14 @@ export class RsethService extends Worker {
 
   // return points data
   public getPointsData(address?: string): RsethData {
-    const result: RsethData = cloneDeep(this.rsethData);
-    if (address) {
-      const _address = address.toLocaleLowerCase();
-      result.items = this.rsethData.items.filter(
-        (item) => item.address === _address,
-      );
-    }
-    return result;
+    return {
+      localTotalPoints: this.rsethData.localTotalPoints,
+      realTotalElPoints: this.rsethData.realTotalElPoints,
+      realTotalKelpMiles: this.rsethData.realTotalKelpMiles,
+      items: address
+        ? this.rsethData.itemMaps.get(address) ?? []
+        : this.rsethData.items,
+    };
   }
 
   // return local points and totalPoints
@@ -224,7 +240,6 @@ export class RsethService extends Worker {
 
   // return real points group by address
   public getPointsDataGroupByAddress(): RsethData {
-    const result: RsethData = cloneDeep(this.rsethData);
     const data: Map<string, RsethPointItemWithoutBalance> = new Map();
     const now = (new Date().getTime() / 1000) | 0;
     for (let i = 0; i < this.rsethData.items.length; i++) {
@@ -242,8 +257,12 @@ export class RsethService extends Worker {
         tmpItem.realElPoints += item.realElPoints;
       }
     }
-    result.items = Array.from(data.values());
-    return result;
+    return {
+      localTotalPoints: this.rsethData.localTotalPoints,
+      realTotalElPoints: this.rsethData.realTotalElPoints,
+      realTotalKelpMiles: this.rsethData.realTotalKelpMiles,
+      items: Array.from(data.values()),
+    };
   }
 
   // token match bridge token

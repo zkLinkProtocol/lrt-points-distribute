@@ -50,7 +50,7 @@ export class MagpieController {
     try {
       pointData = await this.magpieService.getPointsData(address);
     } catch (err) {
-      this.logger.error("Get magpie all points failed", err);
+      this.logger.error("Get magpie all points failed", err.stack);
       return SERVICE_EXCEPTION;
     }
     return this.getReturnData(
