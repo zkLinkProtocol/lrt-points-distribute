@@ -8,6 +8,9 @@ import { ConfigService } from "@nestjs/config";
 import { DataSource } from "typeorm";
 import { PuffPointsService } from "./puffer/puffPoints.service";
 import { RenzoService } from "./renzo/renzo.service";
+import { MagpieService } from "./magpie/magpie.service";
+import { RsethService } from "./rseth/rseth.service";
+import { GraphQueryService } from "./common/service/graphQuery.service";
 
 @Injectable()
 export class AppService implements OnModuleInit, OnModuleDestroy {
@@ -16,6 +19,9 @@ export class AppService implements OnModuleInit, OnModuleDestroy {
   public constructor(
     private readonly puffPointsService: PuffPointsService,
     private readonly renzoService: RenzoService,
+    private readonly magpieService: MagpieService,
+    private readonly rsethService: RsethService,
+    private readonly graphQueryService: GraphQueryService,
     private readonly dataSource: DataSource,
     private readonly configService: ConfigService,
   ) {
@@ -31,20 +37,23 @@ export class AppService implements OnModuleInit, OnModuleDestroy {
   }
 
   private startWorkers() {
-    const tasks = [];
-    if (this.configService.get<boolean>("enablePuff")) {
-      // tasks.push(this.puffPointsService.start());
-    }
-    if (this.configService.get<boolean>("enableRenzo")) {
-      //tasks.push(this.renzoService.start());
-    }
+    const tasks = [
+      this.graphQueryService.start(),
+      this.puffPointsService.start(),
+      this.renzoService.start(),
+      this.magpieService.start(),
+      this.rsethService.start(),
+    ];
     return Promise.all(tasks);
   }
 
   private stopWorkers() {
     return Promise.all([
-      // this.puffPointsService.stop(),
-      //this.renzoService.stop(),
+      this.puffPointsService.stop(),
+      this.renzoService.stop(),
+      this.magpieService.stop(),
+      this.rsethService.stop(),
+      this.graphQueryService.stop(),
     ]);
   }
 }

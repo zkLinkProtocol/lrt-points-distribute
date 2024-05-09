@@ -1,6 +1,8 @@
 import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { ethers } from "ethers";
+import { Worker } from "../worker";
+import waitFor from "src/utils/waitFor";
 export interface GraphPoint {
   address: string;
   balance: string;
@@ -29,29 +31,31 @@ export interface GraphWithdrawPoint {
 }
 
 @Injectable()
-export class GraphQueryService implements OnModuleInit {
+export class GraphQueryService extends Worker {
   private readonly logger: Logger;
   private readonly novaPointRedistributeGraphApi: string;
   private projectTokenMap: Map<string, Map<string, string>> = new Map();
 
   public constructor(configService: ConfigService) {
+    super();
     this.logger = new Logger(GraphQueryService.name);
     this.novaPointRedistributeGraphApi = configService.get<string>(
       "novaPointRedistributeGraphApi",
     );
   }
 
-  public async onModuleInit() {
+  public async runProcess() {
     this.logger.log("GraphQueryService has been initialized.");
-    const func = async () => {
-      try {
-        await this.loadGraphData();
-      } catch (err) {
-        this.logger.error("GraphQueryService init failed", err.stack);
-      }
-    };
-    func();
-    setInterval(func, 1000 * 600);
+    try {
+      await this.loadGraphData();
+    } catch (err) {
+      this.logger.error("GraphQueryService init failed", err.stack);
+    }
+    await waitFor(() => !this.currentProcessPromise, 600 * 1000, 600 * 1000);
+    if (!this.currentProcessPromise) {
+      return;
+    }
+    return this.runProcess();
   }
 
   private async loadGraphData() {

@@ -10,6 +10,8 @@ import { NovaService } from "../nova/nova.service";
 import { ConfigService } from "@nestjs/config";
 import { PagingOptionsDto } from "../common/pagingOptionsDto.dto";
 import { AquaService } from "../nova/aqua.service";
+import { Worker } from "src/common/worker";
+import waitFor from "src/utils/waitFor";
 
 export interface PufferPointItem {
   address: string;
@@ -90,7 +92,7 @@ const AQUA_LPUFFER =
 const AQUA_VAULT =
   "0x4AC97E2727B0e92AE32F5796b97b7f98dc47F059".toLocaleLowerCase();
 @Injectable()
-export class PuffPointsService {
+export class PuffPointsService extends Worker {
   public tokenAddress: string;
   private readonly projectName: string = "puffer";
   private readonly logger: Logger;
@@ -107,23 +109,25 @@ export class PuffPointsService {
     private readonly aquaService: AquaService,
     private readonly configService: ConfigService,
   ) {
+    super();
     this.logger = new Logger(PuffPointsService.name);
     this.puffElPointsGraphApi = this.configService.get<string>(
       "novaPointPufferElPointsGraphApi",
     );
   }
 
-  public async onModuleInit() {
+  public async runProcess() {
     this.logger.log(`Init ${PuffPointsService.name} onmoduleinit`);
-    const func = async () => {
-      try {
-        await this.loadPointsData();
-      } catch (err) {
-        this.logger.error(`${PuffPointsService.name} init failed.`, err.stack);
-      }
-    };
-    func();
-    setInterval(func, 1000 * 200);
+    try {
+      await this.loadPointsData();
+    } catch (err) {
+      this.logger.error(`${PuffPointsService.name} init failed.`, err.stack);
+    }
+    await waitFor(() => !this.currentProcessPromise, 60 * 1000, 60 * 1000);
+    if (!this.currentProcessPromise) {
+      return;
+    }
+    return this.runProcess();
   }
 
   // load points data
@@ -430,7 +434,7 @@ export class PuffPointsService {
           userPosition(id: "${address}") {
             id
             balance
-            positionHistory( 
+            positionHistory(
               where: {
                 poolName_in: ${JSON.stringify(protocolName)}
                 blockTimestamp_lte: "${queryUnixTime}"

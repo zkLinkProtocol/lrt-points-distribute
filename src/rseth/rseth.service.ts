@@ -11,6 +11,7 @@ import { ConfigService } from "@nestjs/config";
 import BigNumber from "bignumber.js";
 import waitFor from "src/utils/waitFor";
 import { LocalPointsItem } from "../common/service/projectGraph.service";
+import { Worker } from "src/common/worker";
 
 export interface RsethPointItemWithBalance {
   address: string;
@@ -40,7 +41,7 @@ export interface RsethData {
 }
 
 @Injectable()
-export class RsethService {
+export class RsethService extends Worker {
   private readonly projectName: string = "rseth";
   private readonly logger: Logger;
 
@@ -60,6 +61,7 @@ export class RsethService {
     private readonly explorerService: ExplorerService,
     private readonly configService: ConfigService,
   ) {
+    super();
     this.logger = new Logger(RsethService.name);
     this.l1Erc20BridgeEthereum = configService.get<string>(
       "l1Erc20BridgeEthereum",
@@ -69,18 +71,18 @@ export class RsethService {
     );
   }
 
-  public async onModuleInit() {
-    await waitFor(() => false, 5 * 1000, 5 * 1000);
+  public async runProcess() {
     this.logger.log(`Init ${RsethService.name} onmoduleinit`);
-    const func = async () => {
-      try {
-        await this.loadPointsData();
-      } catch (err) {
-        this.logger.error(`${RsethService.name} init failed.`, err.stack);
-      }
-    };
-    func();
-    setInterval(func, 1000 * 200);
+    try {
+      await this.loadPointsData();
+    } catch (err) {
+      this.logger.error(`${RsethService.name} init failed.`, err.stack);
+    }
+    await waitFor(() => !this.currentProcessPromise, 60 * 1000, 60 * 1000);
+    if (!this.currentProcessPromise) {
+      return;
+    }
+    return this.runProcess();
   }
 
   // load points data
