@@ -240,6 +240,14 @@ export class PuffPointsService extends Worker {
     return await this.projectGraphService.getPoints(this.projectName, address);
   }
 
+  public getPoolPufferPoints(poolAddress: string): PufferPointItem {
+    const _poolAddress = poolAddress.toLowerCase();
+    const result = this.localPoints.filter(
+      (item) => item.address === _poolAddress,
+    );
+    return result[0];
+  }
+
   // return real totalPoints
   public async getRealPointsData(): Promise<number> {
     const realData = await fetch(

@@ -186,11 +186,13 @@ export class NovaController {
       return NOT_FOUND_EXCEPTION;
     }
     // Get real puffer points in layerbank.
-    let points: number;
+    let points: number = 0;
     try {
       const tokenData =
-        await this.pufferPointsSercie.getPointsData(tokenAddress);
-      points = tokenData.items[0]?.realPoints ?? 0;
+        this.pufferPointsSercie.getPoolPufferPoints(tokenAddress);
+      if (tokenData) {
+        points = tokenData.realPoints ?? 0;
+      }
     } catch (err) {
       this.logger.error(
         "Get puffer real points in layerbank failed",
