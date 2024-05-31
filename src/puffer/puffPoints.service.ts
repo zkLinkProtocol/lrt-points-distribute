@@ -94,7 +94,7 @@ const AQUA_LPUFFER =
 const AQUA_VAULT =
   "0x4AC97E2727B0e92AE32F5796b97b7f98dc47F059".toLocaleLowerCase();
 const AGX_VAULT =
-  "0x04A29E2911D4865d609fbF105Ff54211213f0862".toLocaleLowerCase();
+  "0xc48F99afe872c2541f530C6c87E3A6427e0C40d5".toLocaleLowerCase();
 
 @Injectable()
 export class PuffPointsService extends Worker {
