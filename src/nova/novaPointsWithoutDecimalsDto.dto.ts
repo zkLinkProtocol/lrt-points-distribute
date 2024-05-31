@@ -80,3 +80,26 @@ export class NovaPointsWithoutDecimalsDto {
   })
   public readonly data?: PointsWithoutDecimalsDto[];
 }
+
+export class ProjectNovaPoint {
+  @ApiProperty({
+    type: Number,
+    description: "error code",
+    example: 0,
+  })
+  public readonly errno: number;
+
+  @ApiProperty({
+    type: String,
+    description: "error message",
+    example: "no error",
+  })
+  public readonly errmsg: string;
+
+  @ApiProperty({
+    type: String,
+    description: "project points data",
+    nullable: true,
+  })
+  public readonly data?: string;
+}

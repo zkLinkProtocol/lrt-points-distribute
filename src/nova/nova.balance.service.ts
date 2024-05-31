@@ -47,6 +47,20 @@ export class NovaBalanceService {
     );
   }
 
+  public async getProjectTotalPoints(projectName: string): Promise<string> {
+    // 1. select pairAddress from project where name = projectName
+    // 2. select stakePoint from pointsOfLp where address = address and pairAddress in (pairAddresses)
+    const pairAddresses =
+      await this.projectRepository.getPairAddresses(projectName);
+    if (pairAddresses.length === 0) {
+      this.logger.log(`No pair addresses found for project ${projectName}`);
+      return "0";
+    }
+    return await this.pointsOfLpRepository.getTotalNovaPointsByPairAddresses(
+      pairAddresses,
+    );
+  }
+
   public async getAddressByTotalPoints(
     page: number,
     limit: number,

@@ -38,11 +38,13 @@ import { BlockAddressPointOfLpRepository } from "./repositories/blockAddressPoin
 import { Cache } from "./entities/cache.entity";
 import { CacheRepository } from "./repositories/cache.repository";
 import { BalanceOfLp } from "./entities/balanceOfLp.entity";
+import { RedistributeBalance } from "./entities/redistributeBalance.entity";
 import { BalanceOfLpRepository } from "./repositories/balanceOfLp.repository";
 import { NovaBalanceService } from "./nova/nova.balance.service";
 import { CacheController } from "./cache/cache.controller";
 import { CacheService } from "./cache/cache.service";
 import { AquaService } from "./nova/aqua.service";
+import { RedistributeBalanceRepository } from "./repositories/redistributeBalance.repository";
 
 @Module({
   imports: [
@@ -64,6 +66,7 @@ import { AquaService } from "./nova/aqua.service";
       BlockAddressPointOfLp,
       Cache,
       BalanceOfLp,
+      RedistributeBalance,
     ]),
     MetricsModule,
     UnitOfWorkModule,
@@ -108,6 +111,7 @@ import { AquaService } from "./nova/aqua.service";
     CacheRepository,
     CacheService,
     AquaService,
+    RedistributeBalanceRepository,
   ],
 })
 export class AppModule {}

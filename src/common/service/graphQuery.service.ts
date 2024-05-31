@@ -1,4 +1,4 @@
-import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { ethers } from "ethers";
 import { Worker } from "../worker";
@@ -219,24 +219,24 @@ export class GraphQueryService extends Worker {
     let skip = (_page - 1) * _limit;
     skip = skip < 0 ? 0 : skip;
     const query = `
-{
-  totalPoints(where:{project_contains: "${projectName}"}){
-    id
-    project
-    totalBalance
-    totalWeightBalance
-    totalTimeWeightAmountIn
-    totalTimeWeightAmountOut
-  }
-  points(first: ${_limit}, skip: ${skip}, where:{project_contains: "${projectName}"}) {
-    address
-    balance
-    weightBalance
-    timeWeightAmountIn
-    timeWeightAmountOut
-    project
-  }
-}
+      {
+        totalPoints(where:{project_contains: "${projectName}"}){
+          id
+          project
+          totalBalance
+          totalWeightBalance
+          totalTimeWeightAmountIn
+          totalTimeWeightAmountOut
+        }
+        points(first: ${_limit}, skip: ${skip}, where:{project_contains: "${projectName}"}) {
+          address
+          balance
+          weightBalance
+          timeWeightAmountIn
+          timeWeightAmountOut
+          project
+        }
+      }
     `;
     const data = await this.query(query);
     if (
