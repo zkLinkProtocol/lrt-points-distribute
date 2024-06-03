@@ -1,4 +1,4 @@
-import { Controller, Get, Logger, Query } from "@nestjs/common";
+import { Controller, Get, Logger, Param, Query } from "@nestjs/common";
 import {
   ApiBadRequestResponse,
   ApiExcludeController,
@@ -14,7 +14,10 @@ import {
   NOT_FOUND_EXCEPTION,
   SERVICE_EXCEPTION,
 } from "../puffer/tokenPointsWithoutDecimals.dto";
-import { NovaPointsWithoutDecimalsDto } from "src/nova/novaPointsWithoutDecimalsDto.dto";
+import {
+  NovaPointsWithoutDecimalsDto,
+  ProjectNovaPoint,
+} from "src/nova/novaPointsWithoutDecimalsDto.dto";
 import { NovaService } from "src/nova/nova.service";
 import { NovaApiService, NovaPoints } from "src/nova/novaapi.service";
 import { BigNumber } from "bignumber.js";
@@ -116,6 +119,32 @@ export class NovaController {
         };
       }),
     } as NovaPointsWithoutDecimalsDto;
+  }
+
+  @Get("/points/:project")
+  @ApiOperation({ summary: "Get project total points" })
+  @ApiBadRequestResponse({
+    description: '{ "errno": 1, "errmsg": "Service exception" }',
+  })
+  @ApiNotFoundResponse({
+    description: '{ "errno": 1, "errmsg": "not found" }',
+  })
+  public async getNovaProjectPoint(
+    @Param("project") project: string,
+  ): Promise<ProjectNovaPoint> {
+    try {
+      const pointData =
+        await this.novaBalanceService.getProjectTotalPoints(project);
+
+      return {
+        errno: 0,
+        errmsg: "no error",
+        data: pointData,
+      };
+    } catch (err) {
+      this.logger.error("Get nova all points failed", err.stack);
+      return SERVICE_EXCEPTION;
+    }
   }
 
   @Get("/points/token")

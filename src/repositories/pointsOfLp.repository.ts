@@ -25,6 +25,24 @@ export class PointsOfLpRepository {
     });
   }
 
+  public async getTotalNovaPointsByPairAddresses(
+    pairAddresses: Buffer[],
+  ): Promise<string> {
+    const transactionManager = this.unitOfWork.getTransactionManager();
+    const query = `
+      SELECT SUM("stakePoint") as sum
+      FROM "pointsOfLp"
+      WHERE "pairAddress" = ANY($1)
+    `;
+    const results = await transactionManager.query(query, [pairAddresses]);
+
+    if (results.length === 0 || !results[0].sum) {
+      return "0";
+    }
+
+    return results[0].sum;
+  }
+
   public async getPointByAddress(
     address: string,
     pairAddress: string,

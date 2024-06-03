@@ -188,29 +188,41 @@ export class PointsController {
         data: [] as PointsWithoutDecimalsDto[],
       };
     }
-    if (data.items.length === 0) {
-      throw new NotFoundException();
-    }
 
     // layerbank point
     const layerbankPoint =
       await this.puffPointsService.getLayerBankPoint(address);
     // aqua point
     const aquaPoint = await this.puffPointsService.getAquaPoint(address);
+
+    const { point: agxPufferPoint, balance: agxPufferEthBalance } =
+      await this.puffPointsService.getAGXPufferDataByAddress(address);
     this.logger.log(
-      `layerbankPoint: ${layerbankPoint}, aquaPoint: ${aquaPoint}`,
+      `layerbankPoint: ${layerbankPoint}, aquaPoint: ${aquaPoint}, agxPufferPoint: ${agxPufferPoint}`,
     );
-    const point = data.items[0];
+    const point = data.items[0] ?? {
+      realPoints: 0,
+      balance: BigInt(0),
+      updatedAt: Date.now() / 1000,
+      tokenAddress: "0x1B49eCf1A8323Db4abf48b2F5EFaA33F7DdAB3FC",
+    };
     res = {
       errno: 0,
       errmsg: "no error",
       total_points: data.realTotalPoints.toString(),
       data: [
         {
-          address: point.address,
+          address: address,
           tokenAddress: point.tokenAddress,
-          points: (point.realPoints + layerbankPoint + aquaPoint).toString(),
-          balance: Number(ethers.formatEther(point.balance)).toFixed(6),
+          points: (
+            point.realPoints +
+            layerbankPoint +
+            aquaPoint +
+            agxPufferPoint
+          ).toString(),
+          balance: Number(
+            ethers.formatEther(point.balance + agxPufferEthBalance),
+          ).toFixed(6),
           updated_at: point.updatedAt,
         },
       ],
@@ -237,9 +249,6 @@ export class PointsController {
     const pufPointsData = this.puffPointsService.getPointsData(
       address.toLocaleLowerCase(),
     );
-    if (pufPointsData.items.length == 0) {
-      throw new NotFoundException();
-    }
 
     const data = await this.puffPointsService.getPuffElPointsByAddress(address);
     if (!data) {
@@ -254,27 +263,29 @@ export class PointsController {
       // aqua point
       const aquaPoint = await this.puffPointsService.getAquaPoint(address);
 
+      const { point: agxPufferPoint, balance: agxPufferBalance } =
+        await this.puffPointsService.getAGXPufferDataByAddress(address);
+
       const pufferPoints = (
-        pufPointsData.items[0].realPoints +
+        (pufPointsData.items[0]?.realPoints ?? 0) +
         layerbankPoint +
-        aquaPoint
+        aquaPoint +
+        agxPufferPoint
       ).toString();
 
-      const withdrawingBalance = userPosition.withdrawHistory.reduce(
-        (prev, cur) => {
+      const withdrawingBalance =
+        userPosition?.withdrawHistory.reduce((prev, cur) => {
           return prev + BigInt(cur.balance);
-        },
-        BigInt(0),
-      );
+        }, BigInt(0)) ?? BigInt(0);
 
       const balanceFromDappTotal =
-        userPosition?.positions.reduce((prev, cur) => {
+        (userPosition?.positions.reduce((prev, cur) => {
           const pool = pools.find((pool) => pool.id === cur.pool);
           const shareBalance =
             (BigInt(pool.balance) * BigInt(cur.supplied)) /
             BigInt(pool.totalSupplied);
           return prev + shareBalance;
-        }, BigInt(0)) ?? BigInt(0);
+        }, BigInt(0)) ?? BigInt(0)) + agxPufferBalance;
 
       const liquidityDetails =
         userPosition?.positions
@@ -292,13 +303,20 @@ export class PointsController {
           })
           .filter((i) => !!i) ?? [];
 
+      if (agxPufferBalance > 0n) {
+        liquidityDetails.push({
+          dappName: "agx",
+          balance: Number(ethers.formatEther(agxPufferBalance)).toFixed(6),
+        });
+      }
+
       const res = {
         userAddress: address,
         pufEthAddress: "0x1b49ecf1a8323db4abf48b2f5efaa33f7ddab3fc",
         pufferPoints: pufferPoints,
         totalBalance: Number(
           ethers.formatEther(
-            BigInt(userPosition.balance) +
+            BigInt(userPosition?.balance ?? 0) +
               balanceFromDappTotal +
               withdrawingBalance,
           ),
@@ -306,14 +324,14 @@ export class PointsController {
         withdrawingBalance: Number(
           ethers.formatEther(withdrawingBalance),
         ).toFixed(6),
-        userBalance: Number(ethers.formatEther(userPosition.balance)).toFixed(
-          6,
-        ),
+        userBalance: Number(
+          ethers.formatEther(userPosition?.balance ?? 0),
+        ).toFixed(6),
         liquidityBalance: Number(
           ethers.formatEther(balanceFromDappTotal),
         ).toFixed(6),
         liquidityDetails,
-        updatedAt: pufPointsData.items[0].updatedAt,
+        updatedAt: pufPointsData.items[0]?.updatedAt ?? Date.now() / 1000,
       };
 
       return {
@@ -503,6 +521,7 @@ export class PointsController {
     return res;
   }
 
+  // todo
   @Get("/puffer")
   @ApiOkResponse({
     description:
@@ -515,7 +534,6 @@ export class PointsController {
   public async queryPufferEigenlayerPoints(
     @Query() pagingOptions: PagingOptionsDto,
   ): Promise<ElPointsDto> {
-    let res: ElPointsDto;
     const data = this.puffPointsService.getPointsData();
     const { pools, userPositions } =
       await this.puffPointsService.getPuffElPoints(pagingOptions);
@@ -526,7 +544,7 @@ export class PointsController {
     // aqua point
     const aquaPoints = await this.puffPointsService.getAquaPointList(addresses);
 
-    res = {
+    const res = {
       errno: 0,
       errmsg: "no error",
       data: {

@@ -12,6 +12,7 @@ import { PagingOptionsDto } from "../common/pagingOptionsDto.dto";
 import { AquaService } from "../nova/aqua.service";
 import { Worker } from "src/common/worker";
 import waitFor from "src/utils/waitFor";
+import { RedistributeBalanceRepository } from "src/repositories/redistributeBalance.repository";
 
 export interface PufferPointItem {
   address: string;
@@ -84,13 +85,17 @@ type PufferUserBalance = [
   },
   Array<EigenlayerPool & { pool: string }>,
 ];
-
+const PUFFER_ETH_ADDRESS =
+  "0x1569046dC6D4bd5d06cA5fa2fb83D2885bd87b20".toLowerCase();
 const LAYERBANK_LPUFFER =
   "0xdd6105865380984716C6B2a1591F9643e6ED1C48".toLocaleLowerCase();
 const AQUA_LPUFFER =
   "0xc2be3CC06Ab964f9E22e492414399DC4A58f96D3".toLocaleLowerCase();
 const AQUA_VAULT =
   "0x4AC97E2727B0e92AE32F5796b97b7f98dc47F059".toLocaleLowerCase();
+const AGX_VAULT =
+  "0xc48F99afe872c2541f530C6c87E3A6427e0C40d5".toLocaleLowerCase();
+
 @Injectable()
 export class PuffPointsService extends Worker {
   public tokenAddress: string;
@@ -108,6 +113,7 @@ export class PuffPointsService extends Worker {
     private readonly novaService: NovaService,
     private readonly aquaService: AquaService,
     private readonly configService: ConfigService,
+    private readonly redistributeBalanceRepository: RedistributeBalanceRepository,
   ) {
     super();
     this.logger = new Logger(PuffPointsService.name);
@@ -214,7 +220,7 @@ export class PuffPointsService extends Worker {
       realTotalPoints: this.realTotalPoints,
       items: this.localPoints,
     } as PufferData;
-    const needRemoveAddress = [LAYERBANK_LPUFFER, AQUA_VAULT];
+    const needRemoveAddress = [LAYERBANK_LPUFFER, AQUA_VAULT, AGX_VAULT];
     if (address && this.localPoints.length > 0) {
       const _address = address.toLocaleLowerCase();
       if (needRemoveAddress.includes(_address)) {
@@ -295,6 +301,27 @@ export class PuffPointsService extends Worker {
         .toNumber();
     }
     return 0;
+  }
+
+  public async getAGXPufferDataByAddress(
+    address: string,
+  ): Promise<{ point: number; balance: bigint }> {
+    // agx puffer points
+    const lPufferPoint = this.localPoints.filter(
+      (item) => item.address === AGX_VAULT,
+    );
+
+    const data =
+      await this.redistributeBalanceRepository.getPercentageByAddress(
+        address,
+        PUFFER_ETH_ADDRESS,
+        AGX_VAULT,
+      );
+
+    return {
+      point: data.percentage * (lPufferPoint[0]?.realPoints ?? 0),
+      balance: data.balance,
+    };
   }
 
   //get aqua point
