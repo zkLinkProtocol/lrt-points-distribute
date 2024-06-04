@@ -25,7 +25,7 @@ export class RedistributeBalanceRepository extends BaseRepository<RedistributeBa
 
     return {
       percentage: record ? Number(record.percentage) : 0,
-      balance: BigInt(record.balance ?? 0),
+      balance: BigInt(record?.balance ?? 0),
     };
   }
 }
