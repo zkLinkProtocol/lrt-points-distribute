@@ -3,7 +3,6 @@ import { UnitOfWork } from "../unitOfWork";
 import { BaseRepository } from "./base.repository";
 import { RedistributeBalance } from "../entities/redistributeBalance.entity";
 import { UserRedistributePoint } from "src/entities/userRedistributePoint.entity";
-import { In } from "typeorm";
 
 @Injectable()
 export class RedistributeBalanceRepository extends BaseRepository<RedistributeBalance> {
@@ -33,9 +32,9 @@ export class RedistributeBalanceRepository extends BaseRepository<RedistributeBa
 
   public async getPaginatedUserPoints(
     tokenAddresses: string[], // array of token addresses to filter
-    page: number, // page number, starting from 0
+    page: number = 0, // page number, starting from 0
     pageSize: number = 100, // number of users per page
-  ): Promise<Array<{ userAddress: string; points: UserRedistributePoint[] }>> {
+  ) {
     const transactionManager = this.unitOfWork.getTransactionManager();
     const tokenBuffers = tokenAddresses.map((addr) =>
       Buffer.from(addr.slice(2), "hex"),
@@ -45,7 +44,7 @@ export class RedistributeBalanceRepository extends BaseRepository<RedistributeBa
     const userAddressSubQuery = `
       SELECT DISTINCT u."userAddress"
       FROM "user" u
-      JOIN user_redistribute_point urp ON u."userAddress" = urp."userAddress"
+      JOIN "userRedistributePoint" urp ON u."userAddress" = urp."userAddress"
       WHERE urp."tokenAddress" = ANY($1)
       LIMIT $2 OFFSET $3
     `;
@@ -69,7 +68,7 @@ export class RedistributeBalanceRepository extends BaseRepository<RedistributeBa
         urp.balance,
         urp."exchangeRate" as "exchangeRate",
         urp."pointWeightPercentage" as "pointWeightPercentage"
-      FROM user_redistribute_point urp
+      FROM "userRedistributePoint" urp
       WHERE urp."userAddress" = ANY($1)
         AND urp."tokenAddress" = ANY($2)
     `;
@@ -79,14 +78,20 @@ export class RedistributeBalanceRepository extends BaseRepository<RedistributeBa
       tokenBuffers,
     ]);
 
+    const formattedUserPoints = userPoints.map((row) => ({
+      ...row,
+      userAddress: "0x" + row.userAddress,
+      tokenAddress: "0x" + row.tokenAddress,
+    }));
+
     // Step 3: Group UserRedistributePoint data by userAddress
     const groupedUserPoints = userAddresses.map((userAddress) => {
-      const points = userPoints.filter(
-        (point) =>
-          point.userAddress === Buffer.from(userAddress).toString("hex"),
+      const userAddressHexString = "0x" + userAddress.toString("hex");
+      const points = formattedUserPoints.filter(
+        (point) => point.userAddress.toString() === userAddressHexString,
       );
       return {
-        userAddress: "0x" + Buffer.from(userAddress).toString("hex"),
+        userAddress: userAddressHexString,
         points,
       };
     });
