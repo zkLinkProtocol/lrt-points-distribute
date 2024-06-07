@@ -4,7 +4,7 @@ import { bigIntNumberTransformer } from "../transformers/bigIntNumber.transforme
 import { hexTransformer } from "../transformers/hex.transformer";
 
 @Entity({ name: "blockAddressPointOfLp" })
-export class BlockAddressPointOfLp {
+export class BlockAddressPointOfLp extends BaseEntity {
   @PrimaryColumn({ type: "bigint", transformer: bigIntNumberTransformer })
   public readonly blockNumber: number;
 

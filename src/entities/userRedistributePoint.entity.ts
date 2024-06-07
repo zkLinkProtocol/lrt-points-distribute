@@ -1,11 +1,11 @@
 import {
   Entity,
   Column,
-  PrimaryGeneratedColumn,
   ManyToOne,
   OneToMany,
   Index,
   JoinColumn,
+  PrimaryColumn,
 } from "typeorm";
 import { User } from "./user.entity";
 import { WithdrawHistory } from "./withdrawHistory.entity";
@@ -15,8 +15,8 @@ import { BaseEntity } from "./base.entity";
 @Entity({ name: "userRedistributePoint" })
 @Index(["userAddress", "tokenAddress"], { unique: true })
 export class UserRedistributePoint extends BaseEntity {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryColumn({ type: "varchar", length: 128 })
+  id: string;
 
   @Column({ type: "bytea", transformer: hexTransformer })
   tokenAddress: string;
@@ -24,23 +24,25 @@ export class UserRedistributePoint extends BaseEntity {
   @Column({ type: "varchar", length: 128 })
   balance: string;
 
-  @Column("decimal", { precision: 12, scale: 10 })
+  @Column("decimal", { precision: 30, scale: 18 })
   exchangeRate: number;
 
-  @Column("decimal", { precision: 12, scale: 10 })
+  @Column({ type: "varchar", length: 128 })
+  pointWeight: string;
+
+  @Column("decimal", { precision: 30, scale: 18 })
   pointWeightPercentage: number;
 
-  @ManyToOne(() => User, (user) => user.points, {
-    onDelete: "CASCADE",
-    cascade: true,
-  })
+  @ManyToOne(() => User, (user) => user.points, { onDelete: "CASCADE" })
   @JoinColumn({ name: "userAddress" })
   userAddress: User;
 
   @OneToMany(
     () => WithdrawHistory,
     (withdrawHistory) => withdrawHistory.userPointId,
-    { cascade: true },
+    {
+      cascade: true,
+    },
   )
   withdrawHistory: WithdrawHistory[];
 }

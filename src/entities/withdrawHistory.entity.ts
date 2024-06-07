@@ -1,23 +1,30 @@
 import {
   Entity,
   Column,
-  PrimaryGeneratedColumn,
+  Index,
+  PrimaryColumn,
   ManyToOne,
   JoinColumn,
 } from "typeorm";
 import { UserRedistributePoint } from "./userRedistributePoint.entity";
 import { BaseEntity } from "./base.entity";
+import { User } from "./user.entity";
+import { hexTransformer } from "src/transformers/hex.transformer";
 
 @Entity({ name: "withdrawHistory" })
+@Index(["tokenAddress", "userAddress", "timestamp"])
 export class WithdrawHistory extends BaseEntity {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryColumn({ type: "bytea", transformer: hexTransformer })
+  id: string;
 
   @Column({ type: "varchar", length: 128 })
   balance: string;
 
   @Column({ type: "timestamp" })
   timestamp: Date;
+
+  @Column({ type: "bytea", transformer: hexTransformer })
+  tokenAddress: string;
 
   @ManyToOne(
     () => UserRedistributePoint,
@@ -26,4 +33,10 @@ export class WithdrawHistory extends BaseEntity {
   )
   @JoinColumn({ name: "userPointId" })
   userPointId: UserRedistributePoint;
+
+  @ManyToOne(() => User, (user) => user.withdrawHistory, {
+    onDelete: "CASCADE",
+  })
+  @JoinColumn({ name: "userAddressId" })
+  userAddress: User;
 }
