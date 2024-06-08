@@ -65,7 +65,7 @@ const redistributeVaultAddresses = [
   },
   {
     vaultAddress: "0x4AC97E2727B0e92AE32F5796b97b7f98dc47F059".toLowerCase(),
-    stakedAddress: "0xc2be3CC06Ab964f9E22e492414399DC4A58f96D3".toLowerCase(),
+    stakedAddress: "0xc2be3CC06Ab964f9E22e492414399DC4A58f96D3".toLowerCase(), // aqua pool
     dappName: "Aqua",
   },
   {
@@ -561,6 +561,13 @@ export class PointsController {
       (config) => config.stakedAddress,
     );
 
+    const vaultAddressToStakedAddressMap = new Map(
+      redistributeVaultAddresses.map((info) => [
+        info.vaultAddress,
+        info.stakedAddress,
+      ]),
+    );
+
     const userData =
       await this.redistributeBalanceRepository.getPaginatedUserData(
         [PUFFER_ETH_ADDRESS],
@@ -576,7 +583,7 @@ export class PointsController {
 
     const stakedPointsMap = new Map(
       redistributePointsList.map((stakedInfo) => [
-        stakedInfo.userAddress,
+        vaultAddressToStakedAddressMap.get(stakedInfo.userAddress),
         stakedInfo.pointWeightPercentage * pufferTotalPoint,
       ]),
     );
@@ -641,8 +648,8 @@ export class PointsController {
           ethers.formatEther(userStakedLiquidityBalance),
         ).toFixed(6),
         liquidityDetails: liquidityDetails.map((i) => ({
-          ...i,
           balance: Number(ethers.formatEther(i.balance)).toFixed(6),
+          dappName: i.dappName,
         })),
         updatedAt: Math.floor(Date.now() / 1000),
       };

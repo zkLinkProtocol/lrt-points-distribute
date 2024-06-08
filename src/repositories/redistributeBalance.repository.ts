@@ -140,7 +140,6 @@ export class RedistributeBalanceRepository extends BaseRepository<RedistributeBa
     const tokenAddressBuffer = Buffer.from(tokenAddress.slice(2), "hex");
     const userRedistributePoints = await transactionManager
       .createQueryBuilder(UserHolding, "uh")
-      .leftJoinAndSelect("uh.userAddress", "user")
       .where("uh.userAddress IN (:...vaultAddressBuffers)", {
         vaultAddressBuffers,
       })
