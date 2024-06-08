@@ -86,7 +86,7 @@ type PufferUserBalance = [
   Array<EigenlayerPool & { pool: string }>,
 ];
 const PUFFER_ETH_ADDRESS =
-  "0x1569046dC6D4bd5d06cA5fa2fb83D2885bd87b20".toLowerCase();
+  "0x1B49eCf1A8323Db4abf48b2F5EFaA33F7DdAB3FC".toLowerCase();
 const LAYERBANK_LPUFFER =
   "0xdd6105865380984716C6B2a1591F9643e6ED1C48".toLocaleLowerCase();
 const AQUA_LPUFFER =
@@ -210,6 +210,7 @@ export class PuffPointsService extends Worker {
       } as PufferPointItem;
       localPoints.push(_item);
     }
+
     this.localPoints = localPoints;
   }
 
