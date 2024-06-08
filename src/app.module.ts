@@ -39,15 +39,13 @@ import { Cache } from "./entities/cache.entity";
 import { CacheRepository } from "./repositories/cache.repository";
 import { BalanceOfLp } from "./entities/balanceOfLp.entity";
 import { RedistributeBalance } from "./entities/redistributeBalance.entity";
-import { User } from "./entities/user.entity";
-import { UserRedistributePoint } from "./entities/userRedistributePoint.entity";
-import { WithdrawHistory } from "./entities/withdrawHistory.entity";
 import { BalanceOfLpRepository } from "./repositories/balanceOfLp.repository";
 import { NovaBalanceService } from "./nova/nova.balance.service";
 import { CacheController } from "./cache/cache.controller";
 import { CacheService } from "./cache/cache.service";
 import { AquaService } from "./nova/aqua.service";
 import { RedistributeBalanceRepository } from "./repositories/redistributeBalance.repository";
+import { User, UserHolding, UserStaked, UserWithdraw } from "./entities/index";
 
 @Module({
   imports: [
@@ -71,8 +69,10 @@ import { RedistributeBalanceRepository } from "./repositories/redistributeBalanc
       BalanceOfLp,
       RedistributeBalance,
       User,
-      UserRedistributePoint,
-      WithdrawHistory,
+      User,
+      UserHolding,
+      UserStaked,
+      UserWithdraw,
     ]),
     MetricsModule,
     UnitOfWorkModule,

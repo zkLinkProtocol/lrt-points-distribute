@@ -2,7 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { UnitOfWork } from "../unitOfWork";
 import { BaseRepository } from "./base.repository";
 import { RedistributeBalance } from "../entities/redistributeBalance.entity";
-import { UserRedistributePoint } from "src/entities/userRedistributePoint.entity";
+import { User, UserHolding, UserStaked, UserWithdraw } from "src/entities";
 
 @Injectable()
 export class RedistributeBalanceRepository extends BaseRepository<RedistributeBalance> {
@@ -30,109 +30,125 @@ export class RedistributeBalanceRepository extends BaseRepository<RedistributeBa
     };
   }
 
-  public async getPaginatedUserPoints(
-    tokenAddresses: string[], // array of token addresses to filter
-    page: number = 0, // page number, starting from 0
-    pageSize: number = 100, // number of users per page
-  ) {
-    const transactionManager = this.unitOfWork.getTransactionManager();
+  async getPaginatedUserData(
+    tokenAddresses: string[],
+    poolAddresses: string[],
+    page: number = 0,
+    pageSize: number = 100,
+  ): Promise<
+    Array<{
+      userAddress: string;
+      userStaked: UserStaked[];
+      userHolding: UserHolding[];
+      userWithdraw: UserWithdraw[];
+    }>
+  > {
+    const entityManager = this.unitOfWork.getTransactionManager();
     const tokenBuffers = tokenAddresses.map((addr) =>
       Buffer.from(addr.slice(2), "hex"),
     );
-
-    // Step 1: Get unique user addresses with the given token addresses
-    const userAddressSubQuery = `
-      SELECT DISTINCT u."userAddress"
-      FROM "user" u
-      JOIN "userRedistributePoint" urp ON u."userAddress" = urp."userAddress"
-      WHERE urp."tokenAddress" = ANY($1)
-      LIMIT $2 OFFSET $3
-    `;
-
-    const uniqueUserAddresses = await transactionManager.query(
-      userAddressSubQuery,
-      [tokenBuffers, pageSize, page * pageSize],
+    const poolBuffers = poolAddresses.map((addr) =>
+      Buffer.from(addr.slice(2), "hex"),
     );
 
-    if (uniqueUserAddresses.length === 0) {
+    // Step 1: Get unique user addresses from UserHolding and UserStaked, with pagination
+    const userHoldingSubQuery = `
+      SELECT uh."userAddress"
+      FROM "userHolding" uh
+      WHERE uh."tokenAddress" = ANY($1)
+    `;
+
+    const userStakedSubQuery = `
+      SELECT us."userAddress"
+      FROM "userStaked" us
+      WHERE us."tokenAddress" = ANY($1) AND us."poolAddress" = ANY($2)
+    `;
+
+    const combinedSubQuery = `
+      (${userHoldingSubQuery}) 
+      UNION 
+      (${userStakedSubQuery})
+      LIMIT $3 OFFSET $4
+    `;
+
+    const combinedUserAddresses = await entityManager.query(combinedSubQuery, [
+      tokenBuffers,
+      poolBuffers,
+      pageSize,
+      page * pageSize,
+    ]);
+
+    if (combinedUserAddresses.length === 0) {
       return [];
     }
 
-    const userAddresses = uniqueUserAddresses.map((row) => row.userAddress);
+    const userAddresses = combinedUserAddresses.map((row) => row.userAddress);
 
-    // Step 2: Get UserRedistributePoint data for the paginated user addresses
-    const userPointsQuery = `
-      SELECT
-        encode(urp."userAddress", 'hex') as "userAddress",
-        encode(urp."tokenAddress", 'hex') as "tokenAddress",
-        urp.balance,
-        urp."exchangeRate" as "exchangeRate",
-        urp."pointWeightPercentage" as "pointWeightPercentage"
-      FROM "userRedistributePoint" urp
-      WHERE urp."userAddress" = ANY($1)
-        AND urp."tokenAddress" = ANY($2)
-    `;
+    // Step 2: Get user data
+    const users = await entityManager
+      .createQueryBuilder(User, "user")
+      .leftJoinAndSelect(
+        "user.holdings",
+        "uh",
+        "uh.tokenAddress IN (:...tokenBuffers)",
+        { tokenBuffers },
+      )
+      .leftJoinAndSelect(
+        "user.stakes",
+        "us",
+        "us.tokenAddress IN (:...tokenBuffers) AND us.poolAddress IN (:...poolBuffers)",
+        { tokenBuffers, poolBuffers },
+      )
+      .leftJoinAndSelect("user.withdraws", "uw")
+      .where("user.userAddress IN (:...userAddresses)", {
+        userAddresses: userAddresses.map((addr) => Buffer.from(addr, "hex")),
+      })
+      .getMany();
 
-    const userPoints = await transactionManager.query(userPointsQuery, [
-      userAddresses,
-      tokenBuffers,
-    ]);
-
-    const formattedUserPoints = userPoints.map((row) => ({
-      ...row,
-      userAddress: "0x" + row.userAddress,
-      tokenAddress: "0x" + row.tokenAddress,
+    // Step 3: Organize data into the desired structure
+    const result = users.map((user) => ({
+      userAddress: user.userAddress,
+      userHolding: user.holdings.map((holding) => ({
+        ...holding,
+        userAddress: holding.userAddress,
+        tokenAddress: holding.tokenAddress,
+      })),
+      userStaked: user.stakes.map((stake) => ({
+        ...stake,
+        userAddress: stake.userAddress,
+        tokenAddress: stake.tokenAddress,
+        poolAddress: stake.poolAddress,
+      })),
+      userWithdraw: user.withdraws.map((withdraw) => ({
+        ...withdraw,
+        userAddress: withdraw.userAddress,
+        tokenAddress: withdraw.tokenAddress,
+      })),
     }));
 
-    // Step 3: Group UserRedistributePoint data by userAddress
-    const groupedUserPoints = userAddresses.map((userAddress) => {
-      const userAddressHexString = "0x" + userAddress.toString("hex");
-      const points = formattedUserPoints.filter(
-        (point) => point.userAddress.toString() === userAddressHexString,
-      );
-      return {
-        userAddress: userAddressHexString,
-        points,
-      };
-    });
-
-    return groupedUserPoints;
+    return result;
   }
 
   async getRedistributePointsList(
-    userAddresses: string[],
+    vaultAddresses: string[],
     tokenAddress: string,
-  ): Promise<
-    {
-      userAddress: string;
-      tokenAddress: string;
-      balance: string;
-      exchangeRate: number;
-      pointWeightPercentage: number;
-    }[]
-  > {
+  ) {
     const transactionManager = this.unitOfWork.getTransactionManager();
-    const userAddressBuffers = userAddresses.map((addr) =>
+    const vaultAddressBuffers = vaultAddresses.map((addr) =>
       Buffer.from(addr.slice(2), "hex"),
     );
     const tokenAddressBuffer = Buffer.from(tokenAddress.slice(2), "hex");
     const userRedistributePoints = await transactionManager
-      .createQueryBuilder(UserRedistributePoint, "urp")
-      .leftJoinAndSelect("urp.userAddress", "user")
-      .where("urp.userAddress IN (:...userAddressBuffers)", {
-        userAddressBuffers,
+      .createQueryBuilder(UserHolding, "uh")
+      .leftJoinAndSelect("uh.userAddress", "user")
+      .where("uh.userAddress IN (:...vaultAddressBuffers)", {
+        vaultAddressBuffers,
       })
-      .andWhere("urp.tokenAddress = :tokenAddressBuffer", {
+      .andWhere("uh.tokenAddress = :tokenAddressBuffer", {
         tokenAddressBuffer,
       })
       .getMany();
 
-    return userRedistributePoints.map((point) => ({
-      userAddress: point.userAddress.userAddress,
-      tokenAddress: point.tokenAddress,
-      balance: point.balance,
-      exchangeRate: point.exchangeRate,
-      pointWeightPercentage: point.pointWeightPercentage,
-    }));
+    return userRedistributePoints;
   }
 }
