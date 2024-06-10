@@ -96,6 +96,16 @@ export class ProjectGraphService {
       );
       const withdrawTotalPoint =
         this.withdrawService.getWithdrawTotalPoint(token);
+      if (
+        token.toLocaleLowerCase() ==
+          "0x78adf06756c5f3368c003ffbf675fc03a938a145".toLocaleLowerCase() &&
+        point.address.toLocaleLowerCase() ==
+          "0x0002605f551ea9a4b4aae99d2cb11865b13f2d91"
+      ) {
+        this.logger.log(
+          `token:${token}, withdrawTotalPoint:${withdrawTotalPoint},point.address:${point.address},withdrawPoints:${withdrawPoints}`,
+        );
+      }
       const newPoint = {
         address: point.address.toLocaleLowerCase(),
         points: GraphQueryService.getPoints(point, now) + withdrawPoints,
