@@ -45,6 +45,9 @@ import { CacheController } from "./cache/cache.controller";
 import { CacheService } from "./cache/cache.service";
 import { AquaService } from "./nova/aqua.service";
 import { RedistributeBalanceRepository } from "./repositories/redistributeBalance.repository";
+import { SwethController } from "./sweth/sweth.controller";
+import { SwethService } from "./sweth/sweth.service";
+import { SwethApiService } from "./sweth/sweth.api.service";
 import { User, UserHolding, UserStaked, UserWithdraw } from "./entities/index";
 
 @Module({
@@ -87,6 +90,7 @@ import { User, UserHolding, UserStaked, UserWithdraw } from "./entities/index";
     RenzoPagingController,
     NovaPagingController,
     CacheController,
+    SwethController,
   ],
   providers: [
     {
@@ -118,6 +122,8 @@ import { User, UserHolding, UserStaked, UserWithdraw } from "./entities/index";
     CacheService,
     AquaService,
     RedistributeBalanceRepository,
+    SwethService,
+    SwethApiService,
   ],
 })
 export class AppModule {}

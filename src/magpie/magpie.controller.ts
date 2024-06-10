@@ -9,10 +9,7 @@ import {
 } from "@nestjs/swagger";
 import { ethers } from "ethers";
 import { ParseAddressPipe } from "src/common/pipes/parseAddress.pipe";
-import {
-  NOT_FOUND_EXCEPTION,
-  SERVICE_EXCEPTION,
-} from "../puffer/tokenPointsWithoutDecimals.dto";
+import { SERVICE_EXCEPTION } from "../puffer/tokenPointsWithoutDecimals.dto";
 import {
   MagiePointsWithoutDecimalsDto,
   PointsWithoutDecimalsDto,
@@ -204,7 +201,7 @@ export class MagpieController {
       list = paging.items;
       meta = paging.meta;
     }
-    let res = {
+    const res = {
       errno: 0,
       errmsg: "no error",
       totals: {

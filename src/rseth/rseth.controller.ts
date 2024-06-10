@@ -201,7 +201,7 @@ export class RsethController {
       list = paging.items;
       meta = paging.meta;
     }
-    let result = {
+    const result = {
       errno: 0,
       errmsg: "no error",
       points: {

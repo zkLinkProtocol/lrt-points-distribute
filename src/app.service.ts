@@ -11,6 +11,7 @@ import { RenzoService } from "./renzo/renzo.service";
 import { MagpieService } from "./magpie/magpie.service";
 import { RsethService } from "./rseth/rseth.service";
 import { GraphQueryService } from "./common/service/graphQuery.service";
+import { SwethService } from "./sweth/sweth.service";
 
 @Injectable()
 export class AppService implements OnModuleInit, OnModuleDestroy {
@@ -21,6 +22,7 @@ export class AppService implements OnModuleInit, OnModuleDestroy {
     private readonly renzoService: RenzoService,
     private readonly magpieService: MagpieService,
     private readonly rsethService: RsethService,
+    private readonly swethService: SwethService,
     private readonly graphQueryService: GraphQueryService,
     private readonly dataSource: DataSource,
     private readonly configService: ConfigService,
@@ -43,6 +45,7 @@ export class AppService implements OnModuleInit, OnModuleDestroy {
       this.renzoService.start(),
       this.magpieService.start(),
       this.rsethService.start(),
+      this.swethService.start(),
     ];
     return Promise.all(tasks);
   }
@@ -53,6 +56,7 @@ export class AppService implements OnModuleInit, OnModuleDestroy {
       this.renzoService.stop(),
       this.magpieService.stop(),
       this.rsethService.stop(),
+      this.swethService.stop(),
       this.graphQueryService.stop(),
     ]);
   }
