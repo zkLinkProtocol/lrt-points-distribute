@@ -72,7 +72,6 @@ import { User, UserHolding, UserStaked, UserWithdraw } from "./entities/index";
       BalanceOfLp,
       RedistributeBalance,
       User,
-      User,
       UserHolding,
       UserStaked,
       UserWithdraw,

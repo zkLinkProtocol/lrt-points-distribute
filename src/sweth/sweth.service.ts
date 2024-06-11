@@ -114,7 +114,7 @@ export class SwethService extends Worker {
   }
 
   // return points weight
-  protected async getPointsWeightPaginaed(
+  private async getPointsWeightPaginaed(
     page: number = 1,
     pageSize: number = 100,
   ): Promise<[RedistributePointsWeight[], number]> {
@@ -136,7 +136,7 @@ export class SwethService extends Worker {
   }
 
   // return total points weight
-  protected async getTotalPointWeight(): Promise<bigint> {
+  private async getTotalPointWeight(): Promise<bigint> {
     return await this.redistributeBalanceRepository.getTotalRedistributePointsWeight(
       this.tokens,
     );
