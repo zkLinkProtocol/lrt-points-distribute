@@ -351,7 +351,8 @@ export class PointsController {
           ethers.formatEther(balanceFromDappTotal),
         ).toFixed(6),
         liquidityDetails,
-        updatedAt: pufPointsData.items[0]?.updatedAt ?? Date.now() / 1000,
+        updatedAt:
+          pufPointsData.items[0]?.updatedAt ?? Math.floor(Date.now() / 1000),
       };
 
       return {
