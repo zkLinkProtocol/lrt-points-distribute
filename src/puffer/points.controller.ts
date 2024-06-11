@@ -41,6 +41,7 @@ import {
 import { TokensDto } from "./tokens.dto";
 import { NovaService } from "src/nova/nova.service";
 import { NovaBalanceService } from "../nova/nova.balance.service";
+import { RedistributeBalanceRepository } from "src/repositories/redistributeBalance.repository";
 
 const options = {
   // how long to live in ms
@@ -53,6 +54,25 @@ const options = {
 const cache = new LRUCache(options);
 const RENZO_ALL_POINTS_CACHE_KEY = "allRenzoPoints";
 const PUFFER_ADDRESS_POINTS_FORWARD = "pufferAddressPointsForward";
+const PUFFER_ETH_ADDRESS =
+  "0x1B49eCf1A8323Db4abf48b2F5EFaA33F7DdAB3FC".toLowerCase();
+const redistributeVaultAddressList = [
+  {
+    vaultAddress: "0xdd6105865380984716C6B2a1591F9643e6ED1C48".toLowerCase(),
+    stakedAddress: "0xdd6105865380984716C6B2a1591F9643e6ED1C48".toLowerCase(),
+    dappName: "LayerBank",
+  },
+  {
+    vaultAddress: "0x4AC97E2727B0e92AE32F5796b97b7f98dc47F059".toLowerCase(),
+    stakedAddress: "0xc2be3CC06Ab964f9E22e492414399DC4A58f96D3".toLowerCase(), // aqua pool
+    dappName: "Aqua",
+  },
+  {
+    vaultAddress: "0xc48F99afe872c2541f530C6c87E3A6427e0C40d5".toLowerCase(),
+    stakedAddress: "0xc48F99afe872c2541f530C6c87E3A6427e0C40d5".toLowerCase(),
+    dappName: "AGX",
+  },
+];
 
 @ApiTags("points")
 @ApiExcludeController(false)
@@ -68,6 +88,7 @@ export class PointsController {
     private configService: ConfigService,
     private readonly novaService: NovaService,
     private readonly novaBalanceService: NovaBalanceService,
+    private readonly redistributeBalanceRepository: RedistributeBalanceRepository,
   ) {
     this.puffPointsTokenAddress = configService.get<string>(
       "puffPoints.tokenAddress",
@@ -195,7 +216,7 @@ export class PointsController {
     // aqua point
     const aquaPoint = await this.puffPointsService.getAquaPoint(address);
 
-    const { point: agxPufferPoint, balance: agxPufferEthBalance } =
+    const { point: agxPufferPoint } =
       await this.puffPointsService.getAGXPufferDataByAddress(address);
     this.logger.log(
       `layerbankPoint: ${layerbankPoint}, aquaPoint: ${aquaPoint}, agxPufferPoint: ${agxPufferPoint}`,
@@ -220,9 +241,7 @@ export class PointsController {
             aquaPoint +
             agxPufferPoint
           ).toString(),
-          balance: Number(
-            ethers.formatEther(point.balance + agxPufferEthBalance),
-          ).toFixed(6),
+          balance: Number(ethers.formatEther(point.balance)).toFixed(6),
           updated_at: point.updatedAt,
         },
       ],
@@ -331,7 +350,8 @@ export class PointsController {
           ethers.formatEther(balanceFromDappTotal),
         ).toFixed(6),
         liquidityDetails,
-        updatedAt: pufPointsData.items[0]?.updatedAt ?? Date.now() / 1000,
+        updatedAt:
+          pufPointsData.items[0]?.updatedAt ?? Math.floor(Date.now() / 1000),
       };
 
       return {
@@ -521,7 +541,6 @@ export class PointsController {
     return res;
   }
 
-  // todo
   @Get("/puffer")
   @ApiOkResponse({
     description:
@@ -534,89 +553,114 @@ export class PointsController {
   public async queryPufferEigenlayerPoints(
     @Query() pagingOptions: PagingOptionsDto,
   ): Promise<ElPointsDto> {
-    const data = this.puffPointsService.getPointsData();
-    const { pools, userPositions } =
-      await this.puffPointsService.getPuffElPoints(pagingOptions);
-    const addresses = userPositions.map((i) => i.id);
-    // layerbank point
-    const layerbankPoints =
-      await this.puffPointsService.getLayerBankPointList(addresses);
-    // aqua point
-    const aquaPoints = await this.puffPointsService.getAquaPointList(addresses);
+    const pufferTotalPoint = await this.puffPointsService.getRealPointsData();
+    const vaultAddresses = redistributeVaultAddressList.map(
+      (config) => config.vaultAddress,
+    );
+    const allStakedAddresses = redistributeVaultAddressList.map(
+      (config) => config.stakedAddress,
+    );
+
+    const vaultAddressToStakedAddressMap = new Map(
+      redistributeVaultAddressList.map((info) => [
+        info.vaultAddress,
+        info.stakedAddress,
+      ]),
+    );
+
+    const userData =
+      await this.redistributeBalanceRepository.getPaginatedUserData(
+        [PUFFER_ETH_ADDRESS],
+        allStakedAddresses,
+        (pagingOptions.page ?? 1) - 1,
+        pagingOptions.limit,
+      );
+    const redistributePointsList =
+      await this.redistributeBalanceRepository.getRedistributePointsList(
+        vaultAddresses,
+        PUFFER_ETH_ADDRESS,
+      );
+
+    const stakedPointsMap = new Map(
+      redistributePointsList.map((stakedInfo) => [
+        vaultAddressToStakedAddressMap.get(stakedInfo.userAddress), // vault address to poolAddress
+        stakedInfo.pointWeightPercentage * pufferTotalPoint,
+      ]),
+    );
+
+    const redistributePointsMap = new Map(
+      redistributeVaultAddressList.map((info) => [
+        info.stakedAddress,
+        { vaultAddress: info.vaultAddress, dappName: info.dappName },
+      ]),
+    );
+
+    const resultData = userData.map((userInfo) => {
+      const liquidityDetails = userInfo.userStaked.map((item) => {
+        return {
+          dappName: redistributePointsMap.get(item.poolAddress).dappName,
+          balance: item.balance,
+          point:
+            stakedPointsMap.get(item.poolAddress) * item.pointWeightPercentage,
+        };
+      });
+
+      const userStakedLiquidityBalance = liquidityDetails.reduce(
+        (result, item) => result + BigInt(item.balance),
+        BigInt(0),
+      );
+      const userStakedLiquidityPoint = liquidityDetails.reduce(
+        (result, item) => result + item.point,
+        0,
+      );
+      const userWithdrawBalance =
+        userInfo.userWithdraw.reduce(
+          (result, item) => result + BigInt(item.balance),
+          BigInt(0),
+        ) ?? BigInt(0);
+
+      const userTotalPufEthBalance = BigInt(
+        userInfo.userHolding[0].balance ?? "0",
+      );
+      const userTotalPufEthPoint =
+        userInfo.userHolding[0].pointWeightPercentage * pufferTotalPoint;
+
+      return {
+        userAddress: userInfo.userAddress,
+        pufEthAddress: PUFFER_ETH_ADDRESS,
+        pufferPoints: Number(
+          userTotalPufEthPoint + userStakedLiquidityPoint,
+        ).toFixed(6),
+        totalBalance: Number(
+          ethers.formatEther(
+            userStakedLiquidityBalance +
+              userWithdrawBalance +
+              userTotalPufEthBalance,
+          ),
+        ).toFixed(6),
+        withdrawingBalance: Number(
+          ethers.formatEther(userWithdrawBalance),
+        ).toFixed(6),
+        userBalance: Number(ethers.formatEther(userTotalPufEthBalance)).toFixed(
+          6,
+        ),
+        liquidityBalance: Number(
+          ethers.formatEther(userStakedLiquidityBalance),
+        ).toFixed(6),
+        liquidityDetails: liquidityDetails.map((i) => ({
+          balance: Number(ethers.formatEther(i.balance)).toFixed(6),
+          dappName: i.dappName,
+        })),
+        updatedAt: Math.floor(Date.now() / 1000),
+      };
+    });
 
     const res = {
       errno: 0,
       errmsg: "no error",
       data: {
-        totalPufferPoints: data.realTotalPoints.toString(),
-        list: userPositions.map((p) => {
-          const userPointData = data.items.find((i) => i.address === p.id);
-
-          const layerbankPoint =
-            layerbankPoints.find(
-              (layerbankPoint) => layerbankPoint.address === p.id,
-            )?.layerbankPoint ?? 0;
-
-          const aquaPoint =
-            aquaPoints.find((aquaPoint) => aquaPoint.address === p.id)
-              ?.aquaPoint ?? 0;
-
-          const liquidityBalance = p.positions.reduce((prev, cur) => {
-            const pool = pools.find((pool) => pool.id === cur.pool);
-            if (!pool) return prev;
-
-            const shareBalance =
-              (BigInt(pool.balance) * BigInt(cur.supplied)) /
-              BigInt(pool.totalSupplied);
-            return prev + shareBalance;
-          }, BigInt(0));
-
-          const withdrawingBalance = p.withdrawHistory.reduce((prev, cur) => {
-            return prev + BigInt(cur.balance);
-          }, BigInt(0));
-
-          const totalBalance = Number(
-            ethers.formatEther(
-              liquidityBalance + BigInt(p.balance) + withdrawingBalance,
-            ),
-          ).toFixed(6);
-
-          const liquidityDetails = p.positions
-            .map((position) => {
-              const pool = pools.find((pool) => pool.id === position.pool);
-              if (!pool) return;
-              return {
-                dappName: pool?.name,
-                balance: Number(
-                  ethers.formatEther(
-                    (BigInt(pool.balance) * BigInt(position.supplied)) /
-                      BigInt(pool.totalSupplied),
-                  ),
-                ).toFixed(6),
-              };
-            })
-            .filter((i) => !!i);
-
-          return {
-            userAddress: p.id,
-            pufEthAddress: "0x1B49eCf1A8323Db4abf48b2F5EFaA33F7DdAB3FC",
-            pufferPoints: (
-              userPointData?.realPoints ?? 0 + layerbankPoint + aquaPoint
-            ).toString(),
-            totalBalance: totalBalance,
-            withdrawingBalance: Number(
-              ethers.formatEther(withdrawingBalance),
-            ).toFixed(6),
-            userBalance: Number(ethers.formatEther(BigInt(p.balance))).toFixed(
-              6,
-            ),
-            liquidityBalance: Number(
-              ethers.formatEther(liquidityBalance),
-            ).toFixed(6),
-            liquidityDetails: liquidityDetails,
-            updatedAt: userPointData?.updatedAt,
-          };
-        }),
+        totalPufferPoints: pufferTotalPoint.toString(),
+        list: resultData,
       },
     };
 

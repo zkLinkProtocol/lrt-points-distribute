@@ -45,6 +45,7 @@ import { CacheController } from "./cache/cache.controller";
 import { CacheService } from "./cache/cache.service";
 import { AquaService } from "./nova/aqua.service";
 import { RedistributeBalanceRepository } from "./repositories/redistributeBalance.repository";
+import { User, UserHolding, UserStaked, UserWithdraw } from "./entities/index";
 
 @Module({
   imports: [
@@ -67,6 +68,11 @@ import { RedistributeBalanceRepository } from "./repositories/redistributeBalanc
       Cache,
       BalanceOfLp,
       RedistributeBalance,
+      User,
+      User,
+      UserHolding,
+      UserStaked,
+      UserWithdraw,
     ]),
     MetricsModule,
     UnitOfWorkModule,
