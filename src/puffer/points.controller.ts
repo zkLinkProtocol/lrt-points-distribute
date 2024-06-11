@@ -56,7 +56,7 @@ const RENZO_ALL_POINTS_CACHE_KEY = "allRenzoPoints";
 const PUFFER_ADDRESS_POINTS_FORWARD = "pufferAddressPointsForward";
 const PUFFER_ETH_ADDRESS =
   "0x1B49eCf1A8323Db4abf48b2F5EFaA33F7DdAB3FC".toLowerCase();
-const redistributeVaultAddresses = [
+const redistributeVaultAddressList = [
   {
     vaultAddress: "0xdd6105865380984716C6B2a1591F9643e6ED1C48".toLowerCase(),
     stakedAddress: "0xdd6105865380984716C6B2a1591F9643e6ED1C48".toLowerCase(),
@@ -554,15 +554,15 @@ export class PointsController {
     @Query() pagingOptions: PagingOptionsDto,
   ): Promise<ElPointsDto> {
     const pufferTotalPoint = await this.puffPointsService.getRealPointsData();
-    const vaultAddresses = redistributeVaultAddresses.map(
+    const vaultAddresses = redistributeVaultAddressList.map(
       (config) => config.vaultAddress,
     );
-    const allStakedAddresses = redistributeVaultAddresses.map(
+    const allStakedAddresses = redistributeVaultAddressList.map(
       (config) => config.stakedAddress,
     );
 
     const vaultAddressToStakedAddressMap = new Map(
-      redistributeVaultAddresses.map((info) => [
+      redistributeVaultAddressList.map((info) => [
         info.vaultAddress,
         info.stakedAddress,
       ]),
@@ -583,13 +583,13 @@ export class PointsController {
 
     const stakedPointsMap = new Map(
       redistributePointsList.map((stakedInfo) => [
-        vaultAddressToStakedAddressMap.get(stakedInfo.userAddress),
+        vaultAddressToStakedAddressMap.get(stakedInfo.userAddress), // vault address to poolAddress
         stakedInfo.pointWeightPercentage * pufferTotalPoint,
       ]),
     );
 
     const redistributePointsMap = new Map(
-      redistributeVaultAddresses.map((info) => [
+      redistributeVaultAddressList.map((info) => [
         info.stakedAddress,
         { vaultAddress: info.vaultAddress, dappName: info.dappName },
       ]),

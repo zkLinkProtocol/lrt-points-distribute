@@ -103,6 +103,7 @@ export class RedistributeBalanceRepository extends BaseRepository<RedistributeBa
       .where("user.userAddress IN (:...userAddresses)", {
         userAddresses: userAddresses.map((addr) => Buffer.from(addr, "hex")),
       })
+      .orderBy("user.createdAt")
       .getMany();
 
     // Step 3: Organize data into the desired structure
@@ -130,18 +131,18 @@ export class RedistributeBalanceRepository extends BaseRepository<RedistributeBa
   }
 
   async getRedistributePointsList(
-    vaultAddresses: string[],
+    userAddresses: string[],
     tokenAddress: string,
   ) {
     const transactionManager = this.unitOfWork.getTransactionManager();
-    const vaultAddressBuffers = vaultAddresses.map((addr) =>
+    const userAddressBuffers = userAddresses.map((addr) =>
       Buffer.from(addr.slice(2), "hex"),
     );
     const tokenAddressBuffer = Buffer.from(tokenAddress.slice(2), "hex");
     const userRedistributePoints = await transactionManager
       .createQueryBuilder(UserHolding, "uh")
-      .where("uh.userAddress IN (:...vaultAddressBuffers)", {
-        vaultAddressBuffers,
+      .where("uh.userAddress IN (:...userAddressBuffers)", {
+        userAddressBuffers,
       })
       .andWhere("uh.tokenAddress = :tokenAddressBuffer", {
         tokenAddressBuffer,
