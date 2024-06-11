@@ -42,7 +42,6 @@ import { TokensDto } from "./tokens.dto";
 import { NovaService } from "src/nova/nova.service";
 import { NovaBalanceService } from "../nova/nova.balance.service";
 import { RedistributeBalanceRepository } from "src/repositories/redistributeBalance.repository";
-import BigNumber from "bignumber.js";
 
 const options = {
   // how long to live in ms
