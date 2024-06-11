@@ -94,10 +94,10 @@ export class SwethController {
       errno: 0,
       errmsg: "no error",
       meta: {
-        currentPage: page,
+        currentPage: Number(page),
         itemCount: pointsData.length,
-        itemsPerPage: limit,
-        totalItems: totalCount,
+        itemsPerPage: Number(limit),
+        totalItems: Number(totalCount),
         totalPages: Math.ceil(totalCount / limit),
       },
       data: pointsData.map((item) => {
