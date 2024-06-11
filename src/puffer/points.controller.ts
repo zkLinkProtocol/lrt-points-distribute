@@ -42,7 +42,6 @@ import { TokensDto } from "./tokens.dto";
 import { NovaService } from "src/nova/nova.service";
 import { NovaBalanceService } from "../nova/nova.balance.service";
 import { RedistributeBalanceRepository } from "src/repositories/redistributeBalance.repository";
-import BigNumber from "bignumber.js";
 
 const options = {
   // how long to live in ms
@@ -351,7 +350,8 @@ export class PointsController {
           ethers.formatEther(balanceFromDappTotal),
         ).toFixed(6),
         liquidityDetails,
-        updatedAt: pufPointsData.items[0]?.updatedAt ?? Date.now() / 1000,
+        updatedAt:
+          pufPointsData.items[0]?.updatedAt ?? Math.floor(Date.now() / 1000),
       };
 
       return {
