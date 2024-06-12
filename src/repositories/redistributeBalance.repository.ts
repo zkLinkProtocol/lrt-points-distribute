@@ -82,7 +82,8 @@ export class RedistributeBalanceRepository extends BaseRepository<RedistributeBa
       .where("user.userAddress IN (:...userAddresses)", {
         userAddresses: userAddresses.map((addr) => Buffer.from(addr, "hex")),
       })
-      .orderBy("user.createdAt")
+      .orderBy("user.createdAt", "DESC")
+      .orderBy("user.userAddress", "ASC")
       .getMany();
 
     // Step 3: Organize data into the desired structure
@@ -157,22 +158,26 @@ export class RedistributeBalanceRepository extends BaseRepository<RedistributeBa
 
     // Step 1: Get unique user addresses from UserHolding and UserStaked, with pagination
     const userHoldingSubQuery = `
-      SELECT uh."userAddress"
+      SELECT uh."userAddress", uh."createdAt"
       FROM "userHolding" uh
       WHERE uh."tokenAddress" = ANY($1)
     `;
 
     const userStakedSubQuery = `
-      SELECT us."userAddress"
+      SELECT us."userAddress", us."createdAt"
       FROM "userStaked" us
       WHERE us."tokenAddress" = ANY($1)
     `;
 
     const combinedSubQuery = `
-      (${userHoldingSubQuery}) 
-      UNION 
-      (${userStakedSubQuery})
-      ORDER BY "userAddress" ASC 
+      SELECT "userAddress", "createdAt" 
+      FROM
+      (
+        (${userHoldingSubQuery}) 
+        UNION 
+        (${userStakedSubQuery})
+      ) AS combined
+      ORDER BY combined."createdAt" DESC, combined."userAddress" ASC
       LIMIT $2 OFFSET $3
     `;
 
@@ -221,7 +226,7 @@ export class RedistributeBalanceRepository extends BaseRepository<RedistributeBa
     const data = await transactionManager
       .createQueryBuilder(UserHolding, "urp")
       .select(
-        "urp.userAddress, SUM(cast(urp.pointWeight as numeric)) as pointWeight, SUM(cast(urp.balance as numeric)) as balance",
+        "urp.userAddress, SUM(cast(urp.pointWeight as numeric)) as pointWeight, SUM(cast(urp.balance as numeric)) as balance, MIN(urp.createdAt) as createdAt",
       )
       .where("urp.tokenAddress IN (:...tokenAddressBuffers)", {
         tokenAddressBuffers,
@@ -230,6 +235,8 @@ export class RedistributeBalanceRepository extends BaseRepository<RedistributeBa
         userAddressBuffers,
       })
       .groupBy("urp.userAddress")
+      .orderBy("createdAt", "ASC")
+      .orderBy("urp.userAddress", "ASC")
       .getRawMany();
 
     return data.map((row) => ({
@@ -237,6 +244,43 @@ export class RedistributeBalanceRepository extends BaseRepository<RedistributeBa
       pointWeight: BigInt(row.pointweight),
       balance: BigInt(row.balance),
     }));
+  }
+
+  async getRedistributePointsWeightList(
+    tokenAddresses: string[],
+    page: number = 1,
+    pageSize: number = 100,
+  ): Promise<[RedistributePointsWeight[], number]> {
+    page = Math.max(0, page - 1);
+    const transactionManager = this.unitOfWork.getTransactionManager();
+    const tokenAddressBuffers = tokenAddresses.map((addr) =>
+      Buffer.from(addr.slice(2), "hex"),
+    );
+    const queryBuilder = await transactionManager
+      .createQueryBuilder(UserHolding, "urp")
+      .select(
+        "urp.userAddress, SUM(cast(urp.pointWeight as numeric)) as pointWeight, SUM(cast(urp.balance as numeric)) as balance, MIN(urp.createdAt) as createdAt",
+      )
+      .where("urp.tokenAddress IN (:...tokenAddressBuffers)", {
+        tokenAddressBuffers,
+      })
+      .groupBy("urp.userAddress");
+    const data = await queryBuilder
+      .orderBy("createdAt", "ASC")
+      .orderBy("urp.userAddress", "ASC")
+      .offset(page * pageSize)
+      .limit(pageSize)
+      .getRawMany();
+    const totalCount = (await queryBuilder.getRawMany())?.length ?? 0;
+
+    return [
+      data.map((row) => ({
+        userAddress: "0x" + row.userAddress.toString("hex"),
+        pointWeight: BigInt(row.pointweight),
+        balance: BigInt(row.balance),
+      })),
+      totalCount,
+    ];
   }
 
   async getTotalRedistributePointsWeight(

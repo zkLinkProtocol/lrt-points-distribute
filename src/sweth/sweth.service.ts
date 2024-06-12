@@ -54,10 +54,12 @@ export class SwethService extends Worker {
     page: number = 1,
     pageSize: number = 100,
   ): Promise<[PointsItem[], number]> {
-    const [pointsWeight, totalCount] = await this.getPointsWeightPaginaed(
-      page,
-      pageSize,
-    );
+    const [pointsWeight, totalCount] =
+      await this.redistributeBalanceRepository.getRedistributePointsWeightList(
+        this.tokens,
+        page,
+        pageSize,
+      );
     if (pointsWeight.length === 0) {
       return [[], 0];
     }
@@ -111,28 +113,6 @@ export class SwethService extends Worker {
       points: Number(realPoints),
     };
     return result;
-  }
-
-  // return points weight
-  private async getPointsWeightPaginaed(
-    page: number = 1,
-    pageSize: number = 100,
-  ): Promise<[RedistributePointsWeight[], number]> {
-    const [addresses, totalCount] =
-      await this.redistributeBalanceRepository.getPaginatedUserAddress(
-        this.tokens,
-        page,
-        pageSize,
-      );
-    if (addresses.length === 0) {
-      return [[], 0];
-    }
-    const data =
-      await this.redistributeBalanceRepository.getRedistributePointsWeight(
-        this.tokens,
-        addresses,
-      );
-    return [data, totalCount];
   }
 
   // return total points weight
