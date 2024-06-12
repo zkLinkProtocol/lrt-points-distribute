@@ -4,6 +4,13 @@ import { BaseRepository } from "./base.repository";
 import { RedistributeBalance } from "../entities/redistributeBalance.entity";
 import { User, UserHolding, UserStaked, UserWithdraw } from "src/entities";
 
+//{ userAddress: string; pointWeight: bigint }
+export interface RedistributePointsWeight {
+  userAddress: string;
+  pointWeight: bigint;
+  balance: bigint;
+}
+
 @Injectable()
 export class RedistributeBalanceRepository extends BaseRepository<RedistributeBalance> {
   public constructor(unitOfWork: UnitOfWork) {
@@ -103,7 +110,8 @@ export class RedistributeBalanceRepository extends BaseRepository<RedistributeBa
       .where("user.userAddress IN (:...userAddresses)", {
         userAddresses: userAddresses.map((addr) => Buffer.from(addr, "hex")),
       })
-      .orderBy("user.createdAt")
+      .orderBy("user.createdAt", "DESC")
+      .orderBy("user.userAddress", "ASC")
       .getMany();
 
     // Step 3: Organize data into the desired structure
@@ -133,7 +141,15 @@ export class RedistributeBalanceRepository extends BaseRepository<RedistributeBa
   async getRedistributePointsList(
     userAddresses: string[],
     tokenAddress: string,
-  ) {
+  ): Promise<
+    {
+      userAddress: string;
+      tokenAddress: string;
+      balance: string;
+      pointWeightPercentage: number;
+      pointWeight: bigint;
+    }[]
+  > {
     const transactionManager = this.unitOfWork.getTransactionManager();
     const userAddressBuffers = userAddresses.map((addr) =>
       Buffer.from(addr.slice(2), "hex"),
@@ -148,7 +164,101 @@ export class RedistributeBalanceRepository extends BaseRepository<RedistributeBa
         tokenAddressBuffer,
       })
       .getMany();
+    return userRedistributePoints.map((point) => ({
+      userAddress: point.userAddress,
+      tokenAddress: point.tokenAddress,
+      balance: point.balance,
+      pointWeightPercentage: point.pointWeightPercentage,
+      pointWeight: BigInt(point.pointWeight),
+    }));
+  }
 
-    return userRedistributePoints;
+  async getRedistributePointsWeight(
+    tokenAddresses: string[],
+    userAddresses: string[],
+  ): Promise<RedistributePointsWeight[]> {
+    const transactionManager = this.unitOfWork.getTransactionManager();
+    const tokenAddressBuffers = tokenAddresses.map((addr) =>
+      Buffer.from(addr.slice(2), "hex"),
+    );
+    const userAddressBuffers = userAddresses.map((addr) =>
+      Buffer.from(addr.slice(2), "hex"),
+    );
+    const data = await transactionManager
+      .createQueryBuilder(UserHolding, "urp")
+      .select(
+        "urp.userAddress, SUM(cast(urp.pointWeight as numeric)) as pointWeight, SUM(cast(urp.balance as numeric)) as balance, MIN(urp.createdAt) as createdAt",
+      )
+      .where("urp.tokenAddress IN (:...tokenAddressBuffers)", {
+        tokenAddressBuffers,
+      })
+      .andWhere("urp.userAddress IN(:...userAddressBuffers)", {
+        userAddressBuffers,
+      })
+      .groupBy("urp.userAddress")
+      .orderBy("createdAt", "ASC")
+      .orderBy("urp.userAddress", "ASC")
+      .getRawMany();
+
+    return data.map((row) => ({
+      userAddress: "0x" + row.userAddress.toString("hex"),
+      pointWeight: BigInt(row.pointweight),
+      balance: BigInt(row.balance),
+    }));
+  }
+
+  async getRedistributePointsWeightList(
+    tokenAddresses: string[],
+    page: number = 1,
+    pageSize: number = 100,
+  ): Promise<[RedistributePointsWeight[], number]> {
+    page = Math.max(0, page - 1);
+    const transactionManager = this.unitOfWork.getTransactionManager();
+    const tokenAddressBuffers = tokenAddresses.map((addr) =>
+      Buffer.from(addr.slice(2), "hex"),
+    );
+    const queryBuilder = await transactionManager
+      .createQueryBuilder(UserHolding, "urp")
+      .select(
+        "urp.userAddress, SUM(cast(urp.pointWeight as numeric)) as pointWeight, SUM(cast(urp.balance as numeric)) as balance, MIN(urp.createdAt) as createdAt",
+      )
+      .where("urp.tokenAddress IN (:...tokenAddressBuffers)", {
+        tokenAddressBuffers,
+      })
+      .groupBy("urp.userAddress");
+    const data = await queryBuilder
+      .orderBy("createdAt", "ASC")
+      .orderBy("urp.userAddress", "ASC")
+      .offset(page * pageSize)
+      .limit(pageSize)
+      .getRawMany();
+    const totalCount = (await queryBuilder.getRawMany())?.length ?? 0;
+
+    return [
+      data.map((row) => ({
+        userAddress: "0x" + row.userAddress.toString("hex"),
+        pointWeight: BigInt(row.pointweight),
+        balance: BigInt(row.balance),
+      })),
+      totalCount,
+    ];
+  }
+
+  async getTotalRedistributePointsWeight(
+    tokenAddresses: string[],
+  ): Promise<bigint> {
+    const transactionManager = this.unitOfWork.getTransactionManager();
+    const tokenAddressBuffers = tokenAddresses.map((addr) =>
+      Buffer.from(addr.slice(2), "hex"),
+    );
+    const data = await transactionManager
+      .createQueryBuilder(UserHolding, "urp")
+      .select("SUM(cast(urp.pointWeight as numeric))", "pointWeight")
+      .where("urp.tokenAddress IN (:...tokenAddressBuffers)", {
+        tokenAddressBuffers,
+      })
+      .getRawOne();
+
+    return BigInt(data.pointWeight);
   }
 }
