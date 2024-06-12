@@ -57,11 +57,39 @@ export class RedistributeBalanceRepository extends BaseRepository<RedistributeBa
     const poolBuffers = poolAddresses.map((addr) =>
       Buffer.from(addr.slice(2), "hex"),
     );
-    const [userAddresses] = await this.getPaginatedUserAddress(
-      tokenAddresses,
-      page,
+
+    // Step 1: Get unique user addresses from UserHolding and UserStaked, with pagination
+    const userHoldingSubQuery = `
+      SELECT uh."userAddress"
+      FROM "userHolding" uh
+      WHERE uh."tokenAddress" = ANY($1)
+    `;
+
+    const userStakedSubQuery = `
+      SELECT us."userAddress"
+      FROM "userStaked" us
+      WHERE us."tokenAddress" = ANY($1) AND us."poolAddress" = ANY($2)
+    `;
+
+    const combinedSubQuery = `
+      (${userHoldingSubQuery}) 
+      UNION 
+      (${userStakedSubQuery})
+      LIMIT $3 OFFSET $4
+    `;
+
+    const combinedUserAddresses = await entityManager.query(combinedSubQuery, [
+      tokenBuffers,
+      poolBuffers,
       pageSize,
-    );
+      page * pageSize,
+    ]);
+
+    if (combinedUserAddresses.length === 0) {
+      return [];
+    }
+
+    const userAddresses = combinedUserAddresses.map((row) => row.userAddress);
 
     // Step 2: Get user data
     const users = await entityManager
@@ -143,73 +171,6 @@ export class RedistributeBalanceRepository extends BaseRepository<RedistributeBa
       pointWeightPercentage: point.pointWeightPercentage,
       pointWeight: BigInt(point.pointWeight),
     }));
-  }
-
-  public async getPaginatedUserAddress(
-    tokenAddresses: string[], // array of token addresses to filter
-    page: number = 1, // page number, starting from 1
-    pageSize: number = 100, // number of users per page
-  ): Promise<[string[], number]> {
-    page = Math.max(0, page - 1);
-    const transactionManager = this.unitOfWork.getTransactionManager();
-    const tokenBuffers = tokenAddresses.map((addr) =>
-      Buffer.from(addr.slice(2), "hex"),
-    );
-
-    // Step 1: Get unique user addresses from UserHolding and UserStaked, with pagination
-    const userHoldingSubQuery = `
-      SELECT uh."userAddress", uh."createdAt"
-      FROM "userHolding" uh
-      WHERE uh."tokenAddress" = ANY($1)
-    `;
-
-    const userStakedSubQuery = `
-      SELECT us."userAddress", us."createdAt"
-      FROM "userStaked" us
-      WHERE us."tokenAddress" = ANY($1)
-    `;
-
-    const combinedSubQuery = `
-      SELECT "userAddress", "createdAt" 
-      FROM
-      (
-        (${userHoldingSubQuery}) 
-        UNION 
-        (${userStakedSubQuery})
-      ) AS combined
-      ORDER BY combined."createdAt" DESC, combined."userAddress" ASC
-      LIMIT $2 OFFSET $3
-    `;
-
-    const combinedSubQueryWithoutPagination = `
-      SELECT COUNT(DISTINCT "userAddress") AS count 
-      FROM
-      (
-        (${userHoldingSubQuery}) 
-        UNION 
-        (${userStakedSubQuery})
-      ) AS combined
-    `;
-
-    const combinedUserAddresses = await transactionManager.query(
-      combinedSubQuery,
-      [tokenBuffers, pageSize, page * pageSize],
-    );
-
-    if (combinedUserAddresses.length === 0) {
-      return [[], 0];
-    }
-
-    const combinedUserTotalCount = await transactionManager.query(
-      combinedSubQueryWithoutPagination,
-      [tokenBuffers],
-    );
-
-    const addresses = combinedUserAddresses.map(
-      (row) => "0x" + row.userAddress.toString("hex"),
-    );
-
-    return [addresses, combinedUserTotalCount[0]?.count ?? 0];
   }
 
   async getRedistributePointsWeight(
