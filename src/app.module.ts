@@ -48,8 +48,9 @@ import { RedistributeBalanceRepository } from "./repositories/redistributeBalanc
 import { SwethController } from "./sweth/sweth.controller";
 import { SwethService } from "./sweth/sweth.service";
 import { SwethApiService } from "./sweth/sweth.api.service";
-import { PositionController } from "./positions/positions.controller";
 import { User, UserHolding, UserStaked, UserWithdraw } from "./entities/index";
+import { PositionsService } from "./positions/positions.service";
+import { PositionsController } from "./positions/positions.controller";
 
 @Module({
   imports: [
@@ -91,7 +92,7 @@ import { User, UserHolding, UserStaked, UserWithdraw } from "./entities/index";
     NovaPagingController,
     CacheController,
     SwethController,
-    PositionController,
+    PositionsController,
   ],
   providers: [
     {
@@ -125,6 +126,7 @@ import { User, UserHolding, UserStaked, UserWithdraw } from "./entities/index";
     RedistributeBalanceRepository,
     SwethService,
     SwethApiService,
+    PositionsService,
   ],
 })
 export class AppModule {}
