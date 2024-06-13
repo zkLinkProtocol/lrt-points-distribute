@@ -91,7 +91,7 @@ export class BalanceOfLpRepository extends BaseRepository<BalanceOfLp> {
         })
         .getRawOne();
 
-      result = latestBlock?.max;
+      result = latestBlock ? Number(latestBlock.max) : undefined;
     } else {
       const closestBlock = await entityManager
         .createQueryBuilder(BalanceOfLp, "b")
@@ -103,7 +103,7 @@ export class BalanceOfLpRepository extends BaseRepository<BalanceOfLp> {
         .orderBy("b.blockNumber", "DESC")
         .getOne();
 
-      result = Number(closestBlock?.blockNumber);
+      result = closestBlock?.blockNumber;
     }
     return result;
   }
@@ -134,6 +134,7 @@ export class BalanceOfLpRepository extends BaseRepository<BalanceOfLp> {
       blockNumber,
       pairAddressBuffers,
     );
+
     if (!closestBlockNumber) {
       return [];
     }
