@@ -31,14 +31,10 @@ export class PositionsController {
     @Param("projectName") projectName: string,
     @Query() queryParams: GetUserPositionsDto,
   ): Promise<UserPositionsResponseDto> {
-    const { tokenAddresses, page, limit, blockNumber } = queryParams;
     const balances =
       await this.positionsService.getUserPositionsByProjectAndTokens({
         projectName,
-        tokenAddresses,
-        page,
-        limit,
-        blockNumber,
+        ...queryParams,
       });
 
     return {

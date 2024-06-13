@@ -13,6 +13,12 @@ export class GetUserPositionsDto extends PagingOptionsDto {
     description: "query positions at the blockNumber",
   })
   blockNumber?: string;
+
+  @ApiProperty({
+    required: false,
+    description: "user Address",
+  })
+  userAddress?: string;
 }
 
 export class UserPositionsDto {

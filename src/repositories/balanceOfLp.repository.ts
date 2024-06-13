@@ -82,6 +82,7 @@ export class BalanceOfLpRepository extends BaseRepository<BalanceOfLp> {
     page = 1,
     limit = 10,
     blockNumber,
+    userAddress,
   }: GetUserPositionsDto & { projectName: string }) {
     const tokenAddressList = tokenAddresses ? tokenAddresses.split(",") : [];
     const pairAddressBuffers =
@@ -144,6 +145,14 @@ export class BalanceOfLpRepository extends BaseRepository<BalanceOfLp> {
         "b.tokenAddress IN (:...tokenAddressList)",
         { tokenAddressList: tokenAddressBuffers },
       );
+    }
+
+    if (userAddress) {
+      const userAddressBuffer = Buffer.from(userAddress.slice(2), "hex");
+
+      queryBuilder = queryBuilder.andWhere("b.address = :userAddress", {
+        userAddress: userAddressBuffer,
+      });
     }
 
     const balances = await queryBuilder.getRawMany<{
