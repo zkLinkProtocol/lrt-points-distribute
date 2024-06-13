@@ -2,10 +2,14 @@ import { Injectable } from "@nestjs/common";
 import { UnitOfWork } from "../unitOfWork";
 import { BaseRepository } from "./base.repository";
 import { BalanceOfLp } from "../entities/balanceOfLp.entity";
-
+import { ProjectRepository } from "./project.repository";
+import { GetUserPositionsDto } from "src/positions/positions.dto";
 @Injectable()
 export class BalanceOfLpRepository extends BaseRepository<BalanceOfLp> {
-  public constructor(unitOfWork: UnitOfWork) {
+  public constructor(
+    unitOfWork: UnitOfWork,
+    readonly projectRepository: ProjectRepository,
+  ) {
     super(BalanceOfLp, unitOfWork);
   }
 
@@ -70,5 +74,86 @@ export class BalanceOfLpRepository extends BaseRepository<BalanceOfLp> {
       row.pairAddress = "0x" + row.pairAddress.toString("hex");
       return row;
     });
+  }
+
+  async getUserPositionsByProjectAndTokens({
+    projectName,
+    tokenAddresses,
+    page = 1,
+    limit = 10,
+    blockNumber,
+  }: GetUserPositionsDto & { projectName: string }) {
+    const tokenAddressList = tokenAddresses ? tokenAddresses.split(",") : [];
+    const pairAddressBuffers =
+      await this.projectRepository.getPairAddresses(projectName);
+
+    const entityManager = this.unitOfWork.getTransactionManager();
+    console.log(entityManager.connection.options);
+
+    if (blockNumber === undefined) {
+      const latestBlock = await entityManager
+        .createQueryBuilder(BalanceOfLp, "b")
+        .select("MAX(b.blockNumber)", "max")
+        .getRawOne();
+
+      blockNumber = latestBlock.max;
+      if (!blockNumber) {
+        return [];
+      }
+    } else {
+      const closestBlock = await entityManager
+        .createQueryBuilder(BalanceOfLp, "b")
+        .select("b.blockNumber")
+        .where("b.blockNumber <= :blockNumber", { blockNumber })
+        .andWhere("b.pairAddress IN (:...pairAddresses)", {
+          pairAddresses: pairAddressBuffers,
+        })
+        .orderBy("b.blockNumber", "DESC")
+        .getOne();
+
+      if (!closestBlock) {
+        return [];
+      }
+
+      blockNumber = closestBlock.blockNumber.toString();
+    }
+
+    let queryBuilder = entityManager
+      .createQueryBuilder(BalanceOfLp, "b")
+      .select([
+        'b.address AS "userAddress"',
+        'b.tokenAddress AS "tokenAddress"',
+        'SUM(CAST(b.balance AS numeric)) AS "balance"',
+      ])
+      .where("b.blockNumber = :blockNumber", { blockNumber })
+      .andWhere("b.pairAddress IN (:...pairAddresses)", {
+        pairAddresses: pairAddressBuffers,
+      })
+      .groupBy("b.address, b.tokenAddress")
+      .skip((page - 1) * limit)
+      .take(limit);
+
+    if (tokenAddressList.length > 0) {
+      const tokenAddressBuffers = tokenAddressList.map((addr) =>
+        Buffer.from(addr.slice(2), "hex"),
+      );
+
+      queryBuilder = queryBuilder.andWhere(
+        "b.tokenAddress IN (:...tokenAddressList)",
+        { tokenAddressList: tokenAddressBuffers },
+      );
+    }
+
+    const balances = await queryBuilder.getRawMany<{
+      userAddress: Buffer;
+      tokenAddress: Buffer;
+      balance: string;
+    }>();
+
+    return balances.map((item) => ({
+      ...item,
+      userAddress: "0x" + item.tokenAddress.toString("hex"),
+      tokenAddress: "0x" + item.tokenAddress.toString("hex"),
+    }));
   }
 }

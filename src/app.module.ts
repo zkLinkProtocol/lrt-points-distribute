@@ -48,6 +48,7 @@ import { RedistributeBalanceRepository } from "./repositories/redistributeBalanc
 import { SwethController } from "./sweth/sweth.controller";
 import { SwethService } from "./sweth/sweth.service";
 import { SwethApiService } from "./sweth/sweth.api.service";
+import { PositionController } from "./positions/positions.controller";
 import { User, UserHolding, UserStaked, UserWithdraw } from "./entities/index";
 
 @Module({
@@ -90,6 +91,7 @@ import { User, UserHolding, UserStaked, UserWithdraw } from "./entities/index";
     NovaPagingController,
     CacheController,
     SwethController,
+    PositionController,
   ],
   providers: [
     {
