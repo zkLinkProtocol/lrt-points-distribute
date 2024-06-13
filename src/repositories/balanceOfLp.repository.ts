@@ -88,12 +88,14 @@ export class BalanceOfLpRepository extends BaseRepository<BalanceOfLp> {
       await this.projectRepository.getPairAddresses(projectName);
 
     const entityManager = this.unitOfWork.getTransactionManager();
-    console.log(entityManager.connection.options);
 
     if (blockNumber === undefined) {
       const latestBlock = await entityManager
         .createQueryBuilder(BalanceOfLp, "b")
         .select("MAX(b.blockNumber)", "max")
+        .where("b.pairAddress IN (:...pairAddresses)", {
+          pairAddresses: pairAddressBuffers,
+        })
         .getRawOne();
 
       blockNumber = latestBlock.max;
@@ -152,7 +154,7 @@ export class BalanceOfLpRepository extends BaseRepository<BalanceOfLp> {
 
     return balances.map((item) => ({
       ...item,
-      userAddress: "0x" + item.tokenAddress.toString("hex"),
+      userAddress: "0x" + item.userAddress.toString("hex"),
       tokenAddress: "0x" + item.tokenAddress.toString("hex"),
     }));
   }

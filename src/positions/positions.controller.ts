@@ -8,12 +8,13 @@ import {
 } from "@nestjs/swagger";
 import { BalanceOfLpRepository } from "src/repositories/balanceOfLp.repository";
 import { GetUserPositionsDto, UserPositionsResponseDto } from "./positions.dto";
+import { ethers } from "ethers";
 
 @ApiTags("positions")
 @ApiExcludeController(false)
 @Controller("positions")
 export class PositionController {
-  constructor(private balanceOfRepository: BalanceOfLpRepository) { }
+  constructor(private balanceOfRepository: BalanceOfLpRepository) {}
 
   @Get(":projectName/tokens")
   @ApiParam({
@@ -57,16 +58,15 @@ export class PositionController {
   })
   async getAgxUserEtherFiPositions(
     @Query("blockNumber") blockNumber?: string,
-  ): Promise<{ Result: { address: string; effective_balance: string }[] }> {
+  ): Promise<{ Result: { address: string; effective_balance: number }[] }> {
     const page = 1;
     const limit = 100;
     const tokenAddresses = [
-      // "0x35D5f1b41319e0ebb5a10e55C3BD23f121072da8",
-      // "0xE227155217513f1ACaA2849A872ab933cF2d6a9A",
-      "0x8280a4e7D5B3B658ec4580d3Bc30f5e50454F169",
+      "0x35D5f1b41319e0ebb5a10e55C3BD23f121072da8",
+      "0xE227155217513f1ACaA2849A872ab933cF2d6a9A",
     ].join(",");
 
-    let result: Array<{ address: string; effective_balance: string }> = [];
+    let result: Array<{ address: string; effective_balance: number }> = [];
     let hasNextPage = true;
 
     while (hasNextPage) {
@@ -84,7 +84,7 @@ export class PositionController {
       result = result.concat(
         balances.map((i) => ({
           address: i.userAddress,
-          effective_balance: i.balance,
+          effective_balance: Number(ethers.formatUnits(i.balance)),
         })),
       );
     }
