@@ -6,7 +6,11 @@ import {
   ApiParam,
   ApiTags,
 } from "@nestjs/swagger";
-import { GetUserPositionsDto, UserPositionsResponseDto } from "./positions.dto";
+import {
+  GetAGXPositionDto,
+  GetUserPositionsDto,
+  UserPositionsResponseDto,
+} from "./positions.dto";
 import { PositionsService } from "./positions.service";
 
 @ApiTags("positions")
@@ -15,7 +19,7 @@ import { PositionsService } from "./positions.service";
 export class PositionsController {
   constructor(private positionsService: PositionsService) {}
 
-  @Get(":projectName/tokens")
+  @Get(":projectName")
   @ApiParam({
     name: "projectName",
     required: true,
@@ -45,7 +49,8 @@ export class PositionsController {
   }
 
   @Get("agx/etherfi")
-  async getAgxUserEtherFiPositions(@Query("blockNumber") blockNumber?: string) {
+  async getAgxUserEtherFiPositions(@Query() queryString: GetAGXPositionDto) {
+    const { blockNumber } = queryString;
     const data =
       await this.positionsService.getAgxEtherfiPositionsByBlock(blockNumber);
 

@@ -76,20 +76,12 @@ export class BalanceOfLpRepository extends BaseRepository<BalanceOfLp> {
     });
   }
 
-  async getUserPositionsByProjectAndTokens({
-    projectName,
-    tokenAddresses,
-    page = 1,
-    limit = 10,
-    blockNumber,
-    userAddress,
-  }: GetUserPositionsDto & { projectName: string }) {
-    const tokenAddressList = tokenAddresses ? tokenAddresses.split(",") : [];
-    const pairAddressBuffers =
-      await this.projectRepository.getPairAddresses(projectName);
-
+  async getClosestBlockNumber(
+    blockNumber: number,
+    pairAddressBuffers: Buffer[],
+  ) {
+    let result: number | undefined;
     const entityManager = this.unitOfWork.getTransactionManager();
-
     if (blockNumber === undefined) {
       const latestBlock = await entityManager
         .createQueryBuilder(BalanceOfLp, "b")
@@ -99,10 +91,7 @@ export class BalanceOfLpRepository extends BaseRepository<BalanceOfLp> {
         })
         .getRawOne();
 
-      blockNumber = latestBlock.max;
-      if (!blockNumber) {
-        return [];
-      }
+      result = latestBlock?.max;
     } else {
       const closestBlock = await entityManager
         .createQueryBuilder(BalanceOfLp, "b")
@@ -114,11 +103,39 @@ export class BalanceOfLpRepository extends BaseRepository<BalanceOfLp> {
         .orderBy("b.blockNumber", "DESC")
         .getOne();
 
-      if (!closestBlock) {
-        return [];
-      }
+      result = Number(closestBlock?.blockNumber);
+    }
+    return result;
+  }
 
-      blockNumber = closestBlock.blockNumber.toString();
+  async getUserPositionsByProjectAndTokens({
+    projectName,
+    tokenAddresses,
+    page = 1,
+    limit = 10,
+    blockNumber,
+    userAddress,
+  }: Omit<GetUserPositionsDto, "tokenAddresses"> & {
+    projectName: string;
+    tokenAddresses: string[];
+  }): Promise<
+    {
+      userAddress: string;
+      tokenAddress: string;
+      balance: string;
+    }[]
+  > {
+    const pairAddressBuffers =
+      await this.projectRepository.getPairAddresses(projectName);
+
+    const entityManager = this.unitOfWork.getTransactionManager();
+
+    const closestBlockNumber = await this.getClosestBlockNumber(
+      blockNumber,
+      pairAddressBuffers,
+    );
+    if (!closestBlockNumber) {
+      return [];
     }
 
     let queryBuilder = entityManager
@@ -128,16 +145,16 @@ export class BalanceOfLpRepository extends BaseRepository<BalanceOfLp> {
         'b.tokenAddress AS "tokenAddress"',
         'SUM(CAST(b.balance AS numeric)) AS "balance"',
       ])
-      .where("b.blockNumber = :blockNumber", { blockNumber })
+      .where("b.blockNumber = :blockNumber", {
+        blockNumber: closestBlockNumber,
+      })
       .andWhere("b.pairAddress IN (:...pairAddresses)", {
         pairAddresses: pairAddressBuffers,
       })
-      .groupBy("b.address, b.tokenAddress")
-      .skip((page - 1) * limit)
-      .take(limit);
+      .groupBy("b.address, b.tokenAddress");
 
-    if (tokenAddressList.length > 0) {
-      const tokenAddressBuffers = tokenAddressList.map((addr) =>
+    if (tokenAddresses.length > 0) {
+      const tokenAddressBuffers = tokenAddresses.map((addr) =>
         Buffer.from(addr.slice(2), "hex"),
       );
 
@@ -145,6 +162,14 @@ export class BalanceOfLpRepository extends BaseRepository<BalanceOfLp> {
         "b.tokenAddress IN (:...tokenAddressList)",
         { tokenAddressList: tokenAddressBuffers },
       );
+    }
+
+    if (limit) {
+      if (page) {
+        queryBuilder = queryBuilder.skip((page - 1) * limit).take(limit);
+      } else {
+        queryBuilder = queryBuilder.take(limit);
+      }
     }
 
     if (userAddress) {

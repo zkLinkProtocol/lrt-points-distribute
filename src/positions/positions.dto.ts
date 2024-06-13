@@ -1,23 +1,38 @@
 import { ApiProperty } from "@nestjs/swagger";
+import { Type } from "class-transformer";
+import { IsInt, IsOptional, Min } from "class-validator";
 import { PagingOptionsDto } from "src/common/pagingOptionsDto.dto";
+
+export class GetAGXPositionDto {
+  @IsInt()
+  @Min(1)
+  @Type(() => Number)
+  blockNumber: number;
+}
 
 export class GetUserPositionsDto extends PagingOptionsDto {
   @ApiProperty({
     required: false,
     description: "Comma separated list of token addresses",
   })
+  @IsOptional()
   tokenAddresses?: string;
 
   @ApiProperty({
     required: false,
     description: "query positions at the blockNumber",
   })
-  blockNumber?: string;
+  @IsInt()
+  @Min(1)
+  @IsOptional()
+  @Type(() => Number)
+  blockNumber?: number;
 
   @ApiProperty({
     required: false,
     description: "user Address",
   })
+  @IsOptional()
   userAddress?: string;
 }
 
