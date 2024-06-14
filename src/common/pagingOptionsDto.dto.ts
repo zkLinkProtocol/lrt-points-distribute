@@ -14,7 +14,7 @@ export class PagingOptionsDto {
   @IsInt()
   @Min(1)
   @IsOptional()
-  public readonly page: number = 1;
+  public readonly page?: number = 1;
 
   @ApiPropertyOptional({
     type: "integer",
@@ -29,5 +29,5 @@ export class PagingOptionsDto {
   @Min(1)
   @Max(500)
   @IsOptional()
-  public readonly limit: number = 100;
+  public readonly limit?: number = 100;
 }
