@@ -31,12 +31,12 @@ export class PositionsController {
   @ApiNotFoundResponse({
     description: '{ "errno": 1, "errmsg": "not found" }',
   })
-  async getUserPositionsByProjectAndTokens(
+  async getProjectPositions(
     @Param("projectName") projectName: string,
     @Query() queryParams: GetUserPositionsDto,
   ): Promise<UserPositionsResponseDto> {
-    const balances =
-      await this.positionsService.getUserPositionsByProjectAndTokens({
+    const { data, meta } =
+      await this.positionsService.getPositionsByProjectAndAddress({
         projectName,
         ...queryParams,
       });
@@ -44,7 +44,8 @@ export class PositionsController {
     return {
       errmsg: "no error",
       errno: 0,
-      data: balances,
+      meta: meta,
+      data: data,
     };
   }
 

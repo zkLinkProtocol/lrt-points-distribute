@@ -1,6 +1,7 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { Type } from "class-transformer";
 import { IsInt, IsOptional, Min } from "class-validator";
+import { PagingMetaDto } from "src/common/paging.dto";
 import { PagingOptionsDto } from "src/common/pagingOptionsDto.dto";
 
 export class GetAGXPositionDto {
@@ -73,6 +74,13 @@ export class UserPositionsResponseDto {
     example: "no error",
   })
   public readonly errmsg: string;
+
+  @ApiProperty({
+    type: PagingMetaDto,
+    description: "page meta",
+    example: 0,
+  })
+  public readonly meta?: PagingMetaDto;
 
   @ApiProperty({
     type: UserPositionsDto,

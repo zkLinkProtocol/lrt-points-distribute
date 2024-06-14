@@ -3,7 +3,17 @@ import { UnitOfWork } from "../unitOfWork";
 import { BaseRepository } from "./base.repository";
 import { BalanceOfLp } from "../entities/balanceOfLp.entity";
 import { ProjectRepository } from "./project.repository";
-import { GetUserPositionsDto } from "src/positions/positions.dto";
+import {
+  GetAGXPositionDto,
+  GetUserPositionsDto,
+} from "src/positions/positions.dto";
+
+export interface Position {
+  userAddress: string;
+  tokenAddress: string;
+  balance: string;
+}
+
 @Injectable()
 export class BalanceOfLpRepository extends BaseRepository<BalanceOfLp> {
   public constructor(
@@ -76,7 +86,7 @@ export class BalanceOfLpRepository extends BaseRepository<BalanceOfLp> {
     });
   }
 
-  async getClosestBlockNumber(
+  private async getClosestBlockNumber(
     blockNumber: number,
     pairAddressBuffers: Buffer[],
   ) {
@@ -91,7 +101,7 @@ export class BalanceOfLpRepository extends BaseRepository<BalanceOfLp> {
         })
         .getRawOne();
 
-      result = latestBlock ? Number(latestBlock.max) : undefined;
+      result = latestBlock ? Number(latestBlock.max) : 0;
     } else {
       const closestBlock = await entityManager
         .createQueryBuilder(BalanceOfLp, "b")
@@ -103,28 +113,16 @@ export class BalanceOfLpRepository extends BaseRepository<BalanceOfLp> {
         .orderBy("b.blockNumber", "DESC")
         .getOne();
 
-      result = closestBlock?.blockNumber;
+      result = closestBlock?.blockNumber ?? 0;
     }
     return result;
   }
 
-  async getUserPositionsByProjectAndTokens({
-    projectName,
-    tokenAddresses,
-    page = 1,
-    limit = 10,
-    blockNumber,
-    userAddress,
-  }: Omit<GetUserPositionsDto, "tokenAddresses"> & {
-    projectName: string;
-    tokenAddresses: string[];
-  }): Promise<
-    {
-      userAddress: string;
-      tokenAddress: string;
-      balance: string;
-    }[]
-  > {
+  private async genPositionsQueryBuilder(
+    projectName: string,
+    blockNumber: number,
+    tokenAddresses: string[],
+  ) {
     const pairAddressBuffers =
       await this.projectRepository.getPairAddresses(projectName);
 
@@ -134,10 +132,6 @@ export class BalanceOfLpRepository extends BaseRepository<BalanceOfLp> {
       blockNumber,
       pairAddressBuffers,
     );
-
-    if (!closestBlockNumber) {
-      return [];
-    }
 
     let queryBuilder = entityManager
       .createQueryBuilder(BalanceOfLp, "b")
@@ -164,6 +158,30 @@ export class BalanceOfLpRepository extends BaseRepository<BalanceOfLp> {
         { tokenAddressList: tokenAddressBuffers },
       );
     }
+    return queryBuilder;
+  }
+
+  public async getProjectPositionsByAddress({
+    projectName,
+    tokenAddresses,
+    page,
+    limit,
+    blockNumber,
+    userAddress,
+  }: Omit<GetUserPositionsDto, "tokenAddresses"> & {
+    projectName: string;
+    tokenAddresses: string[];
+  }): Promise<{
+    totalCount: number;
+    list: Position[];
+  }> {
+    let queryBuilder = await this.genPositionsQueryBuilder(
+      projectName,
+      blockNumber,
+      tokenAddresses,
+    );
+
+    const total = await queryBuilder.getCount();
 
     if (limit) {
       if (page) {
@@ -180,6 +198,35 @@ export class BalanceOfLpRepository extends BaseRepository<BalanceOfLp> {
         userAddress: userAddressBuffer,
       });
     }
+
+    const balances = await queryBuilder.getRawMany<{
+      userAddress: Buffer;
+      tokenAddress: Buffer;
+      balance: string;
+    }>();
+
+    return {
+      totalCount: total,
+      list: balances.map((item) => ({
+        ...item,
+        userAddress: "0x" + item.userAddress.toString("hex"),
+        tokenAddress: "0x" + item.tokenAddress.toString("hex"),
+      })),
+    };
+  }
+
+  public async getAgxEtherfiPositions({
+    blockNumber,
+  }: GetAGXPositionDto): Promise<Position[]> {
+    const tokenAddresses = [
+      "0x35D5f1b41319e0ebb5a10e55C3BD23f121072da8",
+      "0xE227155217513f1ACaA2849A872ab933cF2d6a9A",
+    ];
+    const queryBuilder = await this.genPositionsQueryBuilder(
+      "agx",
+      blockNumber,
+      tokenAddresses,
+    );
 
     const balances = await queryBuilder.getRawMany<{
       userAddress: Buffer;

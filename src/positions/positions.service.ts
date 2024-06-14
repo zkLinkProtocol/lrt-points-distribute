@@ -2,12 +2,13 @@ import { Injectable } from "@nestjs/common";
 import { BalanceOfLpRepository } from "src/repositories/balanceOfLp.repository";
 import { GetUserPositionsDto } from "./positions.dto";
 import { ethers } from "ethers";
+import { PaginationUtil } from "src/common/pagination.util";
 
 @Injectable()
 export class PositionsService {
   constructor(private balanceOfRepository: BalanceOfLpRepository) {}
 
-  async getUserPositionsByProjectAndTokens(
+  async getPositionsByProjectAndAddress(
     params: GetUserPositionsDto & { projectName: string },
   ) {
     const { tokenAddresses, limit = 100, page = 1 } = params;
@@ -17,29 +18,26 @@ export class PositionsService {
       limit,
       page,
     };
-    const data =
-      await this.balanceOfRepository.getUserPositionsByProjectAndTokens(
+    const { list, totalCount } =
+      await this.balanceOfRepository.getProjectPositionsByAddress(
         formattedParams,
       );
-    return data;
+    const meta = PaginationUtil.genPaginateMetaByTotalCount(
+      totalCount,
+      page,
+      limit,
+    );
+    return { data: list, meta: meta };
   }
 
   async getAgxEtherfiPositionsByBlock(blockNumber: number) {
-    const tokenAddresses = [
-      "0x35D5f1b41319e0ebb5a10e55C3BD23f121072da8",
-      "0xE227155217513f1ACaA2849A872ab933cF2d6a9A",
-    ];
-
     let result: Array<{ address: string; effective_balance: number }> = [];
 
-    const balances =
-      await this.balanceOfRepository.getUserPositionsByProjectAndTokens({
-        projectName: "agx",
-        tokenAddresses,
-        blockNumber: blockNumber,
-      });
+    const data = await this.balanceOfRepository.getAgxEtherfiPositions({
+      blockNumber,
+    });
 
-    result = balances.map((i) => ({
+    result = data.map((i) => ({
       address: i.userAddress,
       effective_balance: Number(ethers.formatUnits(i.balance)),
     }));
