@@ -382,7 +382,7 @@ export class PointsController {
     let res: TokenPointsWithoutDecimalsDto;
     try {
       const data = this.puffPointsService.getPointsData();
-      const allPointsFilter = data.items.filter((p) => p.balance >= 10 ** 12);
+      const allPointsFilter = data.items; //.filter((p) => p.realPoints >= 0.001);
       res = {
         errno: 0,
         errmsg: "no error",
@@ -445,7 +445,7 @@ export class PointsController {
   public async allPufferPoints(): Promise<TokenPointsDto> {
     this.logger.log("allPufferPoints");
     const data = this.puffPointsService.getPointsData();
-    const allPointsFilter = data.items.filter((p) => p.balance > 10 ** 12);
+    const allPointsFilter = data.items; //.filter((p) => p.realPoints >= 0.001);
     const result = allPointsFilter.map((p) => {
       return {
         address: p.address,
@@ -476,7 +476,7 @@ export class PointsController {
   ): Promise<TokenPointsDto> {
     this.logger.log("allPufferPoints");
     const data = this.puffPointsService.getPointsData();
-    const allPointsFilter = data.items.filter((p) => p.balance >= 10 ** 12);
+    const allPointsFilter = data.items; //.filter((p) => p.realPoints >= 0.001);
     const { page = 1, limit = 100 } = pagingOptions;
     const paging = PaginationUtil.paginate(allPointsFilter, page, limit);
     const result = paging.items.map((p) => {
@@ -511,7 +511,7 @@ export class PointsController {
     let res: TokenPointsWithoutDecimalsDto;
     try {
       const data = this.puffPointsService.getPointsData();
-      const allPointsFilter = data.items.filter((p) => p.balance > 10 ** 12);
+      const allPointsFilter = data.items; //.filter((p) => p.realPoints >= 0.001);
       const { page = 1, limit = 100 } = pagingOptions;
       const paging = PaginationUtil.paginate(allPointsFilter, page, limit);
       res = {
