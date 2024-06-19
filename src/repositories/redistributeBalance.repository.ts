@@ -17,26 +17,6 @@ export class RedistributeBalanceRepository extends BaseRepository<RedistributeBa
     super(RedistributeBalance, unitOfWork);
   }
 
-  public async getPercentageByAddress(
-    userAddress: string,
-    tokenAddress: string,
-    pairAddress: string,
-  ): Promise<{ percentage: number; balance: bigint }> {
-    const transactionManager = this.unitOfWork.getTransactionManager();
-    const record = await transactionManager.findOne(RedistributeBalance, {
-      where: {
-        userAddress: userAddress,
-        tokenAddress: tokenAddress,
-        pairAddress: pairAddress,
-      },
-    });
-
-    return {
-      percentage: record ? Number(record.percentage) : 0,
-      balance: BigInt(record?.balance ?? 0),
-    };
-  }
-
   async getPaginatedUserData(
     tokenAddresses: string[],
     poolAddresses: string[],
@@ -141,15 +121,7 @@ export class RedistributeBalanceRepository extends BaseRepository<RedistributeBa
   async getRedistributePointsList(
     userAddresses: string[],
     tokenAddress: string,
-  ): Promise<
-    {
-      userAddress: string;
-      tokenAddress: string;
-      balance: string;
-      pointWeightPercentage: number;
-      pointWeight: bigint;
-    }[]
-  > {
+  ) {
     const transactionManager = this.unitOfWork.getTransactionManager();
     const userAddressBuffers = userAddresses.map((addr) =>
       Buffer.from(addr.slice(2), "hex"),
@@ -165,10 +137,7 @@ export class RedistributeBalanceRepository extends BaseRepository<RedistributeBa
       })
       .getMany();
     return userRedistributePoints.map((point) => ({
-      userAddress: point.userAddress,
-      tokenAddress: point.tokenAddress,
-      balance: point.balance,
-      pointWeightPercentage: point.pointWeightPercentage,
+      ...point,
       pointWeight: BigInt(point.pointWeight),
     }));
   }
@@ -260,5 +229,29 @@ export class RedistributeBalanceRepository extends BaseRepository<RedistributeBa
       .getRawOne();
 
     return BigInt(data.pointWeight);
+  }
+
+  async getPoolsByToken(tokenAddress: Buffer, poolAddresses: Buffer[]) {
+    const entityManager = this.unitOfWork.getTransactionManager();
+    const pools = await entityManager
+      .createQueryBuilder(UserStaked, "us")
+      .select("DISTINCT us.poolAddress")
+      .where("us.tokenAddress = :tokenAddress", { tokenAddress })
+      .andWhere("us.poolAddress IN (:...poolAddresses)", { poolAddresses })
+      .getRawMany<{ poolAddress: Buffer }>();
+    return pools.map((row) => "0x" + row.poolAddress.toString("hex"));
+  }
+
+  async getUserStakedPositionsByToken(
+    tokenAddress: Buffer,
+    userAddress: Buffer,
+  ) {
+    const entityManager = this.unitOfWork.getTransactionManager();
+    const positions = await entityManager
+      .createQueryBuilder(UserStaked, "us")
+      .where("us.tokenAddress = :tokenAddress", { tokenAddress })
+      .andWhere("us.userAddress = :userAddress", { userAddress })
+      .getMany();
+    return positions;
   }
 }

@@ -9,10 +9,10 @@ import BigNumber from "bignumber.js";
 import { NovaService } from "../nova/nova.service";
 import { ConfigService } from "@nestjs/config";
 import { PagingOptionsDto } from "../common/pagingOptionsDto.dto";
-import { AquaService } from "../nova/aqua.service";
 import { Worker } from "src/common/worker";
 import waitFor from "src/utils/waitFor";
 import { RedistributeBalanceRepository } from "src/repositories/redistributeBalance.repository";
+import { ProjectRepository } from "src/repositories/project.repository";
 
 export interface PufferPointItem {
   address: string;
@@ -85,16 +85,10 @@ type PufferUserBalance = [
   },
   Array<EigenlayerPool & { pool: string }>,
 ];
-const PUFFER_ETH_ADDRESS =
+export const PUFFER_ETH_ADDRESS =
   "0x1B49eCf1A8323Db4abf48b2F5EFaA33F7DdAB3FC".toLowerCase();
-const LAYERBANK_LPUFFER =
-  "0xdd6105865380984716C6B2a1591F9643e6ED1C48".toLocaleLowerCase();
-const AQUA_LPUFFER =
-  "0xc2be3CC06Ab964f9E22e492414399DC4A58f96D3".toLocaleLowerCase();
 const AQUA_VAULT =
   "0x4AC97E2727B0e92AE32F5796b97b7f98dc47F059".toLocaleLowerCase();
-const AGX_VAULT =
-  "0xc48F99afe872c2541f530C6c87E3A6427e0C40d5".toLocaleLowerCase();
 
 @Injectable()
 export class PuffPointsService extends Worker {
@@ -111,9 +105,9 @@ export class PuffPointsService extends Worker {
     private readonly projectGraphService: ProjectGraphService,
     private readonly graphQueryService: GraphQueryService,
     private readonly novaService: NovaService,
-    private readonly aquaService: AquaService,
     private readonly configService: ConfigService,
     private readonly redistributeBalanceRepository: RedistributeBalanceRepository,
+    private readonly projectRepository: ProjectRepository,
   ) {
     super();
     this.logger = new Logger(PuffPointsService.name);
@@ -215,13 +209,16 @@ export class PuffPointsService extends Worker {
   }
 
   // return points data
-  public getPointsData(address?: string): PufferData {
+  public async getPointsData(address?: string): Promise<PufferData> {
     const result: PufferData = {
       localTotalPoints: this.localTotalPoints,
       realTotalPoints: this.realTotalPoints,
       items: this.localPoints,
     } as PufferData;
-    const needRemoveAddress = [LAYERBANK_LPUFFER, AQUA_VAULT, AGX_VAULT];
+    const lpMap = await this.getPufferLPAddressMap(0);
+    const needRemoveAddress = Array.from(lpMap.values()).map(
+      (item) => item.vaultAddress,
+    );
     if (address && this.localPoints.length > 0) {
       const _address = address.toLocaleLowerCase();
       if (needRemoveAddress.includes(_address)) {
@@ -278,122 +275,6 @@ export class PuffPointsService extends Worker {
     } else {
       throw new Error(`Failed to get real ${this.projectName} points`);
     }
-  }
-
-  //get layerbank point
-  public async getLayerBankPoint(address: string): Promise<number> {
-    const _lpuffer = this.localPoints.filter(
-      (item) => item.address === LAYERBANK_LPUFFER,
-    );
-    if (_lpuffer.length == 0) {
-      return 0;
-    }
-    const lpuffer = _lpuffer[0];
-    const lpufferPointData = await this.novaService.getPoints(
-      LAYERBANK_LPUFFER,
-      [address],
-    );
-    const lpufferFinalPoints = lpufferPointData.finalPoints;
-    const lpufferFinalTotalPoints = lpufferPointData.finalTotalPoints;
-    if (lpufferFinalPoints.length > 0) {
-      return new BigNumber(lpufferFinalPoints[0].points.toString())
-        .multipliedBy(lpuffer.realPoints)
-        .div(lpufferFinalTotalPoints.toString())
-        .toNumber();
-    }
-    return 0;
-  }
-
-  public async getAGXPufferDataByAddress(
-    address: string,
-  ): Promise<{ point: number; balance: bigint }> {
-    // agx puffer points
-    const lPufferPoint = this.localPoints.filter(
-      (item) => item.address === AGX_VAULT,
-    );
-
-    const data =
-      await this.redistributeBalanceRepository.getPercentageByAddress(
-        address,
-        PUFFER_ETH_ADDRESS,
-        AGX_VAULT,
-      );
-
-    return {
-      point: data.percentage * (lPufferPoint[0]?.realPoints ?? 0),
-      balance: data.balance,
-    };
-  }
-
-  //get aqua point
-  public async getAquaPoint(address: string): Promise<number> {
-    const _lpuffer = this.localPoints.filter(
-      (item) => item.address === AQUA_VAULT,
-    );
-    if (_lpuffer.length == 0) {
-      return 0;
-    }
-    const lpuffer = _lpuffer[0];
-    const lpufferPointData = await this.aquaService.getPoints(AQUA_LPUFFER, [
-      address,
-    ]);
-    const lpufferFinalPoints = lpufferPointData.finalPoints;
-    const lpufferFinalTotalPoints = lpufferPointData.finalTotalPoints;
-    if (lpufferFinalPoints.length > 0) {
-      return new BigNumber(lpufferFinalPoints[0].points.toString())
-        .multipliedBy(lpuffer.realPoints)
-        .div(lpufferFinalTotalPoints.toString())
-        .toNumber();
-    }
-    return 0;
-  }
-
-  //get layerbank point
-  public async getLayerBankPointList(
-    addresses: string[],
-  ): Promise<Array<{ layerbankPoint: number; address: string }>> {
-    const lpuffer = this.localPoints.find(
-      (item) => item.address === LAYERBANK_LPUFFER,
-    );
-
-    const lpufferPointData = await this.novaService.getPoints(
-      LAYERBANK_LPUFFER,
-      addresses,
-    );
-    const lpufferFinalPoints = lpufferPointData.finalPoints;
-    const lpufferFinalTotalPoints = lpufferPointData.finalTotalPoints;
-
-    return lpufferFinalPoints.map((lpufferFinalPoint) => ({
-      address: lpufferFinalPoint.address,
-      layerbankPoint: new BigNumber(lpufferFinalPoint.points.toString())
-        .multipliedBy(lpuffer?.realPoints ?? 0)
-        .div(lpufferFinalTotalPoints.toString())
-        .toNumber(),
-    }));
-  }
-
-  //get aqua point
-  public async getAquaPointList(
-    addresses: string[],
-  ): Promise<Array<{ aquaPoint: number; address: string }>> {
-    const lpuffer = this.localPoints.find(
-      (item) => item.address === AQUA_VAULT,
-    );
-
-    const lpufferPointData = await this.aquaService.getPoints(
-      AQUA_LPUFFER,
-      addresses,
-    );
-    const lpufferFinalPoints = lpufferPointData.finalPoints;
-    const lpufferFinalTotalPoints = lpufferPointData.finalTotalPoints;
-
-    return lpufferFinalPoints.map((lpufferFinalPoint) => ({
-      address: lpufferFinalPoint.address,
-      aquaPoint: new BigNumber(lpufferFinalPoint.points.toString())
-        .multipliedBy(lpuffer?.realPoints ?? 0)
-        .div(lpufferFinalTotalPoints.toString())
-        .toNumber(),
-    }));
   }
 
   public async getPuffElPointsByAddress(
@@ -621,5 +502,108 @@ export class PuffPointsService extends Worker {
       );
       return undefined;
     }
+  }
+
+  /**
+   *
+   * @param name project name
+   * @returns
+   */
+  public async getPoolInfoByProject(name: string) {
+    const pairAddresses = await this.projectRepository.getPairAddresses(name);
+    const poolAddresses =
+      await this.redistributeBalanceRepository.getPoolsByToken(
+        Buffer.from(PUFFER_ETH_ADDRESS.slice(2), "hex"),
+        pairAddresses,
+      );
+    return poolAddresses.map((poolAddress) => {
+      if (name === "aqua") {
+        return {
+          vaultAddress: AQUA_VAULT,
+          poolAddress: poolAddress,
+        };
+      }
+      return {
+        vaultAddress: poolAddress,
+        poolAddress: poolAddress,
+      };
+    });
+  }
+
+  /**
+   *
+   * @param pufferTotalPoint
+   * @returns Promise<Map<string, number>>
+   * @description return a Map which key is the poolAddress, value is {points: number, dappName: string}
+   */
+  public async getPufferLPAddressMap(pufferTotalPoint: number) {
+    const projects = [
+      { name: "aqua", displayName: "Aqua" },
+      { name: "layerbank", displayName: "LayerBank" },
+      { name: "agx", displayName: "AGX" },
+      { name: "novaswap", displayName: "NovaSwap" },
+    ];
+
+    const redistributeList = (
+      await Promise.all(
+        projects.map(async (project) => {
+          const info = await this.getPoolInfoByProject(project.name);
+          return info.map((i) => ({ ...i, dappName: project.displayName }));
+        }),
+      )
+    ).flat();
+
+    const vaultAddresses = redistributeList.map(
+      (config) => config.vaultAddress,
+    );
+
+    const redistributePointsList =
+      await this.redistributeBalanceRepository.getRedistributePointsList(
+        vaultAddresses,
+        PUFFER_ETH_ADDRESS,
+      );
+
+    const vaultToPoolMap = new Map(
+      redistributeList.map((info) => [
+        info.vaultAddress,
+        { poolAddress: info.poolAddress, dappName: info.dappName },
+      ]),
+    );
+
+    const stakedPointsMap = new Map(
+      redistributePointsList.map((stakedInfo) => {
+        const info = vaultToPoolMap.get(stakedInfo.userAddress);
+        return [
+          info.poolAddress,
+          {
+            points: stakedInfo.pointWeightPercentage * pufferTotalPoint,
+            dappName: info.dappName,
+            vaultAddress: stakedInfo.userAddress,
+          },
+        ];
+      }),
+    );
+
+    return stakedPointsMap;
+  }
+
+  public async getUserStakedPosition(address: string) {
+    const totalPufferPoints = await this.getRealPointsData();
+    const map = await this.getPufferLPAddressMap(totalPufferPoints);
+    const data =
+      await this.redistributeBalanceRepository.getUserStakedPositionsByToken(
+        Buffer.from(PUFFER_ETH_ADDRESS.slice(2), "hex"),
+        Buffer.from(address.slice(2), "hex"),
+      );
+
+    const result = data.map((position) => {
+      const pointData = map.get(position.poolAddress);
+      return {
+        point: pointData.points * position.pointWeightPercentage,
+        balance: position.balance,
+        dappName: pointData.dappName,
+      };
+    });
+    return result;
   }
 }
