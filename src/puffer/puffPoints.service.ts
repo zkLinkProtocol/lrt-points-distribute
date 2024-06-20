@@ -12,7 +12,6 @@ import { PagingOptionsDto } from "../common/pagingOptionsDto.dto";
 import { Worker } from "src/common/worker";
 import waitFor from "src/utils/waitFor";
 import { RedistributeBalanceRepository } from "src/repositories/redistributeBalance.repository";
-import { ProjectRepository } from "src/repositories/project.repository";
 
 export interface PufferPointItem {
   address: string;
@@ -107,7 +106,6 @@ export class PuffPointsService extends Worker {
     private readonly novaService: NovaService,
     private readonly configService: ConfigService,
     private readonly redistributeBalanceRepository: RedistributeBalanceRepository,
-    private readonly projectRepository: ProjectRepository,
   ) {
     super();
     this.logger = new Logger(PuffPointsService.name);
@@ -509,23 +507,22 @@ export class PuffPointsService extends Worker {
    * @param name project name
    * @returns
    */
-  public async getPoolInfoByProject(name: string) {
-    const pairAddresses = await this.projectRepository.getPairAddresses(name);
-    const poolAddresses =
-      await this.redistributeBalanceRepository.getPoolsByToken(
-        Buffer.from(PUFFER_ETH_ADDRESS.slice(2), "hex"),
-        pairAddresses,
-      );
-    return poolAddresses.map((poolAddress) => {
-      if (name === "aqua") {
+  public async getPoolInfoByProject() {
+    const poolsInfo = await this.redistributeBalanceRepository.getPoolsByToken(
+      Buffer.from(PUFFER_ETH_ADDRESS.slice(2), "hex"),
+    );
+    return poolsInfo.map((pool) => {
+      if (pool.name === "aqua") {
         return {
           vaultAddress: AQUA_VAULT,
-          poolAddress: poolAddress,
+          poolAddress: pool.poolAddress,
+          dappName: pool.name,
         };
       }
       return {
-        vaultAddress: poolAddress,
-        poolAddress: poolAddress,
+        vaultAddress: pool.poolAddress,
+        poolAddress: pool.poolAddress,
+        dappName: pool.name,
       };
     });
   }
@@ -537,22 +534,7 @@ export class PuffPointsService extends Worker {
    * @description return a Map which key is the poolAddress, value is {points: number, dappName: string}
    */
   public async getPufferLPAddressMap(pufferTotalPoint: number) {
-    const projects = [
-      { name: "aqua", displayName: "Aqua" },
-      { name: "layerbank", displayName: "LayerBank" },
-      { name: "agx", displayName: "AGX" },
-      { name: "novaswap", displayName: "NovaSwap" },
-      { name: "shoebill", displayName: "Shoebill Finance" },
-    ];
-
-    const redistributeList = (
-      await Promise.all(
-        projects.map(async (project) => {
-          const info = await this.getPoolInfoByProject(project.name);
-          return info.map((i) => ({ ...i, dappName: project.displayName }));
-        }),
-      )
-    ).flat();
+    const redistributeList = await this.getPoolInfoByProject();
 
     const vaultAddresses = redistributeList.map(
       (config) => config.vaultAddress,
@@ -590,7 +572,8 @@ export class PuffPointsService extends Worker {
 
   public async getUserStakedPosition(address: string) {
     const totalPufferPoints = await this.getRealPointsData();
-    const map = await this.getPufferLPAddressMap(totalPufferPoints);
+    const pufferLPAddressMap =
+      await this.getPufferLPAddressMap(totalPufferPoints);
     const data =
       await this.redistributeBalanceRepository.getUserStakedPositionsByToken(
         Buffer.from(PUFFER_ETH_ADDRESS.slice(2), "hex"),
@@ -598,7 +581,8 @@ export class PuffPointsService extends Worker {
       );
 
     const result = data.map((position) => {
-      const pointData = map.get(position.poolAddress);
+      const pointData = pufferLPAddressMap.get(position.poolAddress);
+
       return {
         point: pointData.points * position.pointWeightPercentage,
         balance: position.balance,
@@ -606,5 +590,20 @@ export class PuffPointsService extends Worker {
       };
     });
     return result;
+  }
+
+  public async getUserPufferPoint(address: string) {
+    const pufferTotalPoint = await this.getRealPointsData();
+
+    const userPufferPosition = (
+      await this.redistributeBalanceRepository.getRedistributePointsList(
+        [address],
+        PUFFER_ETH_ADDRESS,
+      )
+    )[0];
+    const holdingPufferPoint =
+      (userPufferPosition?.pointWeightPercentage ?? 0) * pufferTotalPoint;
+
+    return holdingPufferPoint;
   }
 }

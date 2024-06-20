@@ -3,6 +3,7 @@ import { UnitOfWork } from "../unitOfWork";
 import { BaseRepository } from "./base.repository";
 import { RedistributeBalance } from "../entities/redistributeBalance.entity";
 import { User, UserHolding, UserStaked, UserWithdraw } from "src/entities";
+import { Project } from "src/entities/project.entity";
 
 //{ userAddress: string; pointWeight: bigint }
 export interface RedistributePointsWeight {
@@ -231,15 +232,23 @@ export class RedistributeBalanceRepository extends BaseRepository<RedistributeBa
     return BigInt(data.pointWeight);
   }
 
-  async getPoolsByToken(tokenAddress: Buffer, poolAddresses: Buffer[]) {
+  async getPoolsByToken(tokenAddress: Buffer) {
     const entityManager = this.unitOfWork.getTransactionManager();
-    const pools = await entityManager
+
+    const result = await entityManager
       .createQueryBuilder(UserStaked, "us")
-      .select("DISTINCT us.poolAddress")
+      .select([
+        'DISTINCT us.poolAddress AS "poolAddress"',
+        "project.name AS name",
+      ])
+      .innerJoin(Project, "project", "project.pairAddress = us.poolAddress")
       .where("us.tokenAddress = :tokenAddress", { tokenAddress })
-      .andWhere("us.poolAddress IN (:...poolAddresses)", { poolAddresses })
-      .getRawMany<{ poolAddress: Buffer }>();
-    return pools.map((row) => "0x" + row.poolAddress.toString("hex"));
+      .getRawMany<{ poolAddress: Buffer; name: string }>();
+
+    return result.map((row) => ({
+      poolAddress: "0x" + row.poolAddress.toString("hex"),
+      name: row.name,
+    }));
   }
 
   async getUserStakedPositionsByToken(

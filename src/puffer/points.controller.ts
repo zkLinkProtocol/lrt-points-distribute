@@ -243,15 +243,8 @@ export class PointsController {
   public async pufferEigenLayerPoints(
     @Param("address", new ParseAddressPipe()) address: string,
   ): Promise<UserElPointsDto> {
-    const userPufferPosition = (
-      await this.redistributeBalanceRepository.getRedistributePointsList(
-        [address],
-        PUFFER_ETH_ADDRESS,
-      )
-    )[0];
-    const pufferTotalPoint = await this.puffPointsService.getRealPointsData();
     const holdingPufferPoint =
-      (userPufferPosition?.pointWeightPercentage ?? 0) * pufferTotalPoint;
+      await this.puffPointsService.getUserPufferPoint(address);
 
     const data = await this.puffPointsService.getPuffElPointsByAddress(address);
     if (!data) {
@@ -286,11 +279,6 @@ export class PointsController {
           })
           .filter((i) => !!i) ?? [];
 
-      console.log(
-        Math.floor(userPufferPosition?.updatedAt.getTime() / 1000),
-        Math.floor(Date.now() / 1000),
-      );
-
       const res = {
         userAddress: address,
         pufEthAddress: PUFFER_ETH_ADDRESS,
@@ -312,9 +300,7 @@ export class PointsController {
           6,
         ),
         liquidityDetails,
-        updatedAt: userPufferPosition
-          ? Math.floor(userPufferPosition.updatedAt.getTime() / 1000)
-          : Math.floor(Date.now() / 1000),
+        updatedAt: Math.floor(Date.now() / 1000),
       };
 
       return {
