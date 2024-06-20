@@ -25,6 +25,8 @@ import { PuffPointsService } from "src/puffer/puffPoints.service";
 import { NovaBalanceService } from "./nova.balance.service";
 import { PagingOptionsDto } from "../common/pagingOptionsDto.dto";
 import { PagingMetaDto } from "../common/paging.dto";
+import { ResponseDto } from "src/common/response.dto";
+import { CategoryPointsDto } from "./nova.dto";
 
 const options = {
   // how long to live in ms
@@ -431,6 +433,26 @@ export class NovaController {
     );
     cache.set(cacheKey, cacheData);
     return cacheData;
+  }
+
+  @Get("/category/points")
+  @ApiOperation({ summary: "Retrieve user points under the project category" })
+  @ApiBadRequestResponse({
+    description: '{ "errno": 1, "errmsg": "Service exception" }',
+  })
+  @ApiNotFoundResponse({
+    description: '{ "errno": 1, "errmsg": "not found" }',
+  })
+  public async getNovaCategoryPoints(
+    @Query("address", new ParseAddressPipe()) address: string,
+  ): Promise<ResponseDto<CategoryPointsDto[]>> {
+    const pointsData =
+      await this.novaBalanceService.getPointsByAddress(address);
+    return {
+      errno: 0,
+      errmsg: "no error",
+      data: pointsData,
+    };
   }
 
   private getReturnData(
