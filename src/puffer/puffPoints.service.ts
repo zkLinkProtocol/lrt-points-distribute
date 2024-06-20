@@ -542,6 +542,7 @@ export class PuffPointsService extends Worker {
       { name: "layerbank", displayName: "LayerBank" },
       { name: "agx", displayName: "AGX" },
       { name: "novaswap", displayName: "NovaSwap" },
+      { name: "shoebill", displayName: "Shoebill Finance" },
     ];
 
     const redistributeList = (
