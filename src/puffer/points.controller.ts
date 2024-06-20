@@ -541,10 +541,11 @@ export class PointsController {
         ) ?? BigInt(0);
 
       const userTotalPufEthBalance = BigInt(
-        userInfo.userHolding[0].balance ?? "0",
+        userInfo.userHolding[0]?.balance ?? "0",
       );
       const userTotalPufEthPoint =
-        userInfo.userHolding[0].pointWeightPercentage * pufferTotalPoint;
+        (userInfo.userHolding[0]?.pointWeightPercentage ?? 0) *
+        pufferTotalPoint;
 
       return {
         userAddress: userInfo.userAddress,
