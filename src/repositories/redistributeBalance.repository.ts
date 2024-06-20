@@ -3,6 +3,7 @@ import { UnitOfWork } from "../unitOfWork";
 import { BaseRepository } from "./base.repository";
 import { RedistributeBalance } from "../entities/redistributeBalance.entity";
 import { User, UserHolding, UserStaked, UserWithdraw } from "src/entities";
+import { Project } from "src/entities/project.entity";
 
 //{ userAddress: string; pointWeight: bigint }
 export interface RedistributePointsWeight {
@@ -15,26 +16,6 @@ export interface RedistributePointsWeight {
 export class RedistributeBalanceRepository extends BaseRepository<RedistributeBalance> {
   public constructor(unitOfWork: UnitOfWork) {
     super(RedistributeBalance, unitOfWork);
-  }
-
-  public async getPercentageByAddress(
-    userAddress: string,
-    tokenAddress: string,
-    pairAddress: string,
-  ): Promise<{ percentage: number; balance: bigint }> {
-    const transactionManager = this.unitOfWork.getTransactionManager();
-    const record = await transactionManager.findOne(RedistributeBalance, {
-      where: {
-        userAddress: userAddress,
-        tokenAddress: tokenAddress,
-        pairAddress: pairAddress,
-      },
-    });
-
-    return {
-      percentage: record ? Number(record.percentage) : 0,
-      balance: BigInt(record?.balance ?? 0),
-    };
   }
 
   async getPaginatedUserData(
@@ -141,15 +122,7 @@ export class RedistributeBalanceRepository extends BaseRepository<RedistributeBa
   async getRedistributePointsList(
     userAddresses: string[],
     tokenAddress: string,
-  ): Promise<
-    {
-      userAddress: string;
-      tokenAddress: string;
-      balance: string;
-      pointWeightPercentage: number;
-      pointWeight: bigint;
-    }[]
-  > {
+  ) {
     const transactionManager = this.unitOfWork.getTransactionManager();
     const userAddressBuffers = userAddresses.map((addr) =>
       Buffer.from(addr.slice(2), "hex"),
@@ -165,10 +138,7 @@ export class RedistributeBalanceRepository extends BaseRepository<RedistributeBa
       })
       .getMany();
     return userRedistributePoints.map((point) => ({
-      userAddress: point.userAddress,
-      tokenAddress: point.tokenAddress,
-      balance: point.balance,
-      pointWeightPercentage: point.pointWeightPercentage,
+      ...point,
       pointWeight: BigInt(point.pointWeight),
     }));
   }
@@ -260,5 +230,37 @@ export class RedistributeBalanceRepository extends BaseRepository<RedistributeBa
       .getRawOne();
 
     return BigInt(data.pointWeight);
+  }
+
+  async getPoolsByToken(tokenAddress: Buffer) {
+    const entityManager = this.unitOfWork.getTransactionManager();
+
+    const result = await entityManager
+      .createQueryBuilder(UserStaked, "us")
+      .select([
+        'DISTINCT us.poolAddress AS "poolAddress"',
+        "project.name AS name",
+      ])
+      .innerJoin(Project, "project", "project.pairAddress = us.poolAddress")
+      .where("us.tokenAddress = :tokenAddress", { tokenAddress })
+      .getRawMany<{ poolAddress: Buffer; name: string }>();
+
+    return result.map((row) => ({
+      poolAddress: "0x" + row.poolAddress.toString("hex"),
+      name: row.name,
+    }));
+  }
+
+  async getUserStakedPositionsByToken(
+    tokenAddress: Buffer,
+    userAddress: Buffer,
+  ) {
+    const entityManager = this.unitOfWork.getTransactionManager();
+    const positions = await entityManager
+      .createQueryBuilder(UserStaked, "us")
+      .where("us.tokenAddress = :tokenAddress", { tokenAddress })
+      .andWhere("us.userAddress = :userAddress", { userAddress })
+      .getMany();
+    return positions;
   }
 }

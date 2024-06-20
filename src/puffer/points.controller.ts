@@ -25,7 +25,11 @@ import { RenzoPointItem, RenzoService } from "src/renzo/renzo.service";
 import { ParseProjectNamePipe } from "src/common/pipes/parseProjectName.pipe";
 import { PagingOptionsDto } from "src/common/pagingOptionsDto.dto";
 import { PaginationUtil } from "src/common/pagination.util";
-import { PuffPointsService, PufferData } from "src/puffer/puffPoints.service";
+import {
+  PUFFER_ETH_ADDRESS,
+  PuffPointsService,
+  PufferData,
+} from "src/puffer/puffPoints.service";
 import { GraphQueryService } from "src/common/service/graphQuery.service";
 import { TokenPointsDto } from "./tokenPoints.dto";
 import { TokenPointsWithoutDecimalsDto } from "./tokenPointsWithoutDecimals.dto";
@@ -54,25 +58,6 @@ const options = {
 const cache = new LRUCache(options);
 const RENZO_ALL_POINTS_CACHE_KEY = "allRenzoPoints";
 const PUFFER_ADDRESS_POINTS_FORWARD = "pufferAddressPointsForward";
-const PUFFER_ETH_ADDRESS =
-  "0x1B49eCf1A8323Db4abf48b2F5EFaA33F7DdAB3FC".toLowerCase();
-const redistributeVaultAddressList = [
-  {
-    vaultAddress: "0xdd6105865380984716C6B2a1591F9643e6ED1C48".toLowerCase(),
-    stakedAddress: "0xdd6105865380984716C6B2a1591F9643e6ED1C48".toLowerCase(),
-    dappName: "LayerBank",
-  },
-  {
-    vaultAddress: "0x4AC97E2727B0e92AE32F5796b97b7f98dc47F059".toLowerCase(),
-    stakedAddress: "0xc2be3CC06Ab964f9E22e492414399DC4A58f96D3".toLowerCase(), // aqua pool
-    dappName: "Aqua",
-  },
-  {
-    vaultAddress: "0xc48F99afe872c2541f530C6c87E3A6427e0C40d5".toLowerCase(),
-    stakedAddress: "0xc48F99afe872c2541f530C6c87E3A6427e0C40d5".toLowerCase(),
-    dappName: "AGX",
-  },
-];
 
 @ApiTags("points")
 @ApiExcludeController(false)
@@ -199,7 +184,9 @@ export class PointsController {
   ): Promise<TokenPointsWithoutDecimalsDto> {
     let res: TokenPointsWithoutDecimalsDto, data: PufferData;
     try {
-      data = this.puffPointsService.getPointsData(address.toLocaleLowerCase());
+      data = await this.puffPointsService.getPointsData(
+        address.toLocaleLowerCase(),
+      );
     } catch (e) {
       this.logger.log(e.errmsg, e.stack);
       res = {
@@ -210,17 +197,13 @@ export class PointsController {
       };
     }
 
-    // layerbank point
-    const layerbankPoint =
-      await this.puffPointsService.getLayerBankPoint(address);
-    // aqua point
-    const aquaPoint = await this.puffPointsService.getAquaPoint(address);
+    const lpPufferPositions =
+      await this.puffPointsService.getUserStakedPosition(address);
 
-    const { point: agxPufferPoint } =
-      await this.puffPointsService.getAGXPufferDataByAddress(address);
-    this.logger.log(
-      `layerbankPoint: ${layerbankPoint}, aquaPoint: ${aquaPoint}, agxPufferPoint: ${agxPufferPoint}`,
-    );
+    const lpPufferPoint = lpPufferPositions.reduce((result, cur) => {
+      return result + cur.point;
+    }, 0);
+
     const point = data.items[0] ?? {
       realPoints: 0,
       balance: BigInt(0),
@@ -235,12 +218,7 @@ export class PointsController {
         {
           address: address,
           tokenAddress: point.tokenAddress,
-          points: (
-            point.realPoints +
-            layerbankPoint +
-            aquaPoint +
-            agxPufferPoint
-          ).toString(),
+          points: (point.realPoints + lpPufferPoint).toString(),
           balance: Number(ethers.formatEther(point.balance)).toFixed(6),
           updated_at: point.updatedAt,
         },
@@ -265,78 +243,50 @@ export class PointsController {
   public async pufferEigenLayerPoints(
     @Param("address", new ParseAddressPipe()) address: string,
   ): Promise<UserElPointsDto> {
-    const pufPointsData = this.puffPointsService.getPointsData(
-      address.toLocaleLowerCase(),
-    );
+    const holdingPufferPoint =
+      await this.puffPointsService.getUserPufferPoint(address);
 
     const data = await this.puffPointsService.getPuffElPointsByAddress(address);
     if (!data) {
       throw new NotFoundException();
     }
-    const { userPosition, pools } = data;
+    const { userPosition } = data;
     try {
-      // layerbank point
-      const layerbankPoint =
-        await this.puffPointsService.getLayerBankPoint(address);
+      const lpPufferPositions =
+        await this.puffPointsService.getUserStakedPosition(address);
 
-      // aqua point
-      const aquaPoint = await this.puffPointsService.getAquaPoint(address);
+      const [lpPufferPoint, lpPufferBalance] = lpPufferPositions.reduce(
+        (result, cur) => {
+          return [result[0] + cur.point, result[1] + BigInt(cur.balance)];
+        },
+        [0, 0n],
+      );
 
-      const { point: agxPufferPoint, balance: agxPufferBalance } =
-        await this.puffPointsService.getAGXPufferDataByAddress(address);
-
-      const pufferPoints = (
-        (pufPointsData.items[0]?.realPoints ?? 0) +
-        layerbankPoint +
-        aquaPoint +
-        agxPufferPoint
-      ).toString();
+      const pufferPoints = holdingPufferPoint + lpPufferPoint;
 
       const withdrawingBalance =
         userPosition?.withdrawHistory.reduce((prev, cur) => {
           return prev + BigInt(cur.balance);
         }, BigInt(0)) ?? BigInt(0);
 
-      const balanceFromDappTotal =
-        (userPosition?.positions.reduce((prev, cur) => {
-          const pool = pools.find((pool) => pool.id === cur.pool);
-          const shareBalance =
-            (BigInt(pool.balance) * BigInt(cur.supplied)) /
-            BigInt(pool.totalSupplied);
-          return prev + shareBalance;
-        }, BigInt(0)) ?? BigInt(0)) + agxPufferBalance;
-
       const liquidityDetails =
-        userPosition?.positions
+        lpPufferPositions
           .map((position) => {
-            const pool = pools.find((pool) => pool.id === position.pool);
             return {
-              dappName: pool.name,
-              balance: Number(
-                ethers.formatEther(
-                  (BigInt(pool.balance) * BigInt(position.supplied)) /
-                    BigInt(pool.totalSupplied),
-                ),
-              ).toFixed(6),
+              dappName: position.dappName,
+              balance: Number(ethers.formatEther(position.balance)).toFixed(6),
             };
           })
           .filter((i) => !!i) ?? [];
 
-      if (agxPufferBalance > 0n) {
-        liquidityDetails.push({
-          dappName: "agx",
-          balance: Number(ethers.formatEther(agxPufferBalance)).toFixed(6),
-        });
-      }
-
       const res = {
         userAddress: address,
-        pufEthAddress: "0x1b49ecf1a8323db4abf48b2f5efaa33f7ddab3fc",
-        pufferPoints: pufferPoints,
+        pufEthAddress: PUFFER_ETH_ADDRESS,
+        pufferPoints: pufferPoints.toFixed(6),
         totalBalance: Number(
           ethers.formatEther(
             BigInt(userPosition?.balance ?? 0) +
-              balanceFromDappTotal +
+              lpPufferBalance +
               withdrawingBalance,
           ),
         ).toFixed(6),
@@ -346,12 +296,11 @@ export class PointsController {
         userBalance: Number(
           ethers.formatEther(userPosition?.balance ?? 0),
         ).toFixed(6),
-        liquidityBalance: Number(
-          ethers.formatEther(balanceFromDappTotal),
-        ).toFixed(6),
+        liquidityBalance: Number(ethers.formatEther(lpPufferBalance)).toFixed(
+          6,
+        ),
         liquidityDetails,
-        updatedAt:
-          pufPointsData.items[0]?.updatedAt ?? Math.floor(Date.now() / 1000),
+        updatedAt: Math.floor(Date.now() / 1000),
       };
 
       return {
@@ -381,7 +330,7 @@ export class PointsController {
   public async allPufferPoints2(): Promise<TokenPointsWithoutDecimalsDto> {
     let res: TokenPointsWithoutDecimalsDto;
     try {
-      const data = this.puffPointsService.getPointsData();
+      const data = await this.puffPointsService.getPointsData();
       const allPointsFilter = data.items; //.filter((p) => p.realPoints >= 0.001);
       res = {
         errno: 0,
@@ -444,7 +393,7 @@ export class PointsController {
   })
   public async allPufferPoints(): Promise<TokenPointsDto> {
     this.logger.log("allPufferPoints");
-    const data = this.puffPointsService.getPointsData();
+    const data = await this.puffPointsService.getPointsData();
     const allPointsFilter = data.items; //.filter((p) => p.realPoints >= 0.001);
     const result = allPointsFilter.map((p) => {
       return {
@@ -475,7 +424,7 @@ export class PointsController {
     @Query() pagingOptions: PagingOptionsDto,
   ): Promise<TokenPointsDto> {
     this.logger.log("allPufferPoints");
-    const data = this.puffPointsService.getPointsData();
+    const data = await this.puffPointsService.getPointsData();
     const allPointsFilter = data.items; //.filter((p) => p.realPoints >= 0.001);
     const { page = 1, limit = 100 } = pagingOptions;
     const paging = PaginationUtil.paginate(allPointsFilter, page, limit);
@@ -510,7 +459,7 @@ export class PointsController {
   ): Promise<TokenPointsWithoutDecimalsDto> {
     let res: TokenPointsWithoutDecimalsDto;
     try {
-      const data = this.puffPointsService.getPointsData();
+      const data = await this.puffPointsService.getPointsData();
       const allPointsFilter = data.items; //.filter((p) => p.realPoints >= 0.001);
       const { page = 1, limit = 100 } = pagingOptions;
       const paging = PaginationUtil.paginate(allPointsFilter, page, limit);
@@ -554,20 +503,11 @@ export class PointsController {
     @Query() pagingOptions: PagingOptionsDto,
   ): Promise<ElPointsDto> {
     const pufferTotalPoint = await this.puffPointsService.getRealPointsData();
-    const vaultAddresses = redistributeVaultAddressList.map(
-      (config) => config.vaultAddress,
-    );
-    const allStakedAddresses = redistributeVaultAddressList.map(
-      (config) => config.stakedAddress,
-    );
 
-    const vaultAddressToStakedAddressMap = new Map(
-      redistributeVaultAddressList.map((info) => [
-        info.vaultAddress,
-        info.stakedAddress,
-      ]),
-    );
+    const stakedPointsMap =
+      await this.puffPointsService.getPufferLPAddressMap(pufferTotalPoint);
 
+    const allStakedAddresses = Array.from(stakedPointsMap.keys());
     const userData =
       await this.redistributeBalanceRepository.getPaginatedUserData(
         [PUFFER_ETH_ADDRESS],
@@ -575,33 +515,14 @@ export class PointsController {
         (pagingOptions.page ?? 1) - 1,
         pagingOptions.limit,
       );
-    const redistributePointsList =
-      await this.redistributeBalanceRepository.getRedistributePointsList(
-        vaultAddresses,
-        PUFFER_ETH_ADDRESS,
-      );
-
-    const stakedPointsMap = new Map(
-      redistributePointsList.map((stakedInfo) => [
-        vaultAddressToStakedAddressMap.get(stakedInfo.userAddress), // vault address to poolAddress
-        stakedInfo.pointWeightPercentage * pufferTotalPoint,
-      ]),
-    );
-
-    const redistributePointsMap = new Map(
-      redistributeVaultAddressList.map((info) => [
-        info.stakedAddress,
-        { vaultAddress: info.vaultAddress, dappName: info.dappName },
-      ]),
-    );
 
     const resultData = userData.map((userInfo) => {
       const liquidityDetails = userInfo.userStaked.map((item) => {
+        const poolInfo = stakedPointsMap.get(item.poolAddress);
         return {
-          dappName: redistributePointsMap.get(item.poolAddress).dappName,
+          dappName: poolInfo.dappName,
           balance: item.balance,
-          point:
-            stakedPointsMap.get(item.poolAddress) * item.pointWeightPercentage,
+          point: poolInfo.points * item.pointWeightPercentage,
         };
       });
 

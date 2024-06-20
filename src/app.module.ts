@@ -43,7 +43,6 @@ import { BalanceOfLpRepository } from "./repositories/balanceOfLp.repository";
 import { NovaBalanceService } from "./nova/nova.balance.service";
 import { CacheController } from "./cache/cache.controller";
 import { CacheService } from "./cache/cache.service";
-import { AquaService } from "./nova/aqua.service";
 import { RedistributeBalanceRepository } from "./repositories/redistributeBalance.repository";
 import { SwethController } from "./sweth/sweth.controller";
 import { SwethService } from "./sweth/sweth.service";
@@ -122,7 +121,6 @@ import { PositionsController } from "./positions/positions.controller";
     BalanceOfLpRepository,
     CacheRepository,
     CacheService,
-    AquaService,
     RedistributeBalanceRepository,
     SwethService,
     SwethApiService,
