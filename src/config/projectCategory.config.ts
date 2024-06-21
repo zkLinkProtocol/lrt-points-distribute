@@ -1,4 +1,4 @@
-export const categoryConfig = [
+const categoryBaseConfig = [
   {
     name: "spotdex",
     items: ["novaswap", "izumi", "wagmi", "eddyFinance"],
@@ -20,3 +20,15 @@ export const categoryConfig = [
     items: ["rubic", "interport", "orbiter", "symbiosis", "meson"],
   },
 ];
+
+const projectCategoryConfig = [];
+for (const category of categoryBaseConfig) {
+  for (const project of category.items) {
+    projectCategoryConfig.push({
+      category: category.name,
+      project: project,
+    });
+  }
+}
+
+export default projectCategoryConfig;

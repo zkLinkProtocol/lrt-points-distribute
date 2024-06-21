@@ -18,7 +18,7 @@ export class ResponseDto<T> {
 
   @ApiProperty({
     type: Number,
-    description: "elPoints and kelpMiles",
+    description: "total points",
     example: 437936.342254,
     required: false,
   })

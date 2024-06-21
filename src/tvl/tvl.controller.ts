@@ -15,7 +15,7 @@ export class TvlController {
   @Get("/category")
   @ApiOperation({ summary: "Get token personal points" })
   public async getNovaPoints(): Promise<ResponseDto<CategoryTvlDto[]>> {
-    const data = await this.tvlService.getProjectTvl();
+    const data = await this.tvlService.getCategoryTvl();
     return {
       errno: 0,
       errmsg: "no error",

@@ -4,7 +4,7 @@ import { PointsOfLpRepository } from "src/repositories/pointsOfLp.repository";
 import { PointsOfLp } from "src/entities/pointsOfLp.entity";
 import { BlockAddressPointOfLpRepository } from "src/repositories/blockAddressPointOfLp.repository";
 import { BalanceOfLpRepository } from "src/repositories/balanceOfLp.repository";
-import { categoryConfig } from "src/projectCategory.config";
+import projectCategoryConfig from "src/config/projectCategory.config";
 import { ProjectCategoryPoints } from "src/type/points";
 
 interface ProjectPoints {
@@ -237,16 +237,14 @@ export class NovaBalanceService {
       projectPointsMap.set(item.name, Number(item.totalPoints));
     }
     const projectCategoryPoints: ProjectCategoryPoints[] = [];
-    for (const category of categoryConfig) {
-      for (const project of category.items) {
-        const totalPoints = projectPointsMap.get(project);
-        projectCategoryPoints.push({
-          category: category.name,
-          project: project,
-          holdingPoints: totalPoints ? totalPoints : 0,
-          refPoints: 0,
-        });
-      }
+    for (const item of projectCategoryConfig) {
+      const totalPoints = projectPointsMap.get(item.project);
+      projectCategoryPoints.push({
+        category: item.category,
+        project: item.project,
+        holdingPoints: totalPoints ? totalPoints : 0,
+        refPoints: 0,
+      });
     }
     return projectCategoryPoints;
   }

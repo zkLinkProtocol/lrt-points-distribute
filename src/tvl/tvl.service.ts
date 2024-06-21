@@ -1,6 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ProjectRepository } from "src/repositories/project.repository";
-import { categoryConfig } from "src/projectCategory.config";
+import projectCategoryConfig from "src/config/projectCategory.config";
 import { CategoryTvl } from "src/type/points";
 import BigNumber from "bignumber.js";
 
@@ -12,27 +12,27 @@ export class TvlService {
     this.logger = new Logger(TvlService.name);
   }
 
-  public async getProjectTvl(): Promise<CategoryTvl[]> {
+  public async getCategoryTvl(): Promise<CategoryTvl[]> {
     const projectsTvl = await this.projectRepository.getAllProjectsTvl();
     const projectsTvlMap = new Map<string, BigNumber>();
     for (const project of projectsTvl) {
       projectsTvlMap.set(project.name, project.tvl);
     }
     const categoryTvlMap: Map<string, BigNumber> = new Map();
-    for (const category of categoryConfig) {
-      categoryTvlMap.set(category.name, new BigNumber(0));
-      for (const project of category.items) {
-        const projectTvl = projectsTvlMap.get(project) ?? new BigNumber(0);
-        categoryTvlMap.set(
-          category.name,
-          categoryTvlMap.get(category.name).plus(projectTvl),
-        );
+    for (const item of projectCategoryConfig) {
+      if (!categoryTvlMap.has(item.category)) {
+        categoryTvlMap.set(item.category, new BigNumber(0));
       }
+      const projectTvl = projectsTvlMap.get(item.project) ?? new BigNumber(0);
+      categoryTvlMap.set(
+        item.category,
+        categoryTvlMap.get(item.category).plus(projectTvl),
+      );
     }
-    const categoryTvl: CategoryTvl[] = [];
-    for (const [category, tvl] of categoryTvlMap) {
-      categoryTvl.push({ name: category, tvl });
-    }
+    const categoryTvl = Array.from(categoryTvlMap, ([name, tvl]) => ({
+      name,
+      tvl,
+    }));
     return categoryTvl;
   }
 }
