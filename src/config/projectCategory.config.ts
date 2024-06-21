@@ -1,7 +1,7 @@
 const categoryBaseConfig = [
   {
     name: "spotdex",
-    items: ["novaswap", "izumi", "wagmi", "eddyFinance"],
+    items: ["novaswap", "izumi", "wagmi", "eddy"],
   },
   {
     name: "perpdex",
@@ -9,7 +9,7 @@ const categoryBaseConfig = [
   },
   {
     name: "lending",
-    items: ["layerbank", "nativeLend"],
+    items: ["layerbank", "aqua"],
   },
   {
     name: "gamefi",
