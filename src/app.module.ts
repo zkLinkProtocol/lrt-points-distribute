@@ -50,6 +50,8 @@ import { SwethApiService } from "./sweth/sweth.api.service";
 import { User, UserHolding, UserStaked, UserWithdraw } from "./entities/index";
 import { PositionsService } from "./positions/positions.service";
 import { PositionsController } from "./positions/positions.controller";
+import { TvlController } from "./tvl/tvl.controller";
+import { TvlService } from "./tvl/tvl.service";
 
 @Module({
   imports: [
@@ -92,6 +94,7 @@ import { PositionsController } from "./positions/positions.controller";
     CacheController,
     SwethController,
     PositionsController,
+    TvlController,
   ],
   providers: [
     {
@@ -125,6 +128,7 @@ import { PositionsController } from "./positions/positions.controller";
     SwethService,
     SwethApiService,
     PositionsService,
+    TvlService,
   ],
 })
 export class AppModule {}
