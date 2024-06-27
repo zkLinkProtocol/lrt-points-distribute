@@ -26,7 +26,7 @@ import { NovaBalanceService } from "./nova.balance.service";
 import { PagingOptionsDto } from "../common/pagingOptionsDto.dto";
 import { PagingMetaDto } from "../common/paging.dto";
 import { ResponseDto } from "src/common/response.dto";
-import { CategoryPointsDto } from "./nova.dto";
+import { CategoryPointsDto, CategoryPointsListDto } from "./nova.dto";
 
 const options = {
   // how long to live in ms
@@ -452,6 +452,31 @@ export class NovaController {
       errno: 0,
       errmsg: "no error",
       data: pointsData,
+    };
+  }
+
+  @Get("/category/:category/list")
+  @ApiOperation({ summary: "User score ranking under a category" })
+  @ApiBadRequestResponse({
+    description: '{ "errno": 1, "errmsg": "Service exception" }',
+  })
+  @ApiNotFoundResponse({
+    description: '{ "errno": 1, "errmsg": "not found" }',
+  })
+  public async getNovaCategoryPointsRank(
+    @Param("category") category: string,
+    @Query() pagingOptions: PagingOptionsDto,
+  ): Promise<ResponseDto<CategoryPointsListDto[]>> {
+    const { page = 1, limit = 100 } = pagingOptions;
+    const data = await this.novaBalanceService.getPointsListByCategory(
+      category,
+      page,
+      limit,
+    );
+    return {
+      errno: 0,
+      errmsg: "no error",
+      data: data,
     };
   }
 

@@ -1,7 +1,7 @@
 const categoryBaseConfig = [
   {
     name: "spotdex",
-    items: ["novaswap", "izumi", "wagmi", "eddy"],
+    items: ["izumi", "wagmi", "eddy"],
   },
   {
     name: "perpdex",
@@ -14,6 +14,10 @@ const categoryBaseConfig = [
   {
     name: "gamefi",
     items: ["allspark"],
+  },
+  {
+    name: "nativeboost",
+    items: ["novaswap"],
   },
   {
     name: "other",
