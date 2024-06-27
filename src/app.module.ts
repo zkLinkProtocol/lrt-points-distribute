@@ -52,6 +52,7 @@ import { PositionsService } from "./positions/positions.service";
 import { PositionsController } from "./positions/positions.controller";
 import { TvlController } from "./tvl/tvl.controller";
 import { TvlService } from "./tvl/tvl.service";
+import { TxDataOfPointsRepository } from "./repositories/txDataOfPoints.repository";
 
 @Module({
   imports: [
@@ -129,6 +130,7 @@ import { TvlService } from "./tvl/tvl.service";
     SwethApiService,
     PositionsService,
     TvlService,
+    TxDataOfPointsRepository,
   ],
 })
 export class AppModule {}

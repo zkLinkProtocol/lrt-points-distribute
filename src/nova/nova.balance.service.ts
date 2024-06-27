@@ -248,4 +248,44 @@ export class NovaBalanceService {
     }
     return projectCategoryPoints;
   }
+
+  public async getPointsListByCategory(
+    category: string,
+    page: number = 1,
+    pageSize: number = 100,
+  ): Promise<
+    {
+      username: string;
+      address: string;
+      totalPoint: number;
+    }[]
+  > {
+    // 1. get all projects in the category
+    // 2. get all pairAddress in the projects
+    // 3. get sum points in pairAddress group by address
+    // 4. sort by points
+    // 5. return
+    const startTime = "2024-05-30 00:00:00";
+    const endTime = "2024-07-14 00:00:00";
+    const projects = projectCategoryConfig
+      .filter((x) => x.category === category)
+      .map((x) => x.project);
+    const pairAddresses =
+      await this.projectRepository.getPairAddressesByProjects(projects);
+    const pointsList =
+      await this.blockAddressPointOfLpRepository.getAddressPagingOrderByTotalPointsPairAddresses(
+        pairAddresses,
+        page,
+        pageSize,
+        startTime,
+        endTime,
+      );
+    return pointsList.map((item) => {
+      return {
+        username: item.address,
+        address: item.address,
+        totalPoint: item.totalPoints,
+      };
+    });
+  }
 }

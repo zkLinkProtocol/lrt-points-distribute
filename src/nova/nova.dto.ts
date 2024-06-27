@@ -30,3 +30,23 @@ export class CategoryPointsDto {
   })
   public readonly refPoints: number;
 }
+
+export class CategoryPointsListDto {
+  @ApiProperty({
+    type: String,
+    description: "Address of the user",
+  })
+  public readonly address: string;
+
+  @ApiProperty({
+    type: String,
+    description: "Name of the user",
+  })
+  public readonly username: string;
+
+  @ApiProperty({
+    type: Number,
+    description: "Total point of the user",
+  })
+  public readonly totalPoint: number;
+}

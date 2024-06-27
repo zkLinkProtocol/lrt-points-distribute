@@ -40,7 +40,7 @@ export class BlockAddressPointOfLpRepository extends BaseRepository<BlockAddress
             GROUP BY "address"
         ) AS a ORDER BY "totalPoints" DESC LIMIT ${limit} OFFSET ${page * limit}`;
     const result = await transactionManager.query(query);
-    const existsAddresses: String[] = [
+    const existsAddresses: string[] = [
       "0xacb35c2d11fea8849cd9f5ff6fbc56bb5296641b",
       "0x047597323b957cd25b595377cb0d694f496b0fd8",
       "0x99ce1b33765d0ab9f9d38905685b7d0caba89b60",
@@ -50,6 +50,38 @@ export class BlockAddressPointOfLpRepository extends BaseRepository<BlockAddress
       if (!existsAddresses.includes(tmpAddress)) {
         return row.address;
       }
+    });
+  }
+
+  public async getAddressPagingOrderByTotalPointsPairAddresses(
+    pairAddresses: string[],
+    page: number,
+    limit: number,
+    startTime: string,
+    endTime: string,
+  ): Promise<
+    {
+      address: string;
+      totalPoints: number;
+    }[]
+  > {
+    page = page - 1;
+    page = page < 0 ? 0 : page;
+    const pairAddressesBuf = pairAddresses.map((pairAddress) =>
+      Buffer.from(pairAddress.substring(2), "hex"),
+    );
+    const transactionManager = this.unitOfWork.getTransactionManager();
+    const query = `SELECT * FROM (
+            SELECT "address", SUM("holdPoint") as "totalPoints"
+            FROM "blockAddressPointOfLp"
+            WHERE "createdAt" >= '${startTime}' AND "createdAt" <= '${endTime}'
+            AND "pairAddress" = ANY($1)
+            GROUP BY "address"
+        ) AS a ORDER BY "totalPoints" DESC LIMIT ${limit} OFFSET ${page * limit}`;
+    const result = await transactionManager.query(query, [pairAddressesBuf]);
+    return result.map((row: any) => {
+      row.address = "0x" + row.address.toString("hex");
+      return row;
     });
   }
 

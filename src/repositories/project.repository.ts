@@ -21,6 +21,18 @@ export class ProjectRepository extends BaseRepository<Project> {
     return result.map((row: any) => row.pairAddress);
   }
 
+  // select pairAddress from project where name = projectName
+  public async getPairAddressesByProjects(
+    projectNames: string[],
+  ): Promise<string[]> {
+    const transactionManager = this.unitOfWork.getTransactionManager();
+    const result = await transactionManager.query(
+      `select "pairAddress" from project where name = ANY($1)`,
+      [projectNames],
+    );
+    return result.map((row: any) => "0x" + row.pairAddress.toString("hex"));
+  }
+
   // get all projects
   public async getAllProjects(): Promise<string[]> {
     const transactionManager = this.unitOfWork.getTransactionManager();
