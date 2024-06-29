@@ -4,6 +4,7 @@ import { Histogram } from "prom-client";
 import { DataSource, EntityManager, QueryRunner } from "typeorm";
 import { DB_COMMIT_DURATION_METRIC_NAME } from "../metrics";
 import { AsyncLocalStorage } from "node:async_hooks";
+import { InjectDataSource, InjectEntityManager } from "@nestjs/typeorm";
 
 export declare type IsolationLevel =
   | "READ UNCOMMITTED"
@@ -26,9 +27,9 @@ export class UnitOfWork {
 
   public constructor(
     @InjectMetric(DB_COMMIT_DURATION_METRIC_NAME)
-    private readonly dbCommitDurationMetric: Histogram,
-    private readonly dataSource: DataSource,
-    private readonly entityManager: EntityManager,
+    public readonly dbCommitDurationMetric: Histogram,
+    public readonly dataSource: DataSource,
+    public readonly entityManager: EntityManager,
   ) {
     this.logger = new Logger(UnitOfWork.name);
     this.asyncLocalStorage = new AsyncLocalStorage();
@@ -134,5 +135,19 @@ export class UnitOfWork {
       commit,
       ensureRollbackIfNotCommitted: rollback,
     };
+  }
+}
+
+@Injectable()
+export class ReferralUnitOfWork extends UnitOfWork {
+  public constructor(
+    @InjectMetric(DB_COMMIT_DURATION_METRIC_NAME)
+    readonly dbCommitDurationMetric: Histogram,
+    @InjectDataSource("referral")
+    readonly dataSource: DataSource,
+    @InjectEntityManager("referral")
+    readonly entityManager: EntityManager,
+  ) {
+    super(dbCommitDurationMetric, dataSource, entityManager);
   }
 }

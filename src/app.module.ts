@@ -3,7 +3,10 @@ import { APP_PIPE } from "@nestjs/core";
 import { AppController } from "./app.controller";
 import { AppService } from "./app.service";
 import { TypeOrmModule } from "@nestjs/typeorm";
-import { typeOrmModuleOptions } from "./typeorm.config";
+import {
+  typeOrmModuleOptions,
+  typeOrmReferModuleOptions,
+} from "./typeorm.config";
 import { ConfigModule } from "@nestjs/config";
 import config from "./config";
 import { PuffPointsService } from "./puffer/puffPoints.service";
@@ -47,12 +50,21 @@ import { RedistributeBalanceRepository } from "./repositories/redistributeBalanc
 import { SwethController } from "./sweth/sweth.controller";
 import { SwethService } from "./sweth/sweth.service";
 import { SwethApiService } from "./sweth/sweth.api.service";
-import { User, UserHolding, UserStaked, UserWithdraw } from "./entities/index";
+import {
+  Referral,
+  User,
+  UserHolding,
+  UserStaked,
+  UserWithdraw,
+} from "./entities/index";
 import { PositionsService } from "./positions/positions.service";
 import { PositionsController } from "./positions/positions.controller";
 import { TvlController } from "./tvl/tvl.controller";
 import { TvlService } from "./tvl/tvl.service";
 import { TxDataOfPointsRepository } from "./repositories/txDataOfPoints.repository";
+import { ReferralService } from "./referral/referral.service";
+import { ReferralRepository } from "./repositories/referral.repository";
+import { SeasonTotalPointRepository } from "./repositories/seasonTotalPoint.repository";
 
 @Module({
   imports: [
@@ -62,6 +74,18 @@ import { TxDataOfPointsRepository } from "./repositories/txDataOfPoints.reposito
       useFactory: () => {
         return {
           ...typeOrmModuleOptions,
+          autoLoadEntities: true,
+          retryDelay: 3000, // to cover 3 minute DB failover window
+          retryAttempts: 70, // try to reconnect for 3.5 minutes,
+        };
+      },
+    }),
+    TypeOrmModule.forRootAsync({
+      name: "referral",
+      imports: [ConfigModule],
+      useFactory: () => {
+        return {
+          ...typeOrmReferModuleOptions,
           autoLoadEntities: true,
           retryDelay: 3000, // to cover 3 minute DB failover window
           retryAttempts: 70, // try to reconnect for 3.5 minutes,
@@ -80,6 +104,7 @@ import { TxDataOfPointsRepository } from "./repositories/txDataOfPoints.reposito
       UserStaked,
       UserWithdraw,
     ]),
+    TypeOrmModule.forFeature([Referral], "referral"),
     MetricsModule,
     UnitOfWorkModule,
   ],
@@ -131,6 +156,9 @@ import { TxDataOfPointsRepository } from "./repositories/txDataOfPoints.reposito
     PositionsService,
     TvlService,
     TxDataOfPointsRepository,
+    ReferralService,
+    ReferralRepository,
+    SeasonTotalPointRepository,
   ],
 })
 export class AppModule {}

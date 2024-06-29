@@ -4,6 +4,11 @@ import {
   GraphQueryService,
   GraphTotalPoint,
 } from "src/common/service/graphQuery.service";
+import projectCategoryConfig, {
+  categoryBaseConfig,
+} from "src/config/projectCategory.config";
+import { ZERO_ADDRESS } from "src/constants";
+import { ProjectRepository } from "src/repositories/project.repository";
 
 export interface PointData {
   finalPoints: any[];
@@ -15,7 +20,10 @@ export class ProjectService {
   private readonly logger: Logger;
   private readonly graphQueryService: GraphQueryService;
 
-  public constructor(graphQueryService: GraphQueryService) {
+  public constructor(
+    graphQueryService: GraphQueryService,
+    private readonly projectRepository: ProjectRepository,
+  ) {
     this.graphQueryService = graphQueryService;
     this.logger = new Logger(ProjectService.name);
   }
@@ -167,5 +175,53 @@ export class ProjectService {
     realTotalPoint: bigint,
   ): bigint {
     return (BigInt(points) * BigInt(realTotalPoint)) / BigInt(totalPoint);
+  }
+
+  public async getCategoryPairAddress(category?: string): Promise<
+    {
+      category: string;
+      pairAddresses: string[];
+    }[]
+  > {
+    const projectNames: string[] = [];
+    if (!category) {
+      projectNames.push(...projectCategoryConfig.map((x) => x.project));
+    } else {
+      projectCategoryConfig
+        .filter((x) => x.category === category)
+        .map((x) => x.project);
+    }
+    const projects =
+      await this.projectRepository.getListByProjects(projectNames);
+
+    const projectPairAddressesMap: Map<string, string[]> = new Map();
+    for (const item of projects) {
+      const pairAddresses = projectPairAddressesMap.get(item.name);
+      if (pairAddresses) {
+        pairAddresses.push(item.pairAddress);
+      } else {
+        projectPairAddressesMap.set(item.name, [item.pairAddress]);
+      }
+    }
+    const categoryPairAddresses: Map<string, string[]> = new Map();
+    for (const category of categoryBaseConfig) {
+      const pairAddresses = [];
+      for (const project of category.items) {
+        const addresses = projectPairAddressesMap.get(project);
+        if (addresses) {
+          pairAddresses.push(...addresses);
+        }
+      }
+      categoryPairAddresses.set(category.name, pairAddresses);
+    }
+
+    const result = [];
+    for (const [key, value] of categoryPairAddresses) {
+      result.push({ category: key, pairAddresses: value });
+    }
+
+    // add direct holding
+    result.push({ category: "holding", pairAddresses: [ZERO_ADDRESS] });
+    return result;
   }
 }

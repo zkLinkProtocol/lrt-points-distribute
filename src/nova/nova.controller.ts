@@ -26,7 +26,13 @@ import { NovaBalanceService } from "./nova.balance.service";
 import { PagingOptionsDto } from "../common/pagingOptionsDto.dto";
 import { PagingMetaDto } from "../common/paging.dto";
 import { ResponseDto } from "src/common/response.dto";
-import { CategoryPointsDto, CategoryPointsListDto } from "./nova.dto";
+import {
+  CategoryPointsDto,
+  CategoryPointsListDto,
+  CategoryPointsUserListDto,
+  UserPointsListDto,
+} from "./nova.dto";
+import { ReferralService } from "src/referral/referral.service";
 
 const options = {
   // how long to live in ms
@@ -51,6 +57,7 @@ export class NovaController {
     private novaApiService: NovaApiService,
     private pufferPointsSercie: PuffPointsService,
     private novaBalanceService: NovaBalanceService,
+    private referralService: ReferralService,
   ) {}
 
   @Get("/points")
@@ -435,7 +442,29 @@ export class NovaController {
     return cacheData;
   }
 
-  @Get("/category/points")
+  @Get("/:address/referral/points")
+  @ApiOperation({
+    summary: "Retrieve points of user'referral under the project category",
+  })
+  @ApiBadRequestResponse({
+    description: '{ "errno": 1, "errmsg": "Service exception" }',
+  })
+  @ApiNotFoundResponse({
+    description: '{ "errno": 1, "errmsg": "not found" }',
+  })
+  public async getUserReferralPoints(
+    @Param("address", new ParseAddressPipe()) address: string,
+  ): Promise<ResponseDto<CategoryPointsDto[]>> {
+    const pointsData =
+      await this.novaBalanceService.getPointsByAddress(address);
+    return {
+      errno: 0,
+      errmsg: "no error",
+      data: pointsData,
+    };
+  }
+
+  @Get("/category/user/points")
   @ApiOperation({ summary: "Retrieve user points under the project category" })
   @ApiBadRequestResponse({
     description: '{ "errno": 1, "errmsg": "Service exception" }',
@@ -443,11 +472,32 @@ export class NovaController {
   @ApiNotFoundResponse({
     description: '{ "errno": 1, "errmsg": "not found" }',
   })
-  public async getNovaCategoryPoints(
+  public async getNovaCategoryUserPoints(
     @Query("address", new ParseAddressPipe()) address: string,
   ): Promise<ResponseDto<CategoryPointsDto[]>> {
     const pointsData =
       await this.novaBalanceService.getPointsByAddress(address);
+    return {
+      errno: 0,
+      errmsg: "no error",
+      data: pointsData,
+    };
+  }
+
+  @Get("/category/points")
+  @ApiOperation({ summary: "Retrieve total points of the category" })
+  @ApiBadRequestResponse({
+    description: '{ "errno": 1, "errmsg": "Service exception" }',
+  })
+  @ApiNotFoundResponse({
+    description: '{ "errno": 1, "errmsg": "not found" }',
+  })
+  public async getNovaCategoryPoints(): Promise<
+    ResponseDto<CategoryPointsListDto[]>
+  > {
+    const season = 2;
+    const pointsData =
+      await this.novaBalanceService.getAllCategoryPoints(season);
     return {
       errno: 0,
       errmsg: "no error",
@@ -466,17 +516,51 @@ export class NovaController {
   public async getNovaCategoryPointsRank(
     @Param("category") category: string,
     @Query() pagingOptions: PagingOptionsDto,
-  ): Promise<ResponseDto<CategoryPointsListDto[]>> {
+  ): Promise<ResponseDto<CategoryPointsUserListDto[]>> {
     const { page = 1, limit = 100 } = pagingOptions;
+    const season = 2;
     const data = await this.novaBalanceService.getPointsListByCategory(
       category,
+      season,
       page,
       limit,
     );
     return {
       errno: 0,
       errmsg: "no error",
-      data: data,
+      data: data.map((item) => {
+        return {
+          address: item.address,
+          username: item.username,
+          totalPoints: item.totalPoint,
+        };
+      }),
+    };
+  }
+
+  @Get("/:address/referrer")
+  @ApiOperation({ summary: "User's referrer point" })
+  @ApiBadRequestResponse({
+    description: '{ "errno": 1, "errmsg": "Service exception" }',
+  })
+  @ApiNotFoundResponse({
+    description: '{ "errno": 1, "errmsg": "not found" }',
+  })
+  public async getReferrerPointsRank(
+    @Param("address") address: string,
+  ): Promise<ResponseDto<UserPointsListDto[]>> {
+    const season = 2;
+    const data = await this.referralService.getReferralPoints(address, season);
+    return {
+      errno: 0,
+      errmsg: "no error",
+      data: data.map((item) => {
+        return {
+          address: item.userAddress,
+          username: item.userName,
+          points: item.totalPoint,
+        };
+      }),
     };
   }
 

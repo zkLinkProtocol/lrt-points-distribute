@@ -53,38 +53,6 @@ export class BlockAddressPointOfLpRepository extends BaseRepository<BlockAddress
     });
   }
 
-  public async getAddressPagingOrderByTotalPointsPairAddresses(
-    pairAddresses: string[],
-    page: number,
-    limit: number,
-    startTime: string,
-    endTime: string,
-  ): Promise<
-    {
-      address: string;
-      totalPoints: number;
-    }[]
-  > {
-    page = page - 1;
-    page = page < 0 ? 0 : page;
-    const pairAddressesBuf = pairAddresses.map((pairAddress) =>
-      Buffer.from(pairAddress.substring(2), "hex"),
-    );
-    const transactionManager = this.unitOfWork.getTransactionManager();
-    const query = `SELECT * FROM (
-            SELECT "address", SUM("holdPoint") as "totalPoints"
-            FROM "blockAddressPointOfLp"
-            WHERE "createdAt" >= '${startTime}' AND "createdAt" <= '${endTime}'
-            AND "pairAddress" = ANY($1)
-            GROUP BY "address"
-        ) AS a ORDER BY "totalPoints" DESC LIMIT ${limit} OFFSET ${page * limit}`;
-    const result = await transactionManager.query(query, [pairAddressesBuf]);
-    return result.map((row: any) => {
-      row.address = "0x" + row.address.toString("hex");
-      return row;
-    });
-  }
-
   public async getAddressDailyCount(
     startTime: string,
     endTime: string,
