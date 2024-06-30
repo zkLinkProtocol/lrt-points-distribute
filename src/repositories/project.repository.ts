@@ -33,6 +33,26 @@ export class ProjectRepository extends BaseRepository<Project> {
     return result.map((row: any) => "0x" + row.pairAddress.toString("hex"));
   }
 
+  // select pairAddress from project where name = projectName
+  public async getListByProjects(projectNames: string[]): Promise<
+    {
+      pairAddress: string;
+      name: string;
+    }[]
+  > {
+    const transactionManager = this.unitOfWork.getTransactionManager();
+    const result = await transactionManager.query(
+      `select "pairAddress", name from project where name = ANY($1)`,
+      [projectNames],
+    );
+    return result.map((row: any) => {
+      return {
+        pairAddress: "0x" + row.pairAddress.toString("hex"),
+        name: row.name,
+      };
+    });
+  }
+
   // get all projects
   public async getAllProjects(): Promise<string[]> {
     const transactionManager = this.unitOfWork.getTransactionManager();

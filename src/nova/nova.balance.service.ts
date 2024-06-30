@@ -6,6 +6,8 @@ import { BlockAddressPointOfLpRepository } from "src/repositories/blockAddressPo
 import { BalanceOfLpRepository } from "src/repositories/balanceOfLp.repository";
 import projectCategoryConfig from "src/config/projectCategory.config";
 import { ProjectCategoryPoints } from "src/type/points";
+import { SeasonTotalPointRepository } from "src/repositories/seasonTotalPoint.repository";
+import { ProjectService } from "src/common/service/project.service";
 
 interface ProjectPoints {
   name: string;
@@ -26,6 +28,8 @@ export class NovaBalanceService {
     private readonly projectRepository: ProjectRepository,
     private readonly pointsOfLpRepository: PointsOfLpRepository,
     private readonly blockAddressPointOfLpRepository: BlockAddressPointOfLpRepository,
+    private readonly seasonTotalPointRepository: SeasonTotalPointRepository,
+    private readonly projectService: ProjectService,
     private readonly balanceOfLp: BalanceOfLpRepository,
   ) {
     this.logger = new Logger(NovaBalanceService.name);
@@ -249,8 +253,47 @@ export class NovaBalanceService {
     return projectCategoryPoints;
   }
 
+  public async getAllCategoryPoints(season: number): Promise<
+    {
+      category: string;
+      totalPoints: number;
+    }[]
+  > {
+    // 1. get all pairAddress points group by pairAddress
+    const pairAddressPointsList =
+      await this.seasonTotalPointRepository.getSeasonTotalPointGroupByPairAddresses(
+        season,
+      );
+    const pairAddressPointsMap: Map<string, number> = new Map();
+    for (const item of pairAddressPointsList) {
+      pairAddressPointsMap.set(item.pairAddress, Number(item.totalPoints));
+    }
+
+    // 2. get [category ,pairAddress[]]
+    const categoryPairAddresses =
+      await this.projectService.getCategoryPairAddress();
+
+    // 3. loop categoryPairAddresses, get total points
+    const result = [];
+    for (const item of categoryPairAddresses) {
+      let totalPoints = 0;
+      for (const pairAddress of item.pairAddresses) {
+        const points = pairAddressPointsMap.get(pairAddress);
+        if (points) {
+          totalPoints += points;
+        }
+      }
+      result.push({
+        category: item.category,
+        totalPoints,
+      });
+    }
+    return result;
+  }
+
   public async getPointsListByCategory(
     category: string,
+    season: number,
     page: number = 1,
     pageSize: number = 100,
   ): Promise<
@@ -265,25 +308,22 @@ export class NovaBalanceService {
     // 3. get sum points in pairAddress group by address
     // 4. sort by points
     // 5. return
-    const startTime = "2024-05-30 00:00:00";
-    const endTime = "2024-07-14 00:00:00";
-    const projects = projectCategoryConfig
-      .filter((x) => x.category === category)
-      .map((x) => x.project);
-    const pairAddresses =
-      await this.projectRepository.getPairAddressesByProjects(projects);
+    const categoryPairAddresses =
+      await this.projectService.getCategoryPairAddress();
+    const pairAddresses = categoryPairAddresses.find(
+      (x) => x.category === category,
+    )?.pairAddresses;
     const pointsList =
-      await this.blockAddressPointOfLpRepository.getAddressPagingOrderByTotalPointsPairAddresses(
+      await this.seasonTotalPointRepository.getSeasonTotalPointByPairAddresses(
         pairAddresses,
+        season,
         page,
         pageSize,
-        startTime,
-        endTime,
       );
     return pointsList.map((item) => {
       return {
-        username: item.address,
-        address: item.address,
+        username: item.userName,
+        address: item.userAddress,
         totalPoint: item.totalPoints,
       };
     });

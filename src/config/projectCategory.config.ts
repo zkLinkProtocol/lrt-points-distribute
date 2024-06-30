@@ -1,4 +1,4 @@
-const categoryBaseConfig = [
+export const categoryBaseConfig = [
   {
     name: "spotdex",
     items: ["izumi", "wagmi", "eddy"],
