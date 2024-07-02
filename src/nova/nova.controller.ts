@@ -442,28 +442,6 @@ export class NovaController {
     return cacheData;
   }
 
-  @Get("/:address/referral/points")
-  @ApiOperation({
-    summary: "Retrieve points of user'referral under the project category",
-  })
-  @ApiBadRequestResponse({
-    description: '{ "errno": 1, "errmsg": "Service exception" }',
-  })
-  @ApiNotFoundResponse({
-    description: '{ "errno": 1, "errmsg": "not found" }',
-  })
-  public async getUserReferralPoints(
-    @Param("address", new ParseAddressPipe()) address: string,
-  ): Promise<ResponseDto<CategoryPointsDto[]>> {
-    const pointsData =
-      await this.novaBalanceService.getPointsByAddress(address);
-    return {
-      errno: 0,
-      errmsg: "no error",
-      data: pointsData,
-    };
-  }
-
   @Get("/category/user/points")
   @ApiOperation({ summary: "Retrieve user points under the project category" })
   @ApiBadRequestResponse({
