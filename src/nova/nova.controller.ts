@@ -508,7 +508,12 @@ export class NovaController {
       errno: 0,
       errmsg: "no error",
       data: {
-        current: data.current,
+        current: {
+          userIndex: data.current.userIndex + 1,
+          address: data.current.address,
+          username: data.current.username,
+          totalPoints: data.current.totalPoints,
+        },
         list: data.data,
       },
     };

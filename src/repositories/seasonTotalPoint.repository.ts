@@ -45,6 +45,7 @@ export class SeasonTotalPointRepository extends BaseRepository<SeasonTotalPoint>
     address: string,
   ): Promise<{
     current: {
+      userIndex: number;
       userAddress: string;
       userName: string;
       totalPoints: number;
@@ -60,7 +61,7 @@ export class SeasonTotalPointRepository extends BaseRepository<SeasonTotalPoint>
     );
     const transactionManager = this.unitOfWork.getTransactionManager();
     const result = await transactionManager.query(
-      `SELECT "userAddress", "userName", sum(point) AS "totalPoints" FROM "seasonTotalPoint" WHERE "pairAddress"=ANY($1) AND season=$2 AND type != 'referral' GROUP BY "userAddress","userName" ORDER BY "totalPoints";`,
+      `SELECT "userAddress", "userName", sum(point) AS "totalPoints" FROM "seasonTotalPoint" WHERE "pairAddress"=ANY($1) AND season=$2 AND type != 'referral' GROUP BY "userAddress","userName" ORDER BY "totalPoints" DESC;`,
       [pairAddressesBuffer, season],
     );
 
@@ -68,14 +69,20 @@ export class SeasonTotalPointRepository extends BaseRepository<SeasonTotalPoint>
       row.userAddress = "0x" + row.userAddress.toString("hex");
       row.userName = row.userName.toString();
       row.totalPoints = Number.isFinite(Number(row.totalPoints))
-        ? Number(row.totalPoints)
+        ? Number(row.totalPoints).toFixed(10)
         : 0;
       return row;
     });
     let current = null;
     if (address) {
       const userIndex = data.findIndex((item) => item.userAddress === address);
-      current = data[userIndex];
+      const currentData = data[userIndex];
+      current = {
+        userIndex,
+        userAddress: currentData.userAddress,
+        userName: currentData.userName,
+        totalPoints: currentData.totalPoints,
+      };
     }
 
     const resultData = data.slice(0, limit);
