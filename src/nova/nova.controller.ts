@@ -29,7 +29,7 @@ import { ResponseDto } from "src/common/response.dto";
 import {
   CategoryPointsDto,
   CategoryPointsListDto,
-  CategoryPointsUserListDto,
+  CategoryPointsUserListWithCurrentDto,
   UserPointsListDto,
 } from "./nova.dto";
 import { ReferralService } from "src/referral/referral.service";
@@ -493,26 +493,29 @@ export class NovaController {
   })
   public async getNovaCategoryPointsRank(
     @Param("category") category: string,
+    @Query("address", new ParseAddressPipe()) address: string,
     @Query() pagingOptions: PagingOptionsDto,
-  ): Promise<ResponseDto<CategoryPointsUserListDto[]>> {
-    const { page = 1, limit = 100 } = pagingOptions;
+  ): Promise<ResponseDto<CategoryPointsUserListWithCurrentDto>> {
+    const { limit = 100 } = pagingOptions;
     const season = 2;
     const data = await this.novaBalanceService.getPointsListByCategory(
       category,
       season,
-      page,
       limit,
+      address,
     );
     return {
       errno: 0,
       errmsg: "no error",
-      data: data.map((item) => {
-        return {
-          address: item.address,
-          username: item.username,
-          totalPoints: item.totalPoint,
-        };
-      }),
+      data: {
+        current: {
+          userIndex: data.current.userIndex + 1,
+          address: data.current.address,
+          username: data.current.username,
+          totalPoints: data.current.totalPoints,
+        },
+        list: data.data,
+      },
     };
   }
 

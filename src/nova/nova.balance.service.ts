@@ -294,15 +294,21 @@ export class NovaBalanceService {
   public async getPointsListByCategory(
     category: string,
     season: number,
-    page: number = 1,
     pageSize: number = 100,
-  ): Promise<
-    {
+    address?: string,
+  ): Promise<{
+    current: {
+      userIndex: number;
       username: string;
       address: string;
-      totalPoint: number;
-    }[]
-  > {
+      totalPoints: number;
+    };
+    data: {
+      username: string;
+      address: string;
+      totalPoints: number;
+    }[];
+  }> {
     // 1. get all projects in the category
     // 2. get all pairAddress in the projects
     // 3. get sum points in pairAddress group by address
@@ -313,19 +319,27 @@ export class NovaBalanceService {
     const pairAddresses = categoryPairAddresses.find(
       (x) => x.category === category,
     )?.pairAddresses;
-    const pointsList =
+    const result =
       await this.seasonTotalPointRepository.getSeasonTotalPointByPairAddresses(
         pairAddresses,
         season,
-        page,
         pageSize,
+        address,
       );
-    return pointsList.map((item) => {
-      return {
-        username: item.userName,
-        address: item.userAddress,
-        totalPoint: item.totalPoints,
-      };
-    });
+    return {
+      current: {
+        userIndex: result.current.userIndex,
+        username: result.current.userName,
+        address: result.current.userAddress,
+        totalPoints: result.current?.totalPoints,
+      },
+      data: result.data.map((item) => {
+        return {
+          username: item.userName,
+          address: item.userAddress,
+          totalPoints: item.totalPoints,
+        };
+      }),
+    };
   }
 }

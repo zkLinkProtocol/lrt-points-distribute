@@ -41,31 +41,55 @@ export class SeasonTotalPointRepository extends BaseRepository<SeasonTotalPoint>
   public async getSeasonTotalPointByPairAddresses(
     pairAddresses: string[],
     season: number,
-    page: number,
     limit: number,
-  ): Promise<
-    {
+    address: string,
+  ): Promise<{
+    current: {
+      userIndex: number;
       userAddress: string;
       userName: string;
       totalPoints: number;
-    }[]
-  > {
+    };
+    data: {
+      userAddress: string;
+      userName: string;
+      totalPoints: number;
+    }[];
+  }> {
     const pairAddressesBuffer = pairAddresses.map((address) =>
       Buffer.from(address.slice(2), "hex"),
     );
     const transactionManager = this.unitOfWork.getTransactionManager();
     const result = await transactionManager.query(
-      `SELECT "userAddress", "userName", sum(point) AS "totalPoints" FROM "seasonTotalPoint" WHERE "pairAddress"=ANY($1) AND season=$2 AND type != 'referral' GROUP BY "userAddress","userName" ORDER BY "totalPoints" DESC LIMIT $3 OFFSET $4;`,
-      [pairAddressesBuffer, season, limit, (page - 1) * limit],
+      `SELECT "userAddress", "userName", sum(point) AS "totalPoints" FROM "seasonTotalPoint" WHERE "pairAddress"=ANY($1) AND season=$2 AND type != 'referral' GROUP BY "userAddress","userName" ORDER BY "totalPoints" DESC;`,
+      [pairAddressesBuffer, season],
     );
-    return result.map((row) => {
+
+    const data = result.map((row) => {
       row.userAddress = "0x" + row.userAddress.toString("hex");
       row.userName = row.userName.toString();
       row.totalPoints = Number.isFinite(Number(row.totalPoints))
-        ? Number(row.totalPoints)
+        ? Number(row.totalPoints).toFixed(10)
         : 0;
       return row;
     });
+    let current = null;
+    if (address) {
+      const userIndex = data.findIndex((item) => item.userAddress === address);
+      const currentData = data[userIndex];
+      current = {
+        userIndex,
+        userAddress: currentData.userAddress,
+        userName: currentData.userName,
+        totalPoints: currentData.totalPoints,
+      };
+    }
+
+    const resultData = data.slice(0, limit);
+    return {
+      current,
+      data: resultData,
+    };
   }
 
   public async getSeasonTotalPointGroupByPairAddresses(season: number): Promise<

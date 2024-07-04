@@ -51,6 +51,46 @@ export class CategoryPointsUserListDto {
   public readonly totalPoints: number;
 }
 
+export class CategoryPointsUserWithIndexDto {
+  @ApiProperty({
+    type: Number,
+    description: "Index of the user",
+  })
+  public readonly userIndex: number;
+
+  @ApiProperty({
+    type: String,
+    description: "Address of the user",
+  })
+  public readonly address: string;
+
+  @ApiProperty({
+    type: String,
+    description: "Name of the user",
+  })
+  public readonly username: string;
+
+  @ApiProperty({
+    type: Number,
+    description: "Total points of the user",
+  })
+  public readonly totalPoints: number;
+}
+
+export class CategoryPointsUserListWithCurrentDto {
+  @ApiProperty({
+    type: CategoryPointsUserWithIndexDto,
+    description: "Points info of the current user",
+  })
+  public readonly current: CategoryPointsUserWithIndexDto;
+
+  @ApiProperty({
+    type: [CategoryPointsUserListDto],
+    description: "Points info of the users",
+  })
+  public readonly list: CategoryPointsUserListDto[];
+}
+
 export class CategoryPointsListDto {
   @ApiProperty({
     type: String,
