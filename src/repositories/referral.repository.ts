@@ -13,9 +13,9 @@ export class ReferralRepository extends BaseRepository<Referral> {
     const addressBuffer = Buffer.from(address.slice(2), "hex");
     const transactionManager = this.unitOfWork.getTransactionManager();
     const result = await transactionManager.query(
-      `SELECT address, referrer FROM referrers WHERE address=$1;`,
+      `SELECT address, referrer FROM referrers WHERE referrer=$1;`,
       [addressBuffer],
     );
-    return result.map((row) => "0x" + row.referrer.toString("hex"));
+    return result.map((row) => "0x" + row.address.toString("hex"));
   }
 }

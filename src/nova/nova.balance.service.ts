@@ -328,4 +328,17 @@ export class NovaBalanceService {
       };
     });
   }
+
+  p;
+
+  public async getHoldPointsByAddress(
+    address: string,
+    season: number,
+  ): Promise<number> {
+    return await this.seasonTotalPointRepository.getSeasonTotalPointByType(
+      address,
+      season,
+      "txVol",
+    );
+  }
 }

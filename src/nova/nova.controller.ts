@@ -525,7 +525,7 @@ export class NovaController {
     description: '{ "errno": 1, "errmsg": "not found" }',
   })
   public async getReferrerPointsRank(
-    @Param("address") address: string,
+    @Param("address", new ParseAddressPipe()) address: string,
   ): Promise<ResponseDto<UserPointsListDto[]>> {
     const season = 2;
     const data = await this.referralService.getReferralPoints(address, season);
@@ -539,6 +539,29 @@ export class NovaController {
           points: item.totalPoint,
         };
       }),
+    };
+  }
+
+  @Get("/:address/holdpoint")
+  @ApiOperation({ summary: "User's direct hold point" })
+  @ApiBadRequestResponse({
+    description: '{ "errno": 1, "errmsg": "Service exception" }',
+  })
+  @ApiNotFoundResponse({
+    description: '{ "errno": 1, "errmsg": "not found" }',
+  })
+  public async getHoldPoint(
+    @Param("address", new ParseAddressPipe()) address: string,
+  ): Promise<ResponseDto<number>> {
+    const season = 2;
+    const data = await this.novaBalanceService.getHoldPointsByAddress(
+      address,
+      season,
+    );
+    return {
+      errno: 0,
+      errmsg: "no error",
+      data: data,
     };
   }
 

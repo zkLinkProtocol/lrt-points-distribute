@@ -87,4 +87,20 @@ export class SeasonTotalPointRepository extends BaseRepository<SeasonTotalPoint>
       return row;
     });
   }
+
+  public async getSeasonTotalPointByType(
+    address: string,
+    season: number,
+    type: string,
+  ): Promise<number> {
+    const addressBuffer = Buffer.from(address.slice(2), "hex");
+    const transactionManager = this.unitOfWork.getTransactionManager();
+    const result = await transactionManager.query(
+      `SELECT sum(point) AS "totalPoints" FROM "seasonTotalPoint" WHERE season=$1  AND "userAddress"=$2 AND type = '${type}'`,
+      [season, addressBuffer],
+    );
+    return result.length > 0 && Number.isFinite(Number(result[0].totalPoints))
+      ? Number(result[0].totalPoints)
+      : 0;
+  }
 }
