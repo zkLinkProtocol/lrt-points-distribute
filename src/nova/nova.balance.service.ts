@@ -328,9 +328,9 @@ export class NovaBalanceService {
       );
     return {
       current: {
-        userIndex: result.current.userIndex,
-        username: result.current.userName,
-        address: result.current.userAddress,
+        userIndex: result.current?.userIndex,
+        username: result.current?.userName,
+        address: result.current?.userAddress,
         totalPoints: result.current?.totalPoints,
       },
       data: result.data.map((item) => {

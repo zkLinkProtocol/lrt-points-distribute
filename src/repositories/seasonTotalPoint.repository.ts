@@ -76,13 +76,15 @@ export class SeasonTotalPointRepository extends BaseRepository<SeasonTotalPoint>
     let current = null;
     if (address) {
       const userIndex = data.findIndex((item) => item.userAddress === address);
-      const currentData = data[userIndex];
-      current = {
-        userIndex,
-        userAddress: currentData.userAddress,
-        userName: currentData.userName,
-        totalPoints: currentData.totalPoints,
-      };
+      if (userIndex !== -1) {
+        const currentData = data[userIndex];
+        current = {
+          userIndex,
+          userAddress: currentData.userAddress,
+          userName: currentData.userName,
+          totalPoints: currentData.totalPoints,
+        };
+      }
     }
 
     const resultData = data.slice(0, limit);

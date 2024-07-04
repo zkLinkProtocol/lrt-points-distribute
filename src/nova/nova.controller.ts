@@ -493,7 +493,15 @@ export class NovaController {
   })
   public async getNovaCategoryPointsRank(
     @Param("category") category: string,
-    @Query("address", new ParseAddressPipe()) address: string,
+    @Query(
+      "address",
+      new ParseAddressPipe({
+        required: false,
+        each: false,
+        errorMessage: "Invalid Address format",
+      }),
+    )
+    address: string,
     @Query() pagingOptions: PagingOptionsDto,
   ): Promise<ResponseDto<CategoryPointsUserListWithCurrentDto>> {
     const { limit = 100 } = pagingOptions;
@@ -508,12 +516,15 @@ export class NovaController {
       errno: 0,
       errmsg: "no error",
       data: {
-        current: {
-          userIndex: data.current.userIndex + 1,
-          address: data.current.address,
-          username: data.current.username,
-          totalPoints: data.current.totalPoints,
-        },
+        current:
+          address && data.current.userIndex >= 0
+            ? {
+                userIndex: data.current.userIndex + 1,
+                address: data.current.address,
+                username: data.current.username,
+                totalPoints: data.current.totalPoints,
+              }
+            : null,
         list: data.data,
       },
     };
