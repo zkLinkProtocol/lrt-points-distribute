@@ -329,8 +329,6 @@ export class NovaBalanceService {
     });
   }
 
-  p;
-
   public async getHoldPointsByAddress(
     address: string,
     season: number,
