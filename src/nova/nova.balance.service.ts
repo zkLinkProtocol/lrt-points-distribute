@@ -256,17 +256,31 @@ export class NovaBalanceService {
   public async getAllCategoryPoints(season: number): Promise<
     {
       category: string;
-      totalPoints: number;
+      ecoPoints: number;
+      referralPoints: number;
+      otherPoints: number;
     }[]
   > {
+    const holdOtherPoints =
+      await this.seasonTotalPointRepository.getSeasonTotalOtherPoint(season);
     // 1. get all pairAddress points group by pairAddress
     const pairAddressPointsList =
       await this.seasonTotalPointRepository.getSeasonTotalPointGroupByPairAddresses(
         season,
       );
-    const pairAddressPointsMap: Map<string, number> = new Map();
+    const pairAddressPointsMap: Map<
+      string,
+      {
+        pairAddress: string;
+        type: string;
+        totalPoints: number;
+      }[]
+    > = new Map();
     for (const item of pairAddressPointsList) {
-      pairAddressPointsMap.set(item.pairAddress, Number(item.totalPoints));
+      if (!pairAddressPointsMap.has(item.pairAddress)) {
+        pairAddressPointsMap.set(item.pairAddress, []);
+      }
+      pairAddressPointsMap.get(item.pairAddress)?.push(item);
     }
 
     // 2. get [category ,pairAddress[]]
@@ -276,16 +290,30 @@ export class NovaBalanceService {
     // 3. loop categoryPairAddresses, get total points
     const result = [];
     for (const item of categoryPairAddresses) {
-      let totalPoints = 0;
+      let ecoPoints = 0;
+      let referralPoints = 0;
+      let otherPoints = 0;
+      if (item.category === "holding") {
+        otherPoints = holdOtherPoints;
+      }
       for (const pairAddress of item.pairAddresses) {
         const points = pairAddressPointsMap.get(pairAddress);
-        if (points) {
-          totalPoints += points;
+        if (!points) {
+          continue;
+        }
+        for (const point of points) {
+          if (point.type === "referral") {
+            referralPoints += point.totalPoints;
+          } else {
+            ecoPoints += point.totalPoints;
+          }
         }
       }
       result.push({
         category: item.category,
-        totalPoints,
+        ecoPoints,
+        referralPoints,
+        otherPoints,
       });
     }
     return result;

@@ -1,7 +1,7 @@
 export const categoryBaseConfig = [
   {
     name: "spotdex",
-    items: ["izumi", "wagmi", "eddy", "novaswap"],
+    items: ["izumi", "wagmi", "novaswap"],
   },
   {
     name: "perpdex",
@@ -21,7 +21,7 @@ export const categoryBaseConfig = [
   },
   {
     name: "other",
-    items: ["rubic", "interport", "orbiter", "symbiosis", "meson"],
+    items: ["rubic", "interport", "orbiter", "symbiosis", "eddy", "meson"],
   },
 ];
 
