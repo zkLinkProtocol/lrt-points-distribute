@@ -97,13 +97,12 @@ export class SeasonTotalPointRepository extends BaseRepository<SeasonTotalPoint>
   public async getSeasonTotalPointGroupByPairAddresses(season: number): Promise<
     {
       pairAddress: string;
-      type: string;
       totalPoints: number;
     }[]
   > {
     const transactionManager = this.unitOfWork.getTransactionManager();
     const result = await transactionManager.query(
-      `SELECT "pairAddress", "type", sum(point) AS "totalPoints" FROM "seasonTotalPoint" WHERE season=$1 AND type != 'other' GROUP BY "pairAddress", "type";`,
+      `SELECT "pairAddress", sum(point) AS "totalPoints" FROM "seasonTotalPoint" WHERE season=$1 AND type != 'referral' GROUP BY "pairAddress";`,
       [season],
     );
     return result.map((row) => {
@@ -115,11 +114,15 @@ export class SeasonTotalPointRepository extends BaseRepository<SeasonTotalPoint>
     });
   }
 
-  public async getSeasonTotalOtherPoint(season: number): Promise<number> {
+  public async getSeasonTotalOtherPoint(
+    season: number,
+    address: string,
+  ): Promise<number> {
+    const addressBuffer = Buffer.from(address.slice(2), "hex");
     const transactionManager = this.unitOfWork.getTransactionManager();
     const result = await transactionManager.query(
-      `SELECT sum(point) AS "totalPoints" FROM "seasonTotalPoint" WHERE season=$1 AND type = 'other';`,
-      [season],
+      `SELECT sum(point) AS "totalPoints" FROM "seasonTotalPoint" WHERE season=$1 AND "userAddress"=$2 AND type = 'other';`,
+      [season, addressBuffer],
     );
     const totalPoints =
       result.length > 0 && Number.isFinite(Number(result[0].totalPoints))
@@ -142,5 +145,29 @@ export class SeasonTotalPointRepository extends BaseRepository<SeasonTotalPoint>
     return result.length > 0 && Number.isFinite(Number(result[0].totalPoints))
       ? Number(result[0].totalPoints)
       : 0;
+  }
+  public async getSeasonTotalPointByAddress(
+    season: number,
+    address: string,
+  ): Promise<
+    {
+      pairAddress: string;
+      type: string;
+      totalPoint: number;
+    }[]
+  > {
+    const addressBuffer = Buffer.from(address.slice(2), "hex");
+    const transactionManager = this.unitOfWork.getTransactionManager();
+    const result = await transactionManager.query(
+      `SELECT "pairAddress", "type", sum(point) AS "totalPoint" FROM "seasonTotalPoint" WHERE "userAddress"=$1 AND season=$2 GROUP BY "pairAddress", "type";`,
+      [addressBuffer, season],
+    );
+    return result.map((row) => {
+      row.pairAddress = "0x" + row.pairAddress.toString("hex");
+      row.totalPoint = Number.isFinite(Number(row.totalPoint))
+        ? Number(row.totalPoint)
+        : 0;
+      return row;
+    });
   }
 }

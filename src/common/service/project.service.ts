@@ -65,9 +65,9 @@ export class ProjectService {
 
   public async getAllPoints(projectName: string): Promise<PointData> {
     let finalTotalPoints = BigInt(0),
-      finalPoints = [],
       points: GraphPoint[],
-      totalPoints: GraphTotalPoint,
+      totalPoints: GraphTotalPoint;
+    const finalPoints = [],
       addressPoints: Map<string, Map<string, any>> = new Map();
 
     const projectIds = this.graphQueryService.getAllProjectIds(projectName);
@@ -177,12 +177,9 @@ export class ProjectService {
     return (BigInt(points) * BigInt(realTotalPoint)) / BigInt(totalPoint);
   }
 
-  public async getCategoryPairAddress(category?: string): Promise<
-    {
-      category: string;
-      pairAddresses: string[];
-    }[]
-  > {
+  public async getProjectPairAddresses(
+    category?: string,
+  ): Promise<Map<string, string[]>> {
     const projectNames: string[] = [];
     if (!category) {
       projectNames.push(...projectCategoryConfig.map((x) => x.project));
@@ -203,6 +200,18 @@ export class ProjectService {
         projectPairAddressesMap.set(item.name, [item.pairAddress]);
       }
     }
+    return projectPairAddressesMap;
+  }
+
+  public async getCategoryPairAddress(category?: string): Promise<
+    {
+      category: string;
+      pairAddresses: string[];
+    }[]
+  > {
+    const projectPairAddressesMap: Map<string, string[]> =
+      await this.getProjectPairAddresses(category);
+
     const categoryPairAddresses: Map<string, string[]> = new Map();
     for (const category of categoryBaseConfig) {
       const pairAddresses = [];

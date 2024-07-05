@@ -229,25 +229,68 @@ export class NovaBalanceService {
   }
 
   public async getPointsByAddress(
+    season: number,
     address: string,
   ): Promise<ProjectCategoryPoints[]> {
-    const addressBuffer = Buffer.from(address.slice(2), "hex");
-    const projectPointsList =
-      await this.pointsOfLpRepository.getSumPointsGroupByProjectNameAndAddress([
-        addressBuffer,
-      ]);
-    const projectPointsMap: Map<string, number> = new Map();
-    for (const item of projectPointsList) {
-      projectPointsMap.set(item.name, Number(item.totalPoints));
+    const pairAddressPointsList =
+      await this.seasonTotalPointRepository.getSeasonTotalPointByAddress(
+        season,
+        address,
+      );
+    const pairAddressPointsMap: Map<
+      string,
+      {
+        pairAddress: string;
+        totalPoint: number;
+        type: string;
+      }[]
+    > = new Map();
+    for (const item of pairAddressPointsList) {
+      const points = pairAddressPointsMap.get(item.pairAddress);
+      if (points) {
+        points.push({
+          pairAddress: item.pairAddress,
+          totalPoint: Number(item.totalPoint),
+          type: item.type,
+        });
+      } else {
+        pairAddressPointsMap.set(item.pairAddress, [
+          {
+            pairAddress: item.pairAddress,
+            totalPoint: Number(item.totalPoint),
+            type: item.type,
+          },
+        ]);
+      }
     }
+
+    const projectPairAddressesMap =
+      await this.projectService.getProjectPairAddresses();
+
     const projectCategoryPoints: ProjectCategoryPoints[] = [];
     for (const item of projectCategoryConfig) {
-      const totalPoints = projectPointsMap.get(item.project);
+      const pairAddresses = projectPairAddressesMap.get(item.project);
+      let totalPoints = 0;
+      let referralPoints = 0;
+      if (pairAddresses) {
+        for (const pairAddress of pairAddresses) {
+          const points = pairAddressPointsMap.get(pairAddress);
+          if (points) {
+            for (const point of points) {
+              if (point.type === "referral") {
+                referralPoints += point.totalPoint;
+              } else {
+                totalPoints += point.totalPoint;
+              }
+            }
+          }
+        }
+      }
       projectCategoryPoints.push({
         category: item.category,
         project: item.project,
-        holdingPoints: totalPoints ? totalPoints : 0,
-        refPoints: 0,
+        holdingPoints: totalPoints,
+        refPoints: referralPoints,
       });
     }
     return projectCategoryPoints;
@@ -256,31 +299,17 @@ export class NovaBalanceService {
   public async getAllCategoryPoints(season: number): Promise<
     {
       category: string;
-      ecoPoints: number;
-      referralPoints: number;
-      otherPoints: number;
+      totalPoints: number;
     }[]
   > {
-    const holdOtherPoints =
-      await this.seasonTotalPointRepository.getSeasonTotalOtherPoint(season);
     // 1. get all pairAddress points group by pairAddress
     const pairAddressPointsList =
       await this.seasonTotalPointRepository.getSeasonTotalPointGroupByPairAddresses(
         season,
       );
-    const pairAddressPointsMap: Map<
-      string,
-      {
-        pairAddress: string;
-        type: string;
-        totalPoints: number;
-      }[]
-    > = new Map();
+    const pairAddressPointsMap: Map<string, number> = new Map();
     for (const item of pairAddressPointsList) {
-      if (!pairAddressPointsMap.has(item.pairAddress)) {
-        pairAddressPointsMap.set(item.pairAddress, []);
-      }
-      pairAddressPointsMap.get(item.pairAddress)?.push(item);
+      pairAddressPointsMap.set(item.pairAddress, Number(item.totalPoints));
     }
 
     // 2. get [category ,pairAddress[]]
@@ -290,30 +319,16 @@ export class NovaBalanceService {
     // 3. loop categoryPairAddresses, get total points
     const result = [];
     for (const item of categoryPairAddresses) {
-      let ecoPoints = 0;
-      let referralPoints = 0;
-      let otherPoints = 0;
-      if (item.category === "holding") {
-        otherPoints = holdOtherPoints;
-      }
+      let totalPoints = 0;
       for (const pairAddress of item.pairAddresses) {
         const points = pairAddressPointsMap.get(pairAddress);
-        if (!points) {
-          continue;
-        }
-        for (const point of points) {
-          if (point.type === "referral") {
-            referralPoints += point.totalPoints;
-          } else {
-            ecoPoints += point.totalPoints;
-          }
+        if (points) {
+          totalPoints += points;
         }
       }
       result.push({
         category: item.category,
-        ecoPoints,
-        referralPoints,
-        otherPoints,
+        totalPoints,
       });
     }
     return result;
@@ -380,5 +395,78 @@ export class NovaBalanceService {
       season,
       "txVol",
     );
+  }
+
+  public async getUserCategoryPointsDetail(
+    season: number,
+    address: string,
+  ): Promise<
+    {
+      category: string;
+      ecoPoints: number;
+      referralPoints: number;
+      otherPoints: number;
+    }[]
+  > {
+    const holdOtherPoints =
+      await this.seasonTotalPointRepository.getSeasonTotalOtherPoint(
+        season,
+        address,
+      );
+    // 1. get all pairAddress points group by pairAddress
+    const pairAddressPointsList =
+      await this.seasonTotalPointRepository.getSeasonTotalPointByAddress(
+        season,
+        address,
+      );
+    const pairAddressPointsMap: Map<
+      string,
+      {
+        pairAddress: string;
+        type: string;
+        totalPoint: number;
+      }[]
+    > = new Map();
+    for (const item of pairAddressPointsList) {
+      if (!pairAddressPointsMap.has(item.pairAddress)) {
+        pairAddressPointsMap.set(item.pairAddress, []);
+      }
+      pairAddressPointsMap.get(item.pairAddress)?.push(item);
+    }
+
+    // 2. get [category ,pairAddress[]]
+    const categoryPairAddresses =
+      await this.projectService.getCategoryPairAddress();
+
+    // 3. loop categoryPairAddresses, get total points
+    const result = [];
+    for (const item of categoryPairAddresses) {
+      let ecoPoints = 0;
+      let referralPoints = 0;
+      let otherPoints = 0;
+      if (item.category === "holding") {
+        otherPoints = holdOtherPoints;
+      }
+      for (const pairAddress of item.pairAddresses) {
+        const points = pairAddressPointsMap.get(pairAddress);
+        if (!points) {
+          continue;
+        }
+        for (const point of points) {
+          if (point.type === "referral") {
+            referralPoints += point.totalPoint;
+          } else {
+            ecoPoints += point.totalPoint;
+          }
+        }
+      }
+      result.push({
+        category: item.category,
+        ecoPoints,
+        referralPoints,
+        otherPoints,
+      });
+    }
+    return result;
   }
 }

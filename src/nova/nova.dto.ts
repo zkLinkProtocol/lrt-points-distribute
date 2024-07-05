@@ -31,6 +31,32 @@ export class CategoryPointsDto {
   public readonly refPoints: number;
 }
 
+export class CategoryTotalPointsListDto {
+  @ApiProperty({
+    type: String,
+    description: "Name of the category",
+  })
+  public readonly category: string;
+
+  @ApiProperty({
+    type: Number,
+    description: "Total eco points of the category",
+  })
+  public readonly ecoPoints: number;
+
+  @ApiProperty({
+    type: Number,
+    description: "Total referral points of the category",
+  })
+  public readonly referralPoints: number;
+
+  @ApiProperty({
+    type: Number,
+    description: "Total other points of the category",
+  })
+  public readonly otherPoints: number;
+}
+
 export class CategoryPointsUserListDto {
   @ApiProperty({
     type: String,
@@ -100,21 +126,9 @@ export class CategoryPointsListDto {
 
   @ApiProperty({
     type: Number,
-    description: "Total eco points of the category",
+    description: "Total points of the category",
   })
-  public readonly ecoPoints: number;
-
-  @ApiProperty({
-    type: Number,
-    description: "Total referral points of the category",
-  })
-  public readonly referralPoints: number;
-
-  @ApiProperty({
-    type: Number,
-    description: "Total other points of the category",
-  })
-  public readonly otherPoints: number;
+  public readonly totalPoints: number;
 }
 
 export class UserPointsItemDto {

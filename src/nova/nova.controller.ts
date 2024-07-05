@@ -30,6 +30,7 @@ import {
   CategoryPointsDto,
   CategoryPointsListDto,
   CategoryPointsUserListWithCurrentDto,
+  CategoryTotalPointsListDto,
   UserPointsListDto,
 } from "./nova.dto";
 import { ReferralService } from "src/referral/referral.service";
@@ -450,11 +451,41 @@ export class NovaController {
   @ApiNotFoundResponse({
     description: '{ "errno": 1, "errmsg": "not found" }',
   })
-  public async getNovaCategoryUserPoints(
+  public async getNovaCategoryUserProjectPoints(
     @Query("address", new ParseAddressPipe()) address: string,
   ): Promise<ResponseDto<CategoryPointsDto[]>> {
+    const season = 2;
+    const pointsData = await this.novaBalanceService.getPointsByAddress(
+      season,
+      address,
+    );
+    return {
+      errno: 0,
+      errmsg: "no error",
+      data: pointsData,
+    };
+  }
+
+  @Get("/category/user/points/total")
+  @ApiOperation({
+    summary:
+      "Retrieve user ecoPoints, referralPoints, otherPoints under the project category",
+  })
+  @ApiBadRequestResponse({
+    description: '{ "errno": 1, "errmsg": "Service exception" }',
+  })
+  @ApiNotFoundResponse({
+    description: '{ "errno": 1, "errmsg": "not found" }',
+  })
+  public async getNovaCategoryUserTotalPoints(
+    @Query("address", new ParseAddressPipe()) address: string,
+  ): Promise<ResponseDto<CategoryTotalPointsListDto[]>> {
+    const season = 2;
     const pointsData =
-      await this.novaBalanceService.getPointsByAddress(address);
+      await this.novaBalanceService.getUserCategoryPointsDetail(
+        season,
+        address,
+      );
     return {
       errno: 0,
       errmsg: "no error",
