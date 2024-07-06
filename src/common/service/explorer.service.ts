@@ -79,4 +79,18 @@ export class ExplorerService {
     }
     return responseJson.items;
   }
+
+  public async getLastBlocks(toTimestamp: number) {
+    const toDate = new Date(toTimestamp * 1000).toISOString();
+    const url = `${this.explorerApi}/blocks?toDate=${toDate}`;
+    const response = await fetch(url, {
+      method: "get",
+    });
+    const responseJson = await response.json();
+    if (!responseJson || !responseJson.items) {
+      this.logger.error(`No last block number`);
+      return null;
+    }
+    return responseJson.items;
+  }
 }

@@ -331,6 +331,44 @@ export class GraphQueryService extends Worker {
     }
   }
 
+  public async queryWithdrawListByAddressTokenAddress(
+    address: string,
+    tokenAddress: string,
+    blockTimestamp: number,
+    page: number,
+    limit: number,
+  ): Promise<GraphWithdrawPoint[]> {
+    const { _page = 1, _limit = 1000 } = { _page: page, _limit: limit };
+    let skip = (_page - 1) * _limit;
+    skip = skip < 0 ? 0 : skip;
+    const query = `
+{
+  withdrawPoints(
+    where:{address:"${address.toLocaleLowerCase()}", project_contains:"${tokenAddress.toLocaleLowerCase()}", blockTimestamp_lte:${blockTimestamp}}
+    first:${_limit}
+    skip:${skip}
+  ){
+    id
+    project
+    balance
+    weightBalance
+    address
+    timeWeightAmountIn
+    timeWeightAmountOut
+    blockTimestamp
+  }
+}
+    `;
+    const data = await this.query(query);
+    if (data && data.data && Array.isArray(data.data.withdrawPoints)) {
+      return data.data.withdrawPoints as GraphWithdrawPoint[];
+    } else {
+      throw new Error(
+        `Exception in fetching GraphQL data, project is WithdrawPoints.`,
+      );
+    }
+  }
+
   private async query(query: string) {
     const body = {
       query: query,
