@@ -11,17 +11,25 @@ export const categoryBaseConfig = [
     name: "lending",
     items: ["layerbank", "aqua"],
   },
-  {
-    name: "gamefi",
-    items: ["allspark"],
-  },
+  // {
+  //   name: "gamefi",
+  //   items: [],
+  // },
   {
     name: "nativeboost",
     items: ["novaswap"],
   },
   {
     name: "other",
-    items: ["rubic", "interport", "orbiter", "symbiosis", "eddy", "meson"],
+    items: [
+      "rubic",
+      "interport",
+      "orbiter",
+      "symbiosis",
+      "eddy",
+      "meson",
+      "allspark",
+    ],
   },
 ];
 
