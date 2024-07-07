@@ -13,6 +13,10 @@ import { Worker } from "src/common/worker";
 import waitFor from "src/utils/waitFor";
 import { RedistributeBalanceRepository } from "src/repositories/redistributeBalance.repository";
 
+import { ethers } from "ethers";
+import { WithdrawService } from "src/common/service/withdraw.service";
+import { ExplorerService } from "src/common/service/explorer.service";
+
 export interface PufferPointItem {
   address: string;
   tokenAddress: string;
@@ -88,6 +92,10 @@ export const PUFFER_ETH_ADDRESS =
   "0x1B49eCf1A8323Db4abf48b2F5EFaA33F7DdAB3FC".toLowerCase();
 const AQUA_VAULT =
   "0x4AC97E2727B0e92AE32F5796b97b7f98dc47F059".toLocaleLowerCase();
+const AQUA_PUFF_LP =
+  "0xc2be3CC06Ab964f9E22e492414399DC4A58f96D3".toLocaleLowerCase();
+const LAYERBANK_VAULT =
+  "0xdd6105865380984716C6B2a1591F9643e6ED1C48".toLocaleLowerCase();
 
 @Injectable()
 export class PuffPointsService extends Worker {
@@ -106,6 +114,8 @@ export class PuffPointsService extends Worker {
     private readonly novaService: NovaService,
     private readonly configService: ConfigService,
     private readonly redistributeBalanceRepository: RedistributeBalanceRepository,
+    private readonly withdrawService: WithdrawService,
+    private readonly explorerService: ExplorerService,
   ) {
     super();
     this.logger = new Logger(PuffPointsService.name);
@@ -605,5 +615,143 @@ export class PuffPointsService extends Worker {
       (userPufferPosition?.pointWeightPercentage ?? 0) * pufferTotalPoint;
 
     return holdingPufferPoint;
+  }
+
+  public async getBalanceByAddress(address: string, toTimestamp: number) {
+    const blocks = await this.explorerService.getLastBlocks(toTimestamp);
+    if (!blocks || blocks.length === 0) {
+      throw new Error("Failed to get blocks.");
+    }
+    const blockNumber = blocks[0].number ?? 0;
+    if (blockNumber === 0) {
+      throw new Error("Failed to get block number.");
+    }
+    const tokenAddress = PUFFER_ETH_ADDRESS;
+    let directBalance = BigInt(0);
+    let withdrawBalance = BigInt(0);
+    let layerBankBalance = BigInt(0);
+    let aquaBalance = BigInt(0);
+
+    const provider = new ethers.JsonRpcProvider("https://rpc.zklink.io");
+    const block = await provider.getBlock(Number(blockNumber));
+    const balanceOfMethod = "0x70a08231";
+    const totalSupplyMethod = "0x18160ddd";
+    const promiseList = [];
+
+    // puffer eth balance of address
+    promiseList.push(
+      provider.call({
+        to: tokenAddress,
+        data: balanceOfMethod + address.replace("0x", "").padStart(64, "0"),
+        blockTag: Number(blockNumber),
+      }),
+    );
+
+    // puffer eth balance of aqua pairaddress
+    promiseList.push(
+      provider.call({
+        to: tokenAddress,
+        data: balanceOfMethod + AQUA_VAULT.replace("0x", "").padStart(64, "0"),
+        blockTag: Number(blockNumber),
+      }),
+    );
+
+    // puffer eth balance of layerbank pairaddress
+    promiseList.push(
+      provider.call({
+        to: tokenAddress,
+        data:
+          balanceOfMethod + LAYERBANK_VAULT.replace("0x", "").padStart(64, "0"),
+        blockTag: Number(blockNumber),
+      }),
+    );
+
+    // lpuffer balance of address
+    promiseList.push(
+      provider.call({
+        to: LAYERBANK_VAULT,
+        data: balanceOfMethod + address.replace("0x", "").padStart(64, "0"),
+        blockTag: Number(blockNumber),
+      }),
+    );
+
+    // aq-lpuffer balance of address
+    promiseList.push(
+      provider.call({
+        to: AQUA_PUFF_LP,
+        data: balanceOfMethod + address.replace("0x", "").padStart(64, "0"),
+        blockTag: Number(blockNumber),
+      }),
+    );
+
+    // lpuffer total supply
+    promiseList.push(
+      provider.call({
+        to: LAYERBANK_VAULT,
+        data: totalSupplyMethod,
+        blockTag: Number(blockNumber),
+      }),
+    );
+
+    // aq-lpuffer total supply
+    promiseList.push(
+      provider.call({
+        to: AQUA_PUFF_LP,
+        data: totalSupplyMethod,
+        blockTag: Number(blockNumber),
+      }),
+    );
+
+    const [
+      pufferEthAddress,
+      pufferEthAqua,
+      pufferEthLayerbank,
+      lpufferAddress,
+      aqpufferAddress,
+      lpufferTotalSupply,
+      aqpufferTotalSupply,
+    ] = await Promise.all(promiseList);
+
+    directBalance = BigInt(pufferEthAddress);
+
+    const lpufferAddressBigInt = BigNumber(lpufferAddress);
+    const pufferEthLayerbankBigInt = BigNumber(pufferEthLayerbank);
+    const lpufferTotalSupplyBigInt = BigNumber(lpufferTotalSupply);
+    const aqpufferAddressBigInt = BigNumber(aqpufferAddress);
+    const pufferEthAquaBigInt = BigNumber(pufferEthAqua);
+    const aqpufferTotalSupplyBigInt = BigNumber(aqpufferTotalSupply);
+
+    // layerbank balance
+    const layerBankBalanceBg = lpufferAddressBigInt
+      .multipliedBy(pufferEthLayerbankBigInt)
+      .div(lpufferTotalSupplyBigInt);
+    layerBankBalance = BigInt(layerBankBalanceBg.toFixed(0));
+
+    // aqua balance
+    const aquaBalanceBg = aqpufferAddressBigInt
+      .multipliedBy(pufferEthAquaBigInt)
+      .div(aqpufferTotalSupplyBigInt);
+    aquaBalance = BigInt(aquaBalanceBg.toFixed(0));
+
+    // withdrawHistory
+    const withdrawHistory = await this.withdrawService.getWithdrawHistory(
+      address,
+      tokenAddress,
+      block.timestamp,
+    );
+    const blockTimestamp = block.timestamp;
+    for (const item of withdrawHistory) {
+      const tmpEndTime = this.withdrawService.findWithdrawEndTime(
+        item.blockTimestamp,
+      );
+      // if withdrawTime is in the future, add balance to withdrawBalance
+      if (tmpEndTime > blockTimestamp) {
+        withdrawBalance = withdrawBalance + BigInt(item.balance);
+      }
+    }
+
+    const totalBalance =
+      directBalance + withdrawBalance + layerBankBalance + aquaBalance;
+    return ethers.formatEther(totalBalance).toString();
   }
 }

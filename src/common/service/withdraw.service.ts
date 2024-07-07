@@ -167,7 +167,7 @@ export class WithdrawService implements OnModuleInit {
     return this.withdrawPointsAllList.get(token)?.get(address)?.point ?? 0n;
   }
 
-  private findWithdrawEndTime(withdrawTime: number): number {
+  public findWithdrawEndTime(withdrawTime: number): number {
     const t = Number(withdrawTime);
     for (const item of timeToPeriod) {
       if (t >= item.start && t < item.end) {
@@ -175,5 +175,30 @@ export class WithdrawService implements OnModuleInit {
       }
     }
     return t;
+  }
+
+  public async getWithdrawHistory(
+    address: string,
+    tokenAddress: string,
+    blockTimestamp: number,
+  ) {
+    const limit = 1000;
+    let page = 1,
+      lastPageNumber = limit,
+      graphWithdrawPointsList: GraphWithdrawPoint[] = [];
+    while (lastPageNumber == limit) {
+      const tmpItems =
+        await this.graphQueryService.queryWithdrawListByAddressTokenAddress(
+          address,
+          tokenAddress,
+          blockTimestamp,
+          page,
+          limit,
+        );
+      lastPageNumber = tmpItems.length;
+      page++;
+      graphWithdrawPointsList = [...graphWithdrawPointsList, ...tmpItems];
+    }
+    return graphWithdrawPointsList;
   }
 }
