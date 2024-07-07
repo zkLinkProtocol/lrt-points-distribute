@@ -278,3 +278,69 @@ export class PufferPointUserBalance {
   })
   public readonly data: PufferPointUserBalanceData;
 }
+
+export class UserPufferDateBalanceItem {
+  @ApiProperty({
+    type: String,
+    description: "total pufEth balance",
+    example: "0.020000",
+  })
+  totalBalance: string;
+
+  @ApiProperty({
+    type: String,
+    description: "total withdrawn pufEth balance in progress",
+    example: "0.010000",
+  })
+  withdrawingBalance: string;
+
+  @ApiProperty({
+    type: String,
+    description: "pufEth balance of the user account",
+    example: "0.010000",
+  })
+  userBalance: string;
+
+  @ApiProperty({
+    type: String,
+    description: "total user staked pufEth on dapps",
+    example: "0.000000",
+  })
+  liquidityBalance: string;
+
+  @ApiProperty({
+    type: LiquidityDetails,
+    description: "user staked details on dapps",
+    example: [
+      {
+        dappName: "LayerBank",
+        balance: "0.000023",
+      },
+    ],
+  })
+  @Type(() => LiquidityDetails)
+  liquidityDetails: LiquidityDetails[];
+}
+
+export class UserPufferDateBalanceDto {
+  @ApiProperty({
+    type: Number,
+    description: "error code",
+    example: 0,
+  })
+  public readonly errno: number;
+  //errmsg
+  @ApiProperty({
+    type: String,
+    description: "error message",
+    example: "no error",
+  })
+  public readonly errmsg: string;
+
+  @ApiProperty({
+    type: ElPointsDtoData,
+    description: "puffer balance data",
+    nullable: true,
+  })
+  public readonly data: UserPufferDateBalanceItem;
+}
