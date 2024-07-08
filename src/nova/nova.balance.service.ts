@@ -469,4 +469,49 @@ export class NovaBalanceService {
     }
     return result;
   }
+
+  public async getAllProjectPoints(season: number): Promise<
+    {
+      project: string;
+      totalPoints: number;
+    }[]
+  > {
+    // 1. get all pairAddress points group by pairAddress
+    const pairAddressPointsList =
+      await this.seasonTotalPointRepository.getSeasonTotalPointGroupByPairAddresses(
+        season,
+      );
+    const pairAddressPointsMap: Map<string, number> = new Map();
+    for (const item of pairAddressPointsList) {
+      pairAddressPointsMap.set(item.pairAddress, Number(item.totalPoints));
+    }
+
+    // 2. get [project ,pairAddress[]]
+    const projectPairAddressesMap =
+      await this.projectService.getProjectPairAddresses();
+    const projectPairAddresses = [];
+    for (const [key, value] of projectPairAddressesMap) {
+      projectPairAddresses.push({
+        project: key,
+        pairAddresses: value,
+      });
+    }
+
+    // 3. loop projectPairAddresses, get total points
+    const result = [];
+    for (const item of projectPairAddresses) {
+      let totalPoints = 0;
+      for (const pairAddress of item.pairAddresses) {
+        const points = pairAddressPointsMap.get(pairAddress);
+        if (points) {
+          totalPoints += points;
+        }
+      }
+      result.push({
+        project: item.project,
+        totalPoints,
+      });
+    }
+    return result;
+  }
 }

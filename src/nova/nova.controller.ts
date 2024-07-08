@@ -31,6 +31,7 @@ import {
   CategoryPointsListDto,
   CategoryPointsUserListWithCurrentDto,
   CategoryTotalPointsListDto,
+  ProjectPointsListDto,
   UserPointsListDto,
 } from "./nova.dto";
 import { ReferralService } from "src/referral/referral.service";
@@ -629,5 +630,26 @@ export class NovaController {
         return point;
       }),
     } as NovaPointsWithoutDecimalsDto;
+  }
+
+  @Get("/project/points")
+  @ApiOperation({ summary: "Retrieve total points of the project" })
+  @ApiBadRequestResponse({
+    description: '{ "errno": 1, "errmsg": "Service exception" }',
+  })
+  @ApiNotFoundResponse({
+    description: '{ "errno": 1, "errmsg": "not found" }',
+  })
+  public async getNovaAllProjectPoints(): Promise<
+    ResponseDto<ProjectPointsListDto[]>
+  > {
+    const season = 2;
+    const pointsData =
+      await this.novaBalanceService.getAllProjectPoints(season);
+    return {
+      errno: 0,
+      errmsg: "no error",
+      data: pointsData,
+    };
   }
 }
