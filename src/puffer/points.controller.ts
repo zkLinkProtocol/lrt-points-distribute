@@ -41,6 +41,7 @@ import {
   ElPointsDtoItem,
   LayerBankPufferPointQueryOptionsDto,
   PufferPointUserBalance,
+  UserPufferDateBalanceDto,
 } from "./points.dto";
 import { TokensDto } from "./tokens.dto";
 import { NovaService } from "src/nova/nova.service";
@@ -654,21 +655,21 @@ export class PointsController {
   @ApiOkResponse({
     description:
       "Return users' puffer balance at a specific time. Including the withdrawing and staked balance in dapp.",
-    type: ElPointsDto,
+    type: UserPufferDateBalanceDto,
   })
   public async queryUserPufferDateBalance(
     @Param("address", new ParseAddressPipe()) address: string,
     @Query("timestamp") timestamp: number,
   ) {
     try {
-      const balance = await this.puffPointsService.getBalanceByAddress(
+      const data = await this.puffPointsService.getBalanceByAddress(
         address,
         timestamp,
       );
       const res = {
         errno: 0,
         errmsg: "no error",
-        data: balance,
+        data: data,
       };
       return res;
     } catch (err) {

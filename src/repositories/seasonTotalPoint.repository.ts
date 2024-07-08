@@ -61,7 +61,7 @@ export class SeasonTotalPointRepository extends BaseRepository<SeasonTotalPoint>
     );
     const transactionManager = this.unitOfWork.getTransactionManager();
     const result = await transactionManager.query(
-      `SELECT "userAddress", "userName", sum(point) AS "totalPoints" FROM "seasonTotalPoint" WHERE "pairAddress"=ANY($1) AND season=$2 AND type != 'referral' GROUP BY "userAddress","userName" ORDER BY "totalPoints" DESC;`,
+      `SELECT "userAddress", "userName", sum(point) AS "totalPoints" FROM "seasonTotalPoint" WHERE "pairAddress"=ANY($1) AND season=$2 GROUP BY "userAddress","userName" ORDER BY "totalPoints" DESC;`,
       [pairAddressesBuffer, season],
     );
 

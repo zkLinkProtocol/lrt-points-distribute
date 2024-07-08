@@ -752,6 +752,23 @@ export class PuffPointsService extends Worker {
 
     const totalBalance =
       directBalance + withdrawBalance + layerBankBalance + aquaBalance;
-    return ethers.formatEther(totalBalance).toString();
+    return {
+      totalBalance: ethers.formatEther(totalBalance).toString(),
+      withdrawingBalance: ethers.formatEther(withdrawBalance).toString(),
+      userBalance: ethers.formatEther(directBalance).toString(),
+      liquidityBalance: ethers
+        .formatEther(layerBankBalance + aquaBalance)
+        .toString(),
+      liquidityDetails: [
+        {
+          dappName: "LayerBank",
+          balance: ethers.formatEther(layerBankBalance).toString(),
+        },
+        {
+          dappName: "aqua",
+          balance: ethers.formatEther(aquaBalance).toString(),
+        },
+      ],
+    };
   }
 }
