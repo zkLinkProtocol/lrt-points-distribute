@@ -131,6 +131,20 @@ export class CategoryPointsListDto {
   public readonly totalPoints: number;
 }
 
+export class ProjectPointsListDto {
+  @ApiProperty({
+    type: String,
+    description: "Name of the project",
+  })
+  public readonly project: string;
+
+  @ApiProperty({
+    type: Number,
+    description: "Total points of the category",
+  })
+  public readonly totalPoints: number;
+}
+
 export class UserPointsItemDto {
   @ApiProperty({
     type: String,
