@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { UnitOfWork } from "../unitOfWork";
 import { BaseRepository } from "./base.repository";
 import { SeasonTotalPoint } from "../entities";
+import removeAddress from "src/config/removeAddress";
 
 @Injectable()
 export class SeasonTotalPointRepository extends BaseRepository<SeasonTotalPoint> {
@@ -25,7 +26,7 @@ export class SeasonTotalPointRepository extends BaseRepository<SeasonTotalPoint>
     );
     const transactionManager = this.unitOfWork.getTransactionManager();
     const result = await transactionManager.query(
-      `SELECT "userAddress", "pairAddress", "userName", sum(point) AS "totalPoint" FROM "seasonTotalPoint" WHERE "userAddress"=ANY($1) AND season=$2 AND type != 'referral' GROUP BY "userAddress", "pairAddress", "userName";`,
+      `SELECT "userAddress", "pairAddress", "userName", sum(point) AS "totalPoint" FROM "seasonTotalPoint" WHERE "userAddress"=ANY($1) AND season=$2 GROUP BY "userAddress", "pairAddress", "userName";`,
       [addressesBuffer, season],
     );
     return result.map((row) => {
@@ -59,10 +60,13 @@ export class SeasonTotalPointRepository extends BaseRepository<SeasonTotalPoint>
     const pairAddressesBuffer = pairAddresses.map((address) =>
       Buffer.from(address.slice(2), "hex"),
     );
+    const removeAddressBuffer = removeAddress.map((address) =>
+      Buffer.from(address.slice(2), "hex"),
+    );
     const transactionManager = this.unitOfWork.getTransactionManager();
     const result = await transactionManager.query(
-      `SELECT "userAddress", "userName", sum(point) AS "totalPoints" FROM "seasonTotalPoint" WHERE "pairAddress"=ANY($1) AND season=$2 GROUP BY "userAddress","userName" ORDER BY "totalPoints" DESC;`,
-      [pairAddressesBuffer, season],
+      `SELECT "userAddress", "userName", sum(point) AS "totalPoints" FROM "seasonTotalPoint" WHERE "pairAddress"=ANY($1) AND season=$2 AND "userAddress"!=ALL($3) GROUP BY "userAddress","userName" ORDER BY "totalPoints" DESC;`,
+      [pairAddressesBuffer, season, removeAddressBuffer],
     );
 
     const data = result.map((row) => {
@@ -102,7 +106,7 @@ export class SeasonTotalPointRepository extends BaseRepository<SeasonTotalPoint>
   > {
     const transactionManager = this.unitOfWork.getTransactionManager();
     const result = await transactionManager.query(
-      `SELECT "pairAddress", sum(point) AS "totalPoints" FROM "seasonTotalPoint" WHERE season=$1 AND type != 'referral' GROUP BY "pairAddress";`,
+      `SELECT "pairAddress", sum(point) AS "totalPoints" FROM "seasonTotalPoint" WHERE season=$1 GROUP BY "pairAddress";`,
       [season],
     );
     return result.map((row) => {
