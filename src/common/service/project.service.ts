@@ -184,9 +184,11 @@ export class ProjectService {
     if (!category) {
       projectNames.push(...projectCategoryConfig.map((x) => x.project));
     } else {
-      projectCategoryConfig
-        .filter((x) => x.category === category)
-        .map((x) => x.project);
+      projectNames.push(
+        ...projectCategoryConfig
+          .filter((x) => x.category === category)
+          .map((x) => x.project),
+      );
     }
     const projects =
       await this.projectRepository.getListByProjects(projectNames);

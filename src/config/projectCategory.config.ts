@@ -9,7 +9,7 @@ export const categoryBaseConfig = [
   },
   {
     name: "lending",
-    items: ["layerbank", "aqua"],
+    items: ["layerbank", "aqua", "shoebill"],
   },
   // {
   //   name: "gamefi",
