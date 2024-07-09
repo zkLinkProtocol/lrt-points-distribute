@@ -8,9 +8,17 @@ import projectCategoryConfig from "src/config/projectCategory.config";
 import { ProjectCategoryPoints } from "src/type/points";
 import { SeasonTotalPointRepository } from "src/repositories/seasonTotalPoint.repository";
 import { ProjectService } from "src/common/service/project.service";
+import { Worker } from "src/common/worker";
+import waitFor from "src/utils/waitFor";
 
 interface ProjectPoints {
   name: string;
+  totalPoints: number;
+}
+
+interface UserPoints {
+  userAddress: string;
+  userName: string;
   totalPoints: number;
 }
 
@@ -21,8 +29,9 @@ export interface AddressPoints {
 }
 
 @Injectable()
-export class NovaBalanceService {
+export class NovaBalanceService extends Worker {
   private readonly logger: Logger;
+  private categoryUserList: Map<string, UserPoints[]> = new Map();
 
   public constructor(
     private readonly projectRepository: ProjectRepository,
@@ -32,7 +41,38 @@ export class NovaBalanceService {
     private readonly projectService: ProjectService,
     private readonly balanceOfLp: BalanceOfLpRepository,
   ) {
+    super();
     this.logger = new Logger(NovaBalanceService.name);
+  }
+
+  public async runProcess() {
+    this.logger.log(`Init ${NovaBalanceService.name} onmoduleinit`);
+    try {
+      await this.loadCategoryUserList();
+    } catch (err) {
+      this.logger.error(`${NovaBalanceService.name} init failed.`, err.stack);
+    }
+    await waitFor(() => !this.currentProcessPromise, 300 * 1000, 300 * 1000);
+    if (!this.currentProcessPromise) {
+      return;
+    }
+    return this.runProcess();
+  }
+
+  public async loadCategoryUserList() {
+    const season = 2;
+    const categoryPairAddresses =
+      await this.projectService.getCategoryPairAddress();
+    for (const item of categoryPairAddresses) {
+      const category = item.category;
+      const pairAddresses = item.pairAddresses;
+      const result =
+        await this.seasonTotalPointRepository.getSeasonTotalPointByPairAddresses(
+          pairAddresses,
+          season,
+        );
+      this.categoryUserList.set(category, result);
+    }
   }
 
   public async getPoints(
@@ -352,31 +392,34 @@ export class NovaBalanceService {
       totalPoints: number;
     }[];
   }> {
-    // 1. get all projects in the category
-    // 2. get all pairAddress in the projects
-    // 3. get sum points in pairAddress group by address
-    // 4. sort by points
-    // 5. return
-    const categoryPairAddresses =
-      await this.projectService.getCategoryPairAddress();
-    const pairAddresses = categoryPairAddresses.find(
-      (x) => x.category === category,
-    )?.pairAddresses;
-    const result =
-      await this.seasonTotalPointRepository.getSeasonTotalPointByPairAddresses(
-        pairAddresses,
-        season,
-        pageSize,
-        address,
+    const result = this.categoryUserList.get(category);
+    if (!result || result.length === 0) {
+      return {
+        current: null,
+        data: [],
+      };
+    }
+
+    let current = null;
+    if (address) {
+      const userIndex = result.findIndex(
+        (item) => item.userAddress === address,
       );
+      if (userIndex !== -1) {
+        const currentData = result[userIndex];
+        current = {
+          userIndex,
+          address: currentData.userAddress,
+          userName: currentData.userName,
+          totalPoints: currentData.totalPoints,
+        };
+      }
+    }
+
+    const resultData = result.slice(0, pageSize);
     return {
-      current: {
-        userIndex: result.current?.userIndex,
-        username: result.current?.userName,
-        address: result.current?.userAddress,
-        totalPoints: result.current?.totalPoints,
-      },
-      data: result.data.map((item) => {
+      current,
+      data: resultData.map((item) => {
         return {
           username: item.userName,
           address: item.userAddress,

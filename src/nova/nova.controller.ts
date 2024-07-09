@@ -549,7 +549,7 @@ export class NovaController {
       errmsg: "no error",
       data: {
         current:
-          address && data.current.userIndex >= 0
+          address && (data?.current?.userIndex ?? -1) >= 0
             ? {
                 userIndex: data.current.userIndex + 1,
                 address: data.current.address,
