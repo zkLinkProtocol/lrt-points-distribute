@@ -473,17 +473,30 @@ export class NovaBalanceService {
   public async getAllProjectPoints(season: number): Promise<
     {
       project: string;
-      totalPoints: number;
+      referralPoints: number;
+      ecoPoints: number;
     }[]
   > {
     // 1. get all pairAddress points group by pairAddress
     const pairAddressPointsList =
-      await this.seasonTotalPointRepository.getSeasonTotalPointGroupByPairAddresses(
+      await this.seasonTotalPointRepository.getSeasonTotalPointGroupByPairAddressesType(
         season,
       );
-    const pairAddressPointsMap: Map<string, number> = new Map();
+    const pairAddressPointsMap: Map<
+      string,
+      {
+        type: string;
+        totalPoints: number;
+      }[]
+    > = new Map();
     for (const item of pairAddressPointsList) {
-      pairAddressPointsMap.set(item.pairAddress, Number(item.totalPoints));
+      if (!pairAddressPointsMap.has(item.pairAddress)) {
+        pairAddressPointsMap.set(item.pairAddress, []);
+      }
+      pairAddressPointsMap.get(item.pairAddress).push({
+        type: item.type,
+        totalPoints: Number(item.totalPoints),
+      });
     }
 
     // 2. get [project ,pairAddress[]]
@@ -500,16 +513,25 @@ export class NovaBalanceService {
     // 3. loop projectPairAddresses, get total points
     const result = [];
     for (const item of projectPairAddresses) {
-      let totalPoints = 0;
+      let referralPoints = 0;
+      let ecoPoints = 0;
       for (const pairAddress of item.pairAddresses) {
-        const points = pairAddressPointsMap.get(pairAddress);
-        if (points) {
-          totalPoints += points;
+        const typePointsArr = pairAddressPointsMap.get(pairAddress);
+        if ((typePointsArr?.length ?? 0) === 0) {
+          continue;
+        }
+        for (const typePoints of typePointsArr) {
+          if (typePoints.type === "referral") {
+            referralPoints += typePoints.totalPoints;
+          } else {
+            ecoPoints += typePoints.totalPoints;
+          }
         }
       }
       result.push({
         project: item.project,
-        totalPoints,
+        referralPoints,
+        ecoPoints,
       });
     }
     return result;
