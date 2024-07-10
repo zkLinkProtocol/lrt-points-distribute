@@ -42,21 +42,13 @@ export class SeasonTotalPointRepository extends BaseRepository<SeasonTotalPoint>
   public async getSeasonTotalPointByPairAddresses(
     pairAddresses: string[],
     season: number,
-    limit: number,
-    address: string,
-  ): Promise<{
-    current: {
-      userIndex: number;
+  ): Promise<
+    {
       userAddress: string;
       userName: string;
       totalPoints: number;
-    };
-    data: {
-      userAddress: string;
-      userName: string;
-      totalPoints: number;
-    }[];
-  }> {
+    }[]
+  > {
     const pairAddressesBuffer = pairAddresses.map((address) =>
       Buffer.from(address.slice(2), "hex"),
     );
@@ -77,25 +69,7 @@ export class SeasonTotalPointRepository extends BaseRepository<SeasonTotalPoint>
         : 0;
       return row;
     });
-    let current = null;
-    if (address) {
-      const userIndex = data.findIndex((item) => item.userAddress === address);
-      if (userIndex !== -1) {
-        const currentData = data[userIndex];
-        current = {
-          userIndex,
-          userAddress: currentData.userAddress,
-          userName: currentData.userName,
-          totalPoints: currentData.totalPoints,
-        };
-      }
-    }
-
-    const resultData = data.slice(0, limit);
-    return {
-      current,
-      data: resultData,
-    };
+    return data;
   }
 
   public async getSeasonTotalPointGroupByPairAddresses(season: number): Promise<

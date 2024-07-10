@@ -12,6 +12,7 @@ import { MagpieService } from "./magpie/magpie.service";
 import { RsethService } from "./rseth/rseth.service";
 import { GraphQueryService } from "./common/service/graphQuery.service";
 import { SwethService } from "./sweth/sweth.service";
+import { NovaBalanceService } from "./nova/nova.balance.service";
 
 @Injectable()
 export class AppService implements OnModuleInit, OnModuleDestroy {
@@ -24,6 +25,7 @@ export class AppService implements OnModuleInit, OnModuleDestroy {
     private readonly rsethService: RsethService,
     private readonly swethService: SwethService,
     private readonly graphQueryService: GraphQueryService,
+    private readonly novaBalanceService: NovaBalanceService,
     private readonly dataSource: DataSource,
     private readonly configService: ConfigService,
   ) {
@@ -39,15 +41,15 @@ export class AppService implements OnModuleInit, OnModuleDestroy {
   }
 
   private startWorkers() {
-    const tasks = [
+    return Promise.all([
       this.graphQueryService.start(),
       this.puffPointsService.start(),
       this.renzoService.start(),
       this.magpieService.start(),
       this.rsethService.start(),
       this.swethService.start(),
-    ];
-    return Promise.all(tasks);
+      this.novaBalanceService.start(),
+    ]);
   }
 
   private stopWorkers() {
@@ -58,6 +60,7 @@ export class AppService implements OnModuleInit, OnModuleDestroy {
       this.rsethService.stop(),
       this.swethService.stop(),
       this.graphQueryService.stop(),
+      this.novaBalanceService.stop(),
     ]);
   }
 }
