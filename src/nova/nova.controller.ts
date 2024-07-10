@@ -495,7 +495,7 @@ export class NovaController {
   }
 
   @Get("/category/points")
-  @ApiOperation({ summary: "Retrieve total points of the category" })
+  @ApiOperation({ summary: "Retrieve eco and referral points of the category" })
   @ApiBadRequestResponse({
     description: '{ "errno": 1, "errmsg": "Service exception" }',
   })
