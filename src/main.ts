@@ -13,6 +13,12 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     logger,
   });
+  app.enableCors({
+    origin: "*",
+    methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
+    allowedHeaders: "Content-Type,Authorization",
+    credentials: true,
+  });
 
   const configService = app.get(ConfigService);
 
