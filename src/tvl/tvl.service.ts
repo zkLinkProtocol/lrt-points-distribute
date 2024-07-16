@@ -49,8 +49,8 @@ export class TvlService {
   > {
     const category = "perpdex";
     let totalVolume = BigNumber(0);
-    const startTime = "2024-05-30 00:00:00";
-    const endTime = "2024-07-15 21:00:00";
+    const startTime = "2024-07-15 21:00:00";
+    const endTime = "2024-08-31 21:00:00";
     const categoryTvl = await this.getCategoryTvl();
     const result = categoryTvl.map((item) => ({
       name: item.name,

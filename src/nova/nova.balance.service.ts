@@ -31,7 +31,8 @@ export interface AddressPoints {
 @Injectable()
 export class NovaBalanceService extends Worker {
   private readonly logger: Logger;
-  private categoryUserList: Map<string, UserPoints[]> = new Map();
+  private seasonCategoryUserList: Map<number, Map<string, UserPoints[]>> =
+    new Map();
 
   public constructor(
     private readonly projectRepository: ProjectRepository,
@@ -60,18 +61,23 @@ export class NovaBalanceService extends Worker {
   }
 
   public async loadCategoryUserList() {
-    const season = 2;
+    const seasons = await this.seasonTotalPointRepository.getSeasons();
     const categoryPairAddresses =
       await this.projectService.getCategoryPairAddress();
-    for (const item of categoryPairAddresses) {
-      const category = item.category;
-      const pairAddresses = item.pairAddresses;
-      const result =
-        await this.seasonTotalPointRepository.getSeasonTotalPointByPairAddresses(
-          pairAddresses,
-          season,
-        );
-      this.categoryUserList.set(category, result);
+
+    for (const season of seasons) {
+      const categoryUserList: Map<string, UserPoints[]> = new Map();
+      for (const item of categoryPairAddresses) {
+        const category = item.category;
+        const pairAddresses = item.pairAddresses;
+        const result =
+          await this.seasonTotalPointRepository.getSeasonTotalPointByPairAddresses(
+            pairAddresses,
+            season,
+          );
+        categoryUserList.set(category, result);
+      }
+      this.seasonCategoryUserList.set(season, categoryUserList);
     }
   }
 
@@ -415,7 +421,7 @@ export class NovaBalanceService extends Worker {
       totalPoints: number;
     }[];
   }> {
-    const result = this.categoryUserList.get(category);
+    const result = this.seasonCategoryUserList.get(season)?.get(category) ?? [];
     if (!result || result.length === 0) {
       return {
         current: null,

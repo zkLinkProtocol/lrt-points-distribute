@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { UnitOfWork } from "../unitOfWork";
 import { BaseRepository } from "./base.repository";
-import { SeasonTotalPoint } from "../entities";
+import { SeasonTotalPoint } from "../entities/seasonTotalPoint.entity";
 import removeAddress from "src/config/removeAddress";
 
 @Injectable()
@@ -148,6 +148,7 @@ export class SeasonTotalPointRepository extends BaseRepository<SeasonTotalPoint>
       ? Number(result[0].totalPoints)
       : 0;
   }
+
   public async getSeasonTotalPointByAddress(
     season: number,
     address: string,
@@ -171,5 +172,15 @@ export class SeasonTotalPointRepository extends BaseRepository<SeasonTotalPoint>
         : 0;
       return row;
     });
+  }
+
+  public async getSeasons(): Promise<number[]> {
+    const entityManager = this.unitOfWork.getTransactionManager();
+    const result = await entityManager
+      .createQueryBuilder(SeasonTotalPoint, "a")
+      .select("season")
+      .groupBy("season")
+      .getRawMany();
+    return result.map((row) => row.season);
   }
 }
