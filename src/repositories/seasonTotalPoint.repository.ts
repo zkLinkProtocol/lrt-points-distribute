@@ -180,6 +180,7 @@ export class SeasonTotalPointRepository extends BaseRepository<SeasonTotalPoint>
       .createQueryBuilder(SeasonTotalPoint, "a")
       .select("season")
       .groupBy("season")
+      .orderBy("season", "ASC")
       .getRawMany();
     return result.map((row) => row.season);
   }

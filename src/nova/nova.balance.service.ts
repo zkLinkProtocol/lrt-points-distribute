@@ -10,6 +10,7 @@ import { SeasonTotalPointRepository } from "src/repositories/seasonTotalPoint.re
 import { ProjectService } from "src/common/service/project.service";
 import { Worker } from "src/common/worker";
 import waitFor from "src/utils/waitFor";
+import s2_1Milestone from "../config/season2-1.milestone";
 
 interface ProjectPoints {
   name: string;
@@ -22,6 +23,16 @@ interface UserPoints {
   totalPoints: number;
 }
 
+interface UserPointsZkl {
+  userAddress: string;
+  categoryName: string;
+  categoryPoints: number;
+  categoryZkl: number;
+  userPoints: number;
+  percentage: number;
+  zkl: number;
+}
+
 export interface AddressPoints {
   address: string;
   totalPoints: number;
@@ -32,7 +43,8 @@ export interface AddressPoints {
 export class NovaBalanceService extends Worker {
   private readonly logger: Logger;
   private seasonCategoryUserList: Map<number, Map<string, UserPoints[]>> =
-    new Map();
+    new Map(); // season=>category=>userPoints[]
+  private seasonUserPointsList: Map<number, UserPointsZkl[]> = new Map();
 
   public constructor(
     private readonly projectRepository: ProjectRepository,
@@ -78,6 +90,13 @@ export class NovaBalanceService extends Worker {
         categoryUserList.set(category, result);
       }
       this.seasonCategoryUserList.set(season, categoryUserList);
+    }
+    for (const season of seasons) {
+      if (this.seasonUserPointsList.has(season)) {
+        continue;
+      }
+      const result = await this.getUserPercentileInCategory(season);
+      this.seasonUserPointsList.set(season, result);
     }
   }
 
@@ -606,6 +625,67 @@ export class NovaBalanceService extends Worker {
         ecoPoints,
       });
     }
+    return result;
+  }
+
+  public async getPointsZkl(
+    season: number,
+    address?: string,
+  ): Promise<UserPointsZkl[]> {
+    const userPoints = this.seasonUserPointsList.get(season);
+    if (!address) {
+      return userPoints;
+    }
+    const result = userPoints.filter((item) => item.userAddress === address);
+    if (!result) {
+      return [];
+    }
+    return result;
+  }
+
+  public async getUserPercentileInCategory(
+    season: number,
+  ): Promise<UserPointsZkl[]> {
+    const allPoints = this.seasonCategoryUserList.get(season);
+    if (!allPoints) {
+      return [];
+    }
+    const allPointsArr: {
+      category: string;
+      userPoints: UserPoints[];
+    }[] = Array.from(allPoints, ([key, value]) => ({
+      category: key,
+      userPoints: value,
+    }));
+
+    const result: UserPointsZkl[] = [];
+
+    allPointsArr.forEach((item) => {
+      const totalPoints = item.userPoints.reduce(
+        (acc, cur) => Number(acc) + Number(cur.totalPoints),
+        0,
+      );
+      const mileStones = s2_1Milestone.filter(
+        (mile) => mile.name == item.category,
+      );
+      if (mileStones.length !== 1) {
+        return;
+      }
+      const mileStone = mileStones[0];
+      item.userPoints.forEach((userPoint) => {
+        const percentage = Number(userPoint.totalPoints) / totalPoints;
+        result.push({
+          categoryName: item.category,
+          userAddress: userPoint.userAddress,
+          categoryPoints: totalPoints,
+          categoryZkl: mileStone.zkl,
+          userPoints: Number(userPoint.totalPoints),
+          percentage: percentage,
+          zkl: Math.round(percentage * mileStone.zkl),
+        });
+      });
+    });
+
     return result;
   }
 }
