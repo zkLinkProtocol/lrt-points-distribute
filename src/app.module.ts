@@ -56,6 +56,7 @@ import {
   UserHolding,
   UserStaked,
   UserWithdraw,
+  SeasonTotalPoint,
 } from "./entities/index";
 import { PositionsService } from "./positions/positions.service";
 import { PositionsController } from "./positions/positions.controller";
@@ -103,6 +104,7 @@ import { SeasonTotalPointRepository } from "./repositories/seasonTotalPoint.repo
       UserHolding,
       UserStaked,
       UserWithdraw,
+      SeasonTotalPoint,
     ]),
     TypeOrmModule.forFeature([Referral], "referral"),
     MetricsModule,
