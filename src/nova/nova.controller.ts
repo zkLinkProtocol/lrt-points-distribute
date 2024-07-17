@@ -33,6 +33,7 @@ import {
   CategoryTotalPointsListDto,
   ProjectPointsListDto,
   UserPointsListDto,
+  ZklDto,
 } from "./nova.dto";
 import { ReferralService } from "src/referral/referral.service";
 import { ParseNumberPipe } from "src/common/pipes/parseNumber.pipe";
@@ -446,7 +447,7 @@ export class NovaController {
   }
 
   @Get("/category/user/points")
-  @ApiOperation({ summary: "Retrieve user points under the project category" })
+  @ApiOperation({ summary: "Retrieve user points under the project" })
   @ApiBadRequestResponse({
     description: '{ "errno": 1, "errmsg": "Service exception" }',
   })
@@ -649,6 +650,44 @@ export class NovaController {
       errno: 0,
       errmsg: "no error",
       data: pointsData,
+    };
+  }
+
+  @Get("/zkl")
+  @ApiOperation({ summary: "Retrieve user'total points and zkl amount." })
+  @ApiBadRequestResponse({
+    description: '{ "errno": 1, "errmsg": "Service exception" }',
+  })
+  @ApiNotFoundResponse({
+    description: '{ "errno": 1, "errmsg": "not found" }',
+  })
+  public async getZklAmount(
+    @Query("address", new ParseAddressPipe()) address: string,
+  ): Promise<ResponseDto<ZklDto[]>> {
+    const season = 2;
+    const result = await this.novaBalanceService.getPointsZkl(season, address);
+    return {
+      errno: 0,
+      errmsg: "no error",
+      data: result,
+    };
+  }
+
+  @Get("/zkl/list")
+  @ApiOperation({ summary: "Retrieve all users'total points and zkl amount." })
+  @ApiBadRequestResponse({
+    description: '{ "errno": 1, "errmsg": "Service exception" }',
+  })
+  @ApiNotFoundResponse({
+    description: '{ "errno": 1, "errmsg": "not found" }',
+  })
+  public async getZklsAmount(): Promise<ResponseDto<ZklDto[]>> {
+    const season = 2;
+    const result = await this.novaBalanceService.getPointsZkl(season);
+    return {
+      errno: 0,
+      errmsg: "no error",
+      data: result,
     };
   }
 }

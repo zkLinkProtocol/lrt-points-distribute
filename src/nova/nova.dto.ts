@@ -190,3 +190,47 @@ export class UserPointsListDto {
   })
   public readonly points: UserPointsItemDto[];
 }
+
+export class ZklDto {
+  @ApiProperty({
+    type: String,
+    description: "User's address",
+  })
+  public readonly userAddress: string;
+
+  @ApiProperty({
+    type: String,
+    description: "Category name",
+  })
+  public readonly categoryName: string;
+
+  @ApiProperty({
+    type: Number,
+    description: "Total points of the category",
+  })
+  public readonly categoryPoints: number;
+
+  @ApiProperty({
+    type: Number,
+    description: "Total zkl of the category",
+  })
+  public readonly categoryZkl: number;
+
+  @ApiProperty({
+    type: Number,
+    description: "Points of user in the category",
+  })
+  public readonly userPoints: number;
+
+  @ApiProperty({
+    type: Number,
+    description: "Percentage of user in the category",
+  })
+  public readonly percentage: number;
+
+  @ApiProperty({
+    type: Number,
+    description: "Zkl of user in the category",
+  })
+  public readonly zkl: number;
+}
