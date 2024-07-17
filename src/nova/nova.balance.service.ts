@@ -44,7 +44,8 @@ export class NovaBalanceService extends Worker {
   private readonly logger: Logger;
   private seasonCategoryUserList: Map<number, Map<string, UserPoints[]>> =
     new Map(); // season=>category=>userPoints[]
-  private seasonUserPointsList: Map<number, UserPointsZkl[]> = new Map();
+  private seasonUserPointsList: Map<number, Map<string, UserPointsZkl[]>> =
+    new Map();
 
   public constructor(
     private readonly projectRepository: ProjectRepository,
@@ -630,25 +631,18 @@ export class NovaBalanceService extends Worker {
 
   public async getPointsZkl(
     season: number,
-    address?: string,
+    address: string,
   ): Promise<UserPointsZkl[]> {
-    const userPoints = this.seasonUserPointsList.get(season);
-    if (!address) {
-      return userPoints;
-    }
-    const result = userPoints.filter((item) => item.userAddress === address);
-    if (!result) {
-      return [];
-    }
+    const result = this.seasonUserPointsList?.get(season)?.get(address) ?? [];
     return result;
   }
 
   public async getUserPercentileInCategory(
     season: number,
-  ): Promise<UserPointsZkl[]> {
+  ): Promise<Map<string, UserPointsZkl[]>> {
     const allPoints = this.seasonCategoryUserList.get(season);
     if (!allPoints) {
-      return [];
+      return null;
     }
     const allPointsArr: {
       category: string;
@@ -658,9 +652,9 @@ export class NovaBalanceService extends Worker {
       userPoints: value,
     }));
 
-    const result: UserPointsZkl[] = [];
+    const result: Map<string, UserPointsZkl[]> = new Map();
 
-    allPointsArr.forEach((item) => {
+    for (const item of allPointsArr) {
       const totalPoints = item.userPoints.reduce(
         (acc, cur) => Number(acc) + Number(cur.totalPoints),
         0,
@@ -672,9 +666,13 @@ export class NovaBalanceService extends Worker {
         return;
       }
       const mileStone = mileStones[0];
-      item.userPoints.forEach((userPoint) => {
+      for (const userPoint of item.userPoints) {
         const percentage = Number(userPoint.totalPoints) / totalPoints;
-        result.push({
+        if (!result.has(userPoint.userAddress)) {
+          result.set(userPoint.userAddress, []);
+        }
+        const userPoints = result.get(userPoint.userAddress);
+        userPoints.push({
           categoryName: item.category,
           userAddress: userPoint.userAddress,
           categoryPoints: totalPoints,
@@ -683,8 +681,8 @@ export class NovaBalanceService extends Worker {
           percentage: percentage,
           zkl: Math.round(percentage * mileStone.zkl),
         });
-      });
-    });
+      }
+    }
 
     return result;
   }
