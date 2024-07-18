@@ -7,7 +7,7 @@ import {
 import projectCategoryConfig, {
   categoryBaseConfig,
 } from "src/config/projectCategory.config";
-import { ZERO_ADDRESS } from "src/constants";
+import { OTHER_HASH_64, ZERO_ADDRESS } from "src/constants";
 import { ProjectRepository } from "src/repositories/project.repository";
 
 export interface PointData {
@@ -232,7 +232,10 @@ export class ProjectService {
     }
 
     // add direct holding
-    result.push({ category: "holding", pairAddresses: [ZERO_ADDRESS] });
+    result.push({
+      category: "holding",
+      pairAddresses: [ZERO_ADDRESS, OTHER_HASH_64],
+    });
     return result;
   }
 }

@@ -135,6 +135,12 @@ export class CategoryPointsListDto {
     description: "Eco points of the category",
   })
   public readonly ecoPoints: number;
+
+  @ApiProperty({
+    type: Number,
+    description: "Total other points of the category",
+  })
+  public readonly otherPoints: number;
 }
 
 export class ProjectPointsListDto {
