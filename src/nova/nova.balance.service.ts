@@ -505,11 +505,6 @@ export class NovaBalanceService extends Worker {
       otherPoints: number;
     }[]
   > {
-    // const holdOtherPoints =
-    //   await this.seasonTotalPointRepository.getSeasonTotalOtherPoint(
-    //     season,
-    //     address,
-    //   );
     // 1. get all pairAddress points group by pairAddress
     const pairAddressPointsList =
       await this.seasonTotalPointRepository.getSeasonTotalPointByAddress(
@@ -639,6 +634,14 @@ export class NovaBalanceService extends Worker {
   ): Promise<UserPointsZkl[]> {
     const result = this.seasonUserPointsList?.get(season)?.get(address) ?? [];
     return result;
+  }
+
+  public async getAllPointsZkl(season: number): Promise<UserPointsZkl[]> {
+    const allPoints = this.seasonUserPointsList?.get(season);
+    if (!allPoints) {
+      return [];
+    }
+    return Array.from(allPoints.values()).flat();
   }
 
   public async getUserPercentileInCategory(

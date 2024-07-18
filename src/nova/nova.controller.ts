@@ -672,4 +672,21 @@ export class NovaController {
       data: result,
     };
   }
+  @Get("/zkl/list")
+  @ApiOperation({ summary: "Retrieve all users'total points and zkl amount." })
+  @ApiBadRequestResponse({
+    description: '{ "errno": 1, "errmsg": "Service exception" }',
+  })
+  @ApiNotFoundResponse({
+    description: '{ "errno": 1, "errmsg": "not found" }',
+  })
+  public async getZklsAmount(): Promise<ResponseDto<ZklDto[]>> {
+    const season = 2;
+    const result = await this.novaBalanceService.getAllPointsZkl(season);
+    return {
+      errno: 0,
+      errmsg: "no error",
+      data: result,
+    };
+  }
 }
