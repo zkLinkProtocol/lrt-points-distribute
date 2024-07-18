@@ -367,6 +367,7 @@ export class NovaBalanceService extends Worker {
       category: string;
       referralPoints: number;
       ecoPoints: number;
+      otherPoints: number;
     }[]
   > {
     // 1. get all pairAddress points group by pairAddress
@@ -401,6 +402,7 @@ export class NovaBalanceService extends Worker {
     for (const item of categoryPairAddresses) {
       let ecoPoints = 0;
       let referralPoints = 0;
+      let otherPoints = 0;
       for (const pairAddress of item.pairAddresses) {
         const typePointsArr = pairAddressPointsMap.get(pairAddress);
         if ((typePointsArr?.length ?? 0) === 0) {
@@ -409,6 +411,8 @@ export class NovaBalanceService extends Worker {
         for (const typePoints of typePointsArr) {
           if (typePoints.type === "referral") {
             referralPoints += typePoints.totalPoints;
+          } else if (typePoints.type === "other") {
+            otherPoints += typePoints.totalPoints;
           } else {
             ecoPoints += typePoints.totalPoints;
           }
@@ -418,6 +422,7 @@ export class NovaBalanceService extends Worker {
         category: item.category,
         referralPoints,
         ecoPoints,
+        otherPoints,
       });
     }
     return result;
@@ -485,7 +490,7 @@ export class NovaBalanceService extends Worker {
     return await this.seasonTotalPointRepository.getSeasonTotalPointByType(
       address,
       season,
-      "txVol",
+      "directHold",
     );
   }
 
@@ -500,11 +505,11 @@ export class NovaBalanceService extends Worker {
       otherPoints: number;
     }[]
   > {
-    const holdOtherPoints =
-      await this.seasonTotalPointRepository.getSeasonTotalOtherPoint(
-        season,
-        address,
-      );
+    // const holdOtherPoints =
+    //   await this.seasonTotalPointRepository.getSeasonTotalOtherPoint(
+    //     season,
+    //     address,
+    //   );
     // 1. get all pairAddress points group by pairAddress
     const pairAddressPointsList =
       await this.seasonTotalPointRepository.getSeasonTotalPointByAddress(
@@ -536,9 +541,6 @@ export class NovaBalanceService extends Worker {
       let ecoPoints = 0;
       let referralPoints = 0;
       let otherPoints = 0;
-      if (item.category === "holding") {
-        otherPoints = holdOtherPoints;
-      }
       for (const pairAddress of item.pairAddresses) {
         const points = pairAddressPointsMap.get(pairAddress);
         if (!points) {
@@ -547,6 +549,8 @@ export class NovaBalanceService extends Worker {
         for (const point of points) {
           if (point.type === "referral") {
             referralPoints += point.totalPoint;
+          } else if (point.type === "other") {
+            otherPoints += point.totalPoint;
           } else {
             ecoPoints += point.totalPoint;
           }
