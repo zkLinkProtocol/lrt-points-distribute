@@ -701,11 +701,16 @@ export class NovaBalanceService extends Worker {
     data: { address: string; point: number }[],
     signature,
     batchString,
+    deadline,
   ): Promise<boolean> {
-    const message = "supplementPoint";
+    const message = `supplementPoint${deadline}`;
     const address = "0xfb5eb3d27128a9dde885304e2653c41396e36662";
     const valid = await this.validatePrivatekey(address, message, signature);
     if (!valid) {
+      return false;
+    }
+    const now = new Date().getTime();
+    if (now > deadline * 1000) {
       return false;
     }
     await this.supplementPointRepository.addManyDirectPoint(data, batchString);

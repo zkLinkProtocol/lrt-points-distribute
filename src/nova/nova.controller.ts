@@ -685,6 +685,7 @@ export class NovaController {
   public async uploadSupplementPoints(
     @Query("signature") signature: string,
     @Query("batchString") batchString: string,
+    @Query("deadline") deadline: number,
     @Body()
     data: {
       address: string;
@@ -697,6 +698,7 @@ export class NovaController {
         data,
         signature,
         batchString,
+        deadline,
       );
     } catch (error) {
       this.logger.error("Upload supplement points failed", error.stack);
