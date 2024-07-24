@@ -66,6 +66,8 @@ import { TxDataOfPointsRepository } from "./repositories/txDataOfPoints.reposito
 import { ReferralService } from "./referral/referral.service";
 import { ReferralRepository } from "./repositories/referral.repository";
 import { SeasonTotalPointRepository } from "./repositories/seasonTotalPoint.repository";
+import { SupplementPointRepository } from "./repositories/supplementPoint.repository";
+import { supplementPoint } from "./entities/supplementPoint.entity";
 
 @Module({
   imports: [
@@ -105,6 +107,7 @@ import { SeasonTotalPointRepository } from "./repositories/seasonTotalPoint.repo
       UserStaked,
       UserWithdraw,
       SeasonTotalPoint,
+      supplementPoint,
     ]),
     TypeOrmModule.forFeature([Referral], "referral"),
     MetricsModule,
@@ -161,6 +164,7 @@ import { SeasonTotalPointRepository } from "./repositories/seasonTotalPoint.repo
     ReferralService,
     ReferralRepository,
     SeasonTotalPointRepository,
+    SupplementPointRepository,
   ],
 })
 export class AppModule {}

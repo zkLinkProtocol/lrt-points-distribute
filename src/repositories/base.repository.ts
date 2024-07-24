@@ -71,4 +71,58 @@ export abstract class BaseRepository<T> {
     const transactionManager = this.unitOfWork.getTransactionManager();
     return await transactionManager.find(this.entityTarget, options);
   }
+
+  public async addManyIgnoreConflicts(records: Partial<T>[]): Promise<void> {
+    if (!records?.length) {
+      return;
+    }
+
+    const transactionManager = this.unitOfWork.getTransactionManager();
+
+    let recordsToInsert = [];
+    for (let i = 0; i < records.length; i++) {
+      recordsToInsert.push(records[i]);
+      if (recordsToInsert.length === BATCH_SIZE || i === records.length - 1) {
+        await transactionManager
+          .createQueryBuilder()
+          .insert()
+          .into(this.entityTarget)
+          .values(recordsToInsert)
+          .orIgnore()
+          .execute();
+
+        recordsToInsert = [];
+      }
+    }
+  }
+
+  public async addManyOrUpdate(
+    records: Partial<T>[],
+    updateColumns: string[],
+    conflictColumns: string[],
+  ): Promise<void> {
+    if (!records?.length) {
+      return;
+    }
+
+    const transactionManager = this.unitOfWork.getTransactionManager();
+
+    let recordsToAddOrUpdate = [];
+    for (let i = 0; i < records.length; i++) {
+      recordsToAddOrUpdate.push(records[i]);
+      if (
+        recordsToAddOrUpdate.length === BATCH_SIZE ||
+        i === records.length - 1
+      ) {
+        await transactionManager
+          .createQueryBuilder()
+          .insert()
+          .into(this.entityTarget)
+          .values(recordsToAddOrUpdate)
+          .orUpdate(updateColumns, conflictColumns)
+          .execute();
+        recordsToAddOrUpdate = [];
+      }
+    }
+  }
 }
