@@ -11,6 +11,8 @@ import { ProjectService } from "src/common/service/project.service";
 import { Worker } from "src/common/worker";
 import waitFor from "src/utils/waitFor";
 import s2_1Milestone from "../config/season2-1.milestone";
+import { verifyMessage } from "ethers";
+import { SupplementPointRepository } from "src/repositories/supplementPoint.repository";
 
 interface ProjectPoints {
   name: string;
@@ -54,6 +56,7 @@ export class NovaBalanceService extends Worker {
     private readonly seasonTotalPointRepository: SeasonTotalPointRepository,
     private readonly projectService: ProjectService,
     private readonly balanceOfLp: BalanceOfLpRepository,
+    private readonly supplementPointRepository: SupplementPointRepository,
   ) {
     super();
     this.logger = new Logger(NovaBalanceService.name);
@@ -692,5 +695,36 @@ export class NovaBalanceService extends Worker {
     }
 
     return result;
+  }
+
+  async uploadOtherPoints(
+    data: { address: string; point: number }[],
+    signature,
+    batchString,
+  ): Promise<boolean> {
+    const message = "supplementPoint";
+    const address = "0xfb5eb3d27128a9dde885304e2653c41396e36662";
+    const valid = await this.validatePrivatekey(address, message, signature);
+    if (!valid) {
+      return false;
+    }
+    await this.supplementPointRepository.addManyDirectPoint(data, batchString);
+    return true;
+  }
+
+  async validatePrivatekey(
+    address: string,
+    message: string,
+    signature: string,
+  ): Promise<boolean> {
+    try {
+      const recoveredAddress = verifyMessage(message, signature);
+      return recoveredAddress.toLowerCase() === address.toLowerCase();
+    } catch (error) {
+      this.logger.log(
+        `validatePrivatekey: ${address} ${message} ${signature}, error: ${error.stack}`,
+      );
+      return false;
+    }
   }
 }

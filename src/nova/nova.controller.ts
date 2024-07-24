@@ -1,4 +1,12 @@
-import { Controller, Get, Logger, Param, Query } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Get,
+  Logger,
+  Param,
+  Post,
+  Query,
+} from "@nestjs/common";
 import {
   ApiBadRequestResponse,
   ApiExcludeController,
@@ -672,17 +680,28 @@ export class NovaController {
       data: result,
     };
   }
-  @Get("/zkl/list")
-  @ApiOperation({ summary: "Retrieve all users'total points and zkl amount." })
-  @ApiBadRequestResponse({
-    description: '{ "errno": 1, "errmsg": "Service exception" }',
-  })
-  @ApiNotFoundResponse({
-    description: '{ "errno": 1, "errmsg": "not found" }',
-  })
-  public async getZklsAmount(): Promise<ResponseDto<ZklDto[]>> {
-    const season = 2;
-    const result = await this.novaBalanceService.getAllPointsZkl(season);
+
+  @Post("/point/supplement")
+  public async uploadSupplementPoints(
+    @Query("signature") signature: string,
+    @Query("batchString") batchString: string,
+    @Body()
+    data: {
+      address: string;
+      point: number;
+    }[],
+  ): Promise<ResponseDto<boolean>> {
+    let result = false;
+    try {
+      result = await this.novaBalanceService.uploadOtherPoints(
+        data,
+        signature,
+        batchString,
+      );
+    } catch (error) {
+      this.logger.error("Upload supplement points failed", error.stack);
+      result = false;
+    }
     return {
       errno: 0,
       errmsg: "no error",
