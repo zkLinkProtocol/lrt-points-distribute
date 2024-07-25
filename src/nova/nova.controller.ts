@@ -710,4 +710,26 @@ export class NovaController {
       data: result,
     };
   }
+
+  @Post("/point/supplement/message")
+  public async getUploadSupplementPoints(
+    @Query("batchString") batchString: string,
+    @Query("deadline") deadline: number,
+    @Body()
+    data: {
+      address: string;
+      point: number;
+    }[],
+  ): Promise<ResponseDto<string>> {
+    const result = this.novaBalanceService.getUploadOtherPointsMessage(
+      data,
+      batchString,
+      deadline,
+    );
+    return {
+      errno: 0,
+      errmsg: "no error",
+      data: result,
+    };
+  }
 }
