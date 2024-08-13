@@ -29,6 +29,7 @@ export const categoryBaseConfig = [
       "eddy",
       "meson",
       "allspark",
+      "zns",
     ],
   },
 ];
