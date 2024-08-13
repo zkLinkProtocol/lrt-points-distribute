@@ -68,6 +68,7 @@ import { ReferralRepository } from "./repositories/referral.repository";
 import { SeasonTotalPointRepository } from "./repositories/seasonTotalPoint.repository";
 import { SupplementPointRepository } from "./repositories/supplementPoint.repository";
 import { supplementPoint } from "./entities/supplementPoint.entity";
+import { StatisticModule } from "./statistics/statistic.module";
 
 @Module({
   imports: [
@@ -111,6 +112,7 @@ import { supplementPoint } from "./entities/supplementPoint.entity";
     ]),
     TypeOrmModule.forFeature([Referral], "referral"),
     MetricsModule,
+    StatisticModule,
     UnitOfWorkModule,
   ],
   controllers: [
