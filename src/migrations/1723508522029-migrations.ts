@@ -5,7 +5,7 @@ export class Migrations1723508522029 implements MigrationInterface {
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
-      `CREATE TABLE "protocolDau" ("createdAt" TIMESTAMP NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP NOT NULL DEFAULT now(), "id" SERIAL NOT NULL, "name" character varying NOT NULL, "amount" integer NOT NULL, "date" date NOT NULL, CONSTRAINT "UQ_1aaab071aea8a9562cb547fd5b5" UNIQUE ("date", "name"), CONSTRAINT "PK_20d32ec3e9e341c3fcaa9f3d267" PRIMARY KEY ("id"))`,
+      `CREATE TABLE "protocolDau" ("createdAt" TIMESTAMP NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP NOT NULL DEFAULT now(), "id" SERIAL NOT NULL, "name" character varying NOT NULL, "amount" integer NOT NULL, "date" date NOT NULL, "type" smallint NOT NULL DEFAULT '1', CONSTRAINT "UQ_1aaab071aea8a9562cb547fd5b5" UNIQUE ("date", "name", "type"), CONSTRAINT "PK_20d32ec3e9e341c3fcaa9f3d267" PRIMARY KEY ("id"))`,
     );
   }
 

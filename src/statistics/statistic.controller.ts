@@ -7,7 +7,9 @@ import {
   ApiTags,
 } from "@nestjs/swagger";
 import { InjectRepository } from "@nestjs/typeorm";
+import { categoryBaseConfig } from "src/config/projectCategory.config";
 import { ProtocolDau } from "src/entities/dau.entity";
+import { Project } from "src/entities/project.entity";
 import { Between, Repository } from "typeorm";
 
 @ApiTags("statistic")
@@ -19,6 +21,8 @@ export class StatisticController {
   constructor(
     @InjectRepository(ProtocolDau)
     private readonly protocolDauRepository: Repository<ProtocolDau>,
+    @InjectRepository(Project)
+    private readonly projectRepository: Repository<Project>,
     private readonly statisticService: StatisticService,
   ) {}
 
@@ -39,6 +43,7 @@ export class StatisticController {
       where: {
         name,
         date: Between(startDate, endDate),
+        type: 1,
       },
       order: {
         date: "desc",
@@ -48,6 +53,55 @@ export class StatisticController {
       errno: 0,
       errmsg: "no error",
       data,
+    };
+  }
+
+  @Get("/protocol/cumulativeDau")
+  @ApiQuery({ name: "name", type: String, required: false })
+  @ApiOperation({ summary: "get protocol cumulative dau" })
+  public async getProtocolCumulativeDau(
+    @Query("page") page: number = 1,
+    @Query("size") size: number = 30,
+    @Query("name") name?: string,
+  ) {
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - page * size);
+    const endDate = new Date();
+    endDate.setDate(endDate.getDate() - 1 - (page - 1) * size);
+
+    const data = await this.protocolDauRepository.find({
+      where: {
+        name,
+        date: Between(startDate, endDate),
+        type: 2,
+      },
+      order: {
+        date: "desc",
+      },
+    });
+    return {
+      errno: 0,
+      errmsg: "no error",
+      data,
+    };
+  }
+
+  @Get("/protocol/sector")
+  public async getSector() {
+    return {
+      errno: 0,
+      errmsg: "no error",
+      data: categoryBaseConfig,
+    };
+  }
+
+  @Get("/protocol/list")
+  public async getProjectList() {
+    const all = await this.projectRepository.find();
+    return {
+      errno: 0,
+      errmsg: "no error",
+      data: all,
     };
   }
 
