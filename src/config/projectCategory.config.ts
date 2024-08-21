@@ -30,6 +30,8 @@ export const categoryBaseConfig = [
       "meson",
       "allspark",
       "zns",
+      "sumer",
+      "desyn",
     ],
   },
 ];
