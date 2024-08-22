@@ -35,6 +35,7 @@ import { PagingOptionsDto } from "../common/pagingOptionsDto.dto";
 import { PagingMetaDto } from "../common/paging.dto";
 import { ResponseDto } from "src/common/response.dto";
 import {
+  AllCategoryPointsUserListDto,
   CategoryPointsDto,
   CategoryPointsListDto,
   CategoryPointsUserListWithCurrentDto,
@@ -730,6 +731,38 @@ export class NovaController {
       errno: 0,
       errmsg: "no error",
       data: result,
+    };
+  }
+
+  @Get("/category/user/points/list")
+  @ApiOperation({ summary: "User's score list under a category" })
+  @ApiBadRequestResponse({
+    description: '{ "errno": 1, "errmsg": "Service exception" }',
+  })
+  @ApiNotFoundResponse({
+    description: '{ "errno": 1, "errmsg": "not found" }',
+  })
+  public async getNovaCategoryPointsList(
+    @Query() pagingOptions: PagingOptionsDto,
+  ): Promise<ResponseDto<AllCategoryPointsUserListDto[]>> {
+    const { page = 1, limit = 100 } = pagingOptions;
+    const data = await this.novaBalanceService.getPointsListInAllCategory(
+      page,
+      limit,
+    );
+    const totalCount = data.totalCount;
+    const pagingMeta = {
+      currentPage: Number(page),
+      itemCount: data.data.length,
+      itemsPerPage: Number(limit),
+      totalItems: totalCount,
+      totalPages: Math.ceil(totalCount / limit),
+    } as PagingMetaDto;
+    return {
+      errno: 0,
+      errmsg: "no error",
+      meta: pagingMeta,
+      data: data.data,
     };
   }
 }
