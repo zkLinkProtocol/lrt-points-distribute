@@ -749,4 +749,91 @@ export class NovaBalanceService extends Worker {
       return false;
     }
   }
+
+  public async getPointsListInAllCategory(
+    page: number = 1,
+    limit: number = 100,
+  ): Promise<{
+    totalCount: number;
+    data: {
+      address: string;
+      totalPoints: {
+        category: string;
+        point: number;
+      }[];
+    }[];
+  }> {
+    const season = await this.seasonTotalPointRepository.getLatestSeason();
+    const userPointsList =
+      await this.seasonTotalPointRepository.getSeasonTotalPointGroupByAddress(
+        season,
+        page,
+        limit,
+      );
+    const totalCount =
+      await this.seasonTotalPointRepository.getSeasonCountGroupByAddress(
+        season,
+      );
+    const addresses = userPointsList.map((item) => item.userAddress);
+    const userAddressPointsList =
+      await this.seasonTotalPointRepository.getSeasonTotalPointIncludeReferral(
+        addresses,
+        season,
+      );
+
+    const catePairAddressesList =
+      await this.projectService.getCategoryPairAddress();
+    const pairAddressesCateMap = new Map<string, string>();
+    for (const item of catePairAddressesList) {
+      for (const pairAddress of item.pairAddresses) {
+        pairAddressesCateMap.set(pairAddress, item.category);
+      }
+    }
+
+    const userAddressCatePointsMap = new Map<string, number>(); // key: userAddress_category, value: totalPoint
+    for (const item of userAddressPointsList) {
+      const category = pairAddressesCateMap.get(item.pairAddress);
+      if (!category) {
+        continue;
+      }
+      const key = `${item.userAddress}_${category}`;
+      const points = userAddressCatePointsMap.get(key) ?? 0;
+      userAddressCatePointsMap.set(key, points + item.totalPoint);
+    }
+    const result = [];
+    for (const [key, value] of userAddressCatePointsMap) {
+      const [userAddress, category] = key.split("_");
+      const found = result.find((item) => item.address === userAddress);
+      if (found) {
+        found.totalPoints.push({
+          category,
+          point: value,
+        });
+      } else {
+        result.push({
+          address: userAddress,
+          totalPoints: [
+            {
+              category,
+              point: value,
+            },
+          ],
+        });
+      }
+    }
+
+    // get all category, fill missing category with 0 points
+    const categories = catePairAddressesList.map((item) => item.category);
+    for (const item of result) {
+      for (const category of categories) {
+        if (!item.totalPoints.find((x) => x.category === category)) {
+          item.totalPoints.push({
+            category,
+            point: 0,
+          });
+        }
+      }
+    }
+    return { totalCount, data: result };
+  }
 }

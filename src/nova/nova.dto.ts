@@ -240,3 +240,17 @@ export class ZklDto {
   })
   public readonly zkl: number;
 }
+
+export class AllCategoryPointsUserListDto {
+  @ApiProperty({
+    type: String,
+    description: "Address of the user",
+  })
+  public readonly address: string;
+
+  @ApiProperty({
+    type: [UserPointsItemDto],
+    description: "Total points of the user under the categories",
+  })
+  public readonly totalPoints: UserPointsItemDto[];
+}
