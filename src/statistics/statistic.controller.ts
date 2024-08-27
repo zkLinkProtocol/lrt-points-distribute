@@ -28,10 +28,12 @@ export class StatisticController {
 
   @Get("/protocol/dau")
   @ApiQuery({ name: "name", type: String, required: false })
+  @ApiQuery({ name: "page", type: Number, required: false })
+  @ApiQuery({ name: "size", type: Number, required: false })
   @ApiOperation({ summary: "get protocol dau" })
   public async getProtocolDau(
     @Query("page") page: number = 1,
-    @Query("size") size: number = 30,
+    @Query("size") size: number = 200,
     @Query("name") name?: string,
   ) {
     const startDate = new Date();
@@ -58,10 +60,12 @@ export class StatisticController {
 
   @Get("/protocol/cumulativeDau")
   @ApiQuery({ name: "name", type: String, required: false })
+  @ApiQuery({ name: "page", type: Number, required: false })
+  @ApiQuery({ name: "size", type: Number, required: false })
   @ApiOperation({ summary: "get protocol cumulative dau" })
   public async getProtocolCumulativeDau(
     @Query("page") page: number = 1,
-    @Query("size") size: number = 30,
+    @Query("size") size: number = 200,
     @Query("name") name?: string,
   ) {
     const startDate = new Date();
@@ -86,6 +90,38 @@ export class StatisticController {
     };
   }
 
+  @Get("/protocol/tvl")
+  @ApiQuery({ name: "name", type: String, required: false })
+  @ApiQuery({ name: "page", type: Number, required: false })
+  @ApiQuery({ name: "size", type: Number, required: false })
+  @ApiOperation({ summary: "get protocol tvl" })
+  public async getProtocolTvl(
+    @Query("page") page: number = 1,
+    @Query("size") size: number = 200,
+    @Query("name") name?: string,
+  ) {
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - page * size);
+    const endDate = new Date();
+    endDate.setDate(endDate.getDate() - 1 - (page - 1) * size);
+
+    const data = await this.protocolDauRepository.find({
+      where: {
+        name,
+        date: Between(startDate, endDate),
+        type: 3,
+      },
+      order: {
+        date: "desc",
+      },
+    });
+    return {
+      errno: 0,
+      errmsg: "no error",
+      data,
+    };
+  }
+
   @Get("/protocol/sector")
   public async getSector() {
     return {
@@ -97,7 +133,11 @@ export class StatisticController {
 
   @Get("/protocol/list")
   public async getProjectList() {
-    const all = await this.projectRepository.find();
+    const all = await this.projectRepository
+      .createQueryBuilder()
+      .select("name")
+      .distinct(true)
+      .execute();
     return {
       errno: 0,
       errmsg: "no error",
@@ -105,9 +145,16 @@ export class StatisticController {
     };
   }
 
-  @Get("/protocol/test")
-  public async test() {
-    await this.statisticService.statisticHistoryProtocolDau();
+  @Get("/protocol/invoke")
+  public async test(@Query("type") type: number) {
+    switch (Number(type)) {
+      case 1:
+        await this.statisticService.statisticHistoryProtocolDauAndCumulative();
+        break;
+      case 2:
+        await this.statisticService.statisticHistoryTvl();
+    }
+
     return {
       errno: 0,
       errmsg: "no error",

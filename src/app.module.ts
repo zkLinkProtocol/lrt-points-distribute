@@ -68,7 +68,11 @@ import { ReferralRepository } from "./repositories/referral.repository";
 import { SeasonTotalPointRepository } from "./repositories/seasonTotalPoint.repository";
 import { SupplementPointRepository } from "./repositories/supplementPoint.repository";
 import { supplementPoint } from "./entities/supplementPoint.entity";
-import { StatisticModule } from "./statistics/statistic.module";
+import { StatisticService } from "./statistics/statistic.service";
+import { StatisticController } from "./statistics/statistic.controller";
+import { ScheduleModule } from "@nestjs/schedule";
+import { ProtocolDau } from "./entities/dau.entity";
+import { BlockTokenPrice } from "./entities/blockTokenPrice.entity";
 
 @Module({
   imports: [
@@ -99,6 +103,8 @@ import { StatisticModule } from "./statistics/statistic.module";
     TypeOrmModule.forFeature([
       Project,
       PointsOfLp,
+      ProtocolDau,
+      BlockTokenPrice,
       BlockAddressPointOfLp,
       Cache,
       BalanceOfLp,
@@ -112,8 +118,8 @@ import { StatisticModule } from "./statistics/statistic.module";
     ]),
     TypeOrmModule.forFeature([Referral], "referral"),
     MetricsModule,
-    StatisticModule,
     UnitOfWorkModule,
+    ScheduleModule.forRoot(),
   ],
   controllers: [
     AppController,
@@ -128,6 +134,7 @@ import { StatisticModule } from "./statistics/statistic.module";
     SwethController,
     PositionsController,
     TvlController,
+    StatisticController,
   ],
   providers: [
     {
@@ -164,6 +171,7 @@ import { StatisticModule } from "./statistics/statistic.module";
     TvlService,
     TxDataOfPointsRepository,
     ReferralService,
+    StatisticService,
     ReferralRepository,
     SeasonTotalPointRepository,
     SupplementPointRepository,

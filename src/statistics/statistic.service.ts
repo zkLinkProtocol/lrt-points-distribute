@@ -41,7 +41,7 @@ export class StatisticService {
 
   // Historical data, run only once
   @Cron("0 15 0 * * *")
-  public async statisticHistoryProtocolDau() {
+  public async statisticHistoryProtocolDauAndCumulative() {
     const result: { min: string; max: string }[] =
       await this.balanceOfLpRepository.query(
         `select date(min("createdAt")) as min, date(max("createdAt")) as max from "blockAddressPointOfLp"`,
@@ -132,7 +132,7 @@ export class StatisticService {
           date: day.toISOString().split("T")[0],
           type: 2,
         })
-        .orIgnore()
+        .orUpdate(["amount"], ["date", "name", "type"])
         .execute();
     }
   }
@@ -193,7 +193,7 @@ export class StatisticService {
           date: day.toISOString().split("T")[0],
           type: 1,
         })
-        .orUpdate(["amount"])
+        .orUpdate(["amount"], ["date", "name", "type"])
         .execute();
     }
   }
@@ -203,7 +203,7 @@ export class StatisticService {
   public async statisticHistoryTvl() {
     const result: { min: string; max: string }[] =
       await this.balanceOfLpRepository.query(
-        `select date(min("createdAt")) as min, date(max("createdAt")) as max from "balanceOfLp"`,
+        `select date(min("createdAt")) as min, date(max("createdAt")) as max from "balancesOfLp"`,
       );
 
     const minDate = new Date(result[0].min);
@@ -247,7 +247,7 @@ export class StatisticService {
         };
         symbol: string;
         decimals: number;
-        cpPriceId: string;
+        cgPriceId: string;
       }
     >,
   ) {
@@ -297,7 +297,7 @@ export class StatisticService {
       if (!maxBlockNumberCurday) {
         const maxBlockRes: { max: number }[] =
           await this.balanceOfLpRepository.query(
-            `select max("blockNumber") from "balanceOfLp" where "pairAddress" = any($1) and "blockNumber" between $2 and $3`,
+            `select max("blockNumber") from "balancesOfLp" where "pairAddress" = any($1) and "blockNumber" between $2 and $3`,
             [pairAddressList, minBlock, maxBlock],
           );
         maxBlockNumberCurday = maxBlockRes[0].max;
@@ -305,7 +305,7 @@ export class StatisticService {
 
       const result: { tokenAddress: Buffer; balance: number }[] =
         await this.balanceOfLpRepository.query(
-          `select "tokenAddress", sum(balance) as balance from "balanceOfLp" where "pairAddress" = any($1) and "blockNumber" = $2 group by "tokenAddress"`,
+          `select "tokenAddress", sum(cast(balance as numeric)) as balance from "balancesOfLp" where "pairAddress" = any($1) and "blockNumber" = $2 group by "tokenAddress"`,
           [pairAddressList, maxBlockNumberCurday],
         );
       let tvl = BigNumber(0);
@@ -314,9 +314,16 @@ export class StatisticService {
           tokenBalance.tokenAddress,
         ) as string;
         const token = tokenMap.get(l2Address);
+
+        if (!token?.cgPriceId) {
+          this.logger.warn(
+            `l2address: ${l2Address} not found in supported tokens`,
+          );
+          continue;
+        }
         const latestPrice = await this.blockTokenPriceRepository.findOne({
           where: {
-            priceId: token.cpPriceId,
+            priceId: token.cgPriceId,
             blockNumber: LessThanOrEqual(maxBlockNumberCurday),
           },
           order: {
@@ -340,7 +347,7 @@ export class StatisticService {
           date: day.toISOString().split("T")[0],
           type: 3,
         })
-        .orUpdate(["amount"])
+        .orUpdate(["amount"], ["date", "name", "type"])
         .execute();
     }
   }
@@ -403,7 +410,7 @@ export class StatisticService {
           };
           symbol: string;
           decimals: number;
-          cpPriceId: string;
+          cgPriceId: string;
         }[] = await response.json();
 
         const tokenMap = new Map(
