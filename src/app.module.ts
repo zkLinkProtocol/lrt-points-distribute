@@ -69,7 +69,6 @@ import { SeasonTotalPointRepository } from "./repositories/seasonTotalPoint.repo
 import { SupplementPointRepository } from "./repositories/supplementPoint.repository";
 import { supplementPoint } from "./entities/supplementPoint.entity";
 import { StatisticController } from "./statistics/statistic.controller";
-import { ScheduleModule } from "@nestjs/schedule";
 import { ProtocolDau } from "./entities/dau.entity";
 import { BlockTokenPrice } from "./entities/blockTokenPrice.entity";
 
@@ -118,7 +117,6 @@ import { BlockTokenPrice } from "./entities/blockTokenPrice.entity";
     TypeOrmModule.forFeature([Referral], "referral"),
     MetricsModule,
     UnitOfWorkModule,
-    ScheduleModule.forRoot(),
   ],
   controllers: [
     AppController,
