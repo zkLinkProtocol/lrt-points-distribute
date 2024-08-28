@@ -68,6 +68,9 @@ import { ReferralRepository } from "./repositories/referral.repository";
 import { SeasonTotalPointRepository } from "./repositories/seasonTotalPoint.repository";
 import { SupplementPointRepository } from "./repositories/supplementPoint.repository";
 import { supplementPoint } from "./entities/supplementPoint.entity";
+import { StatisticController } from "./statistics/statistic.controller";
+import { ProtocolDau } from "./entities/dau.entity";
+import { BlockTokenPrice } from "./entities/blockTokenPrice.entity";
 
 @Module({
   imports: [
@@ -98,6 +101,8 @@ import { supplementPoint } from "./entities/supplementPoint.entity";
     TypeOrmModule.forFeature([
       Project,
       PointsOfLp,
+      ProtocolDau,
+      BlockTokenPrice,
       BlockAddressPointOfLp,
       Cache,
       BalanceOfLp,
@@ -126,6 +131,7 @@ import { supplementPoint } from "./entities/supplementPoint.entity";
     SwethController,
     PositionsController,
     TvlController,
+    StatisticController,
   ],
   providers: [
     {
