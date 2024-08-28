@@ -1,4 +1,3 @@
-import { StatisticService } from "./statistic.service";
 import { Controller, Get, Logger, Query } from "@nestjs/common";
 import {
   ApiExcludeController,
@@ -23,7 +22,6 @@ export class StatisticController {
     private readonly protocolDauRepository: Repository<ProtocolDau>,
     @InjectRepository(Project)
     private readonly projectRepository: Repository<Project>,
-    private readonly statisticService: StatisticService,
   ) {}
 
   @Get("/protocol/dau")
@@ -142,31 +140,6 @@ export class StatisticController {
       errno: 0,
       errmsg: "no error",
       data: all,
-    };
-  }
-
-  @Get("/protocol/invoke")
-  public async test(@Query("type") type: number) {
-    switch (Number(type)) {
-      case 1:
-        await this.statisticService.statisticHistoryProtocolDauAndCumulative();
-        break;
-      case 2:
-        await this.statisticService.statisticHistoryTvl();
-    }
-
-    return {
-      errno: 0,
-      errmsg: "no error",
-    };
-  }
-
-  @Get("/protocol/abc")
-  public async abc() {
-    await this.statisticService.statisticProtocolDau();
-    return {
-      errno: 0,
-      errmsg: "no error",
     };
   }
 }

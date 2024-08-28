@@ -68,7 +68,6 @@ import { ReferralRepository } from "./repositories/referral.repository";
 import { SeasonTotalPointRepository } from "./repositories/seasonTotalPoint.repository";
 import { SupplementPointRepository } from "./repositories/supplementPoint.repository";
 import { supplementPoint } from "./entities/supplementPoint.entity";
-import { StatisticService } from "./statistics/statistic.service";
 import { StatisticController } from "./statistics/statistic.controller";
 import { ScheduleModule } from "@nestjs/schedule";
 import { ProtocolDau } from "./entities/dau.entity";
@@ -171,7 +170,6 @@ import { BlockTokenPrice } from "./entities/blockTokenPrice.entity";
     TvlService,
     TxDataOfPointsRepository,
     ReferralService,
-    StatisticService,
     ReferralRepository,
     SeasonTotalPointRepository,
     SupplementPointRepository,
