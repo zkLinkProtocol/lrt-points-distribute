@@ -464,7 +464,7 @@ export class NovaController {
     description: '{ "errno": 1, "errmsg": "not found" }',
   })
   public async getNovaCategoryUserProjectPoints(
-    @Query("season", new ParseNumberPipe(3)) season: number,
+    @Query("season", new ParseNumberPipe(4)) season: number,
     @Query("address", new ParseAddressPipe()) address: string,
   ): Promise<ResponseDto<CategoryPointsDto[]>> {
     const pointsData = await this.novaBalanceService.getPointsByAddress(
@@ -490,7 +490,7 @@ export class NovaController {
     description: '{ "errno": 1, "errmsg": "not found" }',
   })
   public async getNovaCategoryUserTotalPoints(
-    @Query("season", new ParseNumberPipe(3)) season: number,
+    @Query("season", new ParseNumberPipe(4)) season: number,
     @Query("address", new ParseAddressPipe()) address: string,
   ): Promise<ResponseDto<CategoryTotalPointsListDto[]>> {
     const pointsData =
@@ -514,7 +514,7 @@ export class NovaController {
     description: '{ "errno": 1, "errmsg": "not found" }',
   })
   public async getNovaCategoryPoints(
-    @Query("season", new ParseNumberPipe(3)) season: number,
+    @Query("season", new ParseNumberPipe(4)) season: number,
   ): Promise<ResponseDto<CategoryPointsListDto[]>> {
     const pointsData =
       await this.novaBalanceService.getAllCategoryPoints(season);
@@ -545,7 +545,7 @@ export class NovaController {
     )
     address: string,
     @Query() pagingOptions: PagingOptionsDto,
-    @Query("season", new ParseNumberPipe(3)) season: number,
+    @Query("season", new ParseNumberPipe(4)) season: number,
   ): Promise<ResponseDto<CategoryPointsUserListWithCurrentDto>> {
     const { limit = 100 } = pagingOptions;
     const data = await this.novaBalanceService.getPointsListByCategory(
@@ -581,7 +581,7 @@ export class NovaController {
     description: '{ "errno": 1, "errmsg": "not found" }',
   })
   public async getReferrerPointsRank(
-    @Query("season", new ParseNumberPipe(3)) season: number,
+    @Query("season", new ParseNumberPipe(4)) season: number,
     @Param("address", new ParseAddressPipe()) address: string,
   ): Promise<ResponseDto<UserPointsListDto[]>> {
     const data = await this.referralService.getReferralPoints(address, season);
@@ -608,7 +608,7 @@ export class NovaController {
   })
   public async getHoldPoint(
     @Param("address", new ParseAddressPipe()) address: string,
-    @Query("season", new ParseNumberPipe(3)) season: number,
+    @Query("season", new ParseNumberPipe(4)) season: number,
   ): Promise<ResponseDto<number>> {
     const data = await this.novaBalanceService.getHoldPointsByAddress(
       address,
@@ -651,7 +651,7 @@ export class NovaController {
     description: '{ "errno": 1, "errmsg": "not found" }',
   })
   public async getNovaAllProjectPoints(
-    @Query("season", new ParseNumberPipe(3)) season: number,
+    @Query("season", new ParseNumberPipe(4)) season: number,
   ): Promise<ResponseDto<ProjectPointsListDto[]>> {
     const pointsData =
       await this.novaBalanceService.getAllProjectPoints(season);
