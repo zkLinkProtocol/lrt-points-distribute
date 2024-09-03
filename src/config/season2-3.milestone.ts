@@ -3,19 +3,19 @@ export default [
     name: "holding",
     data: 715063449,
     type: "tvl",
-    zkl: 2000000,
+    zkl: 1000000,
   },
   {
     name: "spotdex",
     data: 3185226.3652,
     type: "tvl",
-    zkl: 1500000,
+    zkl: 1000000,
   },
   {
     name: "perpdex",
     data: 4196768,
     type: "volume",
-    zkl: 2000000,
+    zkl: 1000000,
   },
   {
     name: "lending",
@@ -27,7 +27,7 @@ export default [
     name: "nativeboost",
     data: 0,
     type: "tvl",
-    zkl: 500000,
+    zkl: 5000000,
   },
   {
     name: "other",
