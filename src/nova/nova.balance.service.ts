@@ -11,6 +11,8 @@ import { ProjectService } from "src/common/service/project.service";
 import { Worker } from "src/common/worker";
 import waitFor from "src/utils/waitFor";
 import s2_1Milestone from "../config/season2-1.milestone";
+import s2_2Milestone from "../config/season2-2.milestone";
+import s2_3Milestone from "../config/season2-3.milestone";
 import { verifyMessage } from "ethers";
 import { SupplementPointRepository } from "src/repositories/supplementPoint.repository";
 
@@ -669,7 +671,8 @@ export class NovaBalanceService extends Worker {
         (acc, cur) => Number(acc) + Number(cur.totalPoints),
         0,
       );
-      const mileStones = s2_1Milestone.filter(
+      const seasonMilestone = this.getSeasonCategoryMilestone(season);
+      const mileStones = seasonMilestone.filter(
         (mile) => mile.name == item.category,
       );
       if (mileStones.length !== 1) {
@@ -835,5 +838,25 @@ export class NovaBalanceService extends Worker {
       }
     }
     return { totalCount, data: result };
+  }
+
+  public getSeasonCategoryMilestone(season: number) {
+    let data = [];
+    switch (season) {
+      case 1:
+        // if season = 1, is the same as s2-1
+        data = s2_1Milestone;
+        break;
+      case 2:
+        data = s2_1Milestone;
+        break;
+      case 3:
+        data = s2_2Milestone;
+        break;
+      case 4:
+        data = s2_3Milestone;
+        break;
+    }
+    return data;
   }
 }
