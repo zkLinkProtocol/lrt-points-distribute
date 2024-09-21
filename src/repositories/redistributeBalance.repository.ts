@@ -73,6 +73,10 @@ export class RedistributeBalanceRepository extends BaseRepository<RedistributeBa
     const userAddresses = combinedUserAddresses.map((row) => row.userAddress);
 
     // Step 2: Get user data
+    const withdrawCutoffTimestamp = Math.floor(
+      (new Date().getTime() - 7 * 24 * 60 * 60 * 1000) / 1000,
+    );
+    const withdrawCutoffDate = new Date(withdrawCutoffTimestamp * 1000);
     const users = await entityManager
       .createQueryBuilder(User, "user")
       .leftJoinAndSelect(
@@ -87,12 +91,19 @@ export class RedistributeBalanceRepository extends BaseRepository<RedistributeBa
         "us.tokenAddress IN (:...tokenBuffers) AND us.poolAddress IN (:...poolBuffers)",
         { tokenBuffers, poolBuffers },
       )
-      .leftJoinAndSelect("user.withdraws", "uw")
+      .leftJoinAndSelect(
+        "user.withdraws",
+        "uw",
+        "uw.timestamp > :withdrawCutoffDate",
+        {
+          withdrawCutoffDate,
+        },
+      )
       .where("user.userAddress IN (:...userAddresses)", {
         userAddresses: userAddresses.map((addr) => Buffer.from(addr, "hex")),
       })
       .orderBy("user.createdAt", "DESC")
-      .orderBy("user.userAddress", "ASC")
+      .addOrderBy("user.userAddress", "ASC")
       .getMany();
 
     // Step 3: Organize data into the desired structure
