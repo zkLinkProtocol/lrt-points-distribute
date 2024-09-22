@@ -16,6 +16,7 @@ import { RedistributeBalanceRepository } from "src/repositories/redistributeBala
 import { ethers } from "ethers";
 import { WithdrawService } from "src/common/service/withdraw.service";
 import { ExplorerService } from "src/common/service/explorer.service";
+import { fetchGraphQLData } from "src/utils/fetchDataFromGraph";
 
 export interface PufferPointItem {
   address: string;
@@ -100,6 +101,7 @@ const LAYERBANK_VAULT =
 @Injectable()
 export class PuffPointsService extends Worker {
   public tokenAddress: string;
+  public allWithdrawList = [];
   private readonly projectName: string = "puffer";
   private readonly logger: Logger;
   private realTotalPoints: number = 0;
@@ -127,7 +129,7 @@ export class PuffPointsService extends Worker {
   public async runProcess() {
     this.logger.log(`Init ${PuffPointsService.name} onmoduleinit`);
     try {
-      await this.loadPointsData();
+      await Promise.all([this.loadPointsData(), this.getAllWithdrawList()]);
     } catch (err) {
       this.logger.error(`${PuffPointsService.name} init failed.`, err.stack);
     }
@@ -770,5 +772,49 @@ export class PuffPointsService extends Worker {
         },
       ],
     };
+  }
+
+  public async getAllWithdrawList() {
+    const url =
+      "https://graph.zklink.io/subgraphs/name/nova-points-redistribute-v4";
+    const pageSize = 1000;
+
+    const result = [];
+    let skip = 0;
+    let fetchNext = true;
+
+    while (fetchNext) {
+      const query = `query MyQuery {
+          withdrawPoints(first: ${pageSize}, skip: ${skip}) {
+            address
+            balance
+            blockTimestamp
+            id
+            project
+            timeWeightAmountIn
+            timeWeightAmountOut
+            weightBalance
+          }
+        }`;
+
+      const data = await fetchGraphQLData<{ withdrawPoints: any }>(url, query);
+      if (!data) {
+        this.logger.log("No Data Yet!");
+        break;
+      }
+
+      const { withdrawPoints } = data;
+
+      result.push(...withdrawPoints);
+
+      if (withdrawPoints.length < pageSize) {
+        fetchNext = false;
+      } else {
+        this.logger.log(`get withdraw data from index ${skip}`);
+        skip += pageSize;
+      }
+    }
+    this.allWithdrawList = result;
+    return result;
   }
 }

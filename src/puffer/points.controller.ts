@@ -39,9 +39,10 @@ import {
   ElPointsDto,
   PointsDto,
   ElPointsDtoItem,
-  LayerBankPufferPointQueryOptionsDto,
+  TimeQueryOptionsDto,
   PufferPointUserBalance,
   UserPufferDateBalanceDto,
+  PufferSlashResponseDto,
 } from "./points.dto";
 import { TokensDto } from "./tokens.dto";
 import { NovaService } from "src/nova/nova.service";
@@ -226,6 +227,115 @@ export class PointsController {
       ],
     };
     return res;
+  }
+
+  @Get("/puffer/slash")
+  @ApiOkResponse({
+    description: "Return puffer slashed withdrawing data by time.",
+    type: PufferSlashResponseDto,
+  })
+  @ApiBadRequestResponse({
+    description: '{ "message": "Not Found", "statusCode": 404 }',
+  })
+  public async queryPufferSlashData(
+    @Query() query: TimeQueryOptionsDto,
+  ): Promise<PufferSlashResponseDto> {
+    try {
+      const finalFixedTimestamp =
+        new Date("2024-09-22T09:44:04Z").getTime() / 1000;
+      const firstFixedTimestamp =
+        new Date("2024-09-21T03:52:59Z").getTime() / 1000;
+
+      const issueStartTimestamp =
+        new Date("2024-06-08T07:07:19Z").getTime() / 1000;
+
+      const queryTimestamp = new Date(query.time).getTime() / 1000;
+      const queryWithdrawTimestamp = queryTimestamp - 7 * 24 * 60 * 60;
+      console.log(queryTimestamp, queryWithdrawTimestamp);
+      if (
+        queryTimestamp >= finalFixedTimestamp ||
+        queryTimestamp <= issueStartTimestamp
+      ) {
+        return { errno: 0, errmsg: "no error", data: [] };
+      }
+
+      const withdrawData = this.puffPointsService.allWithdrawList;
+
+      const aggregatedData = withdrawData.reduce((acc, item) => {
+        const address = item.address.toLowerCase();
+        const balance = BigInt(item.balance);
+
+        if (!acc[address]) {
+          acc[address] = {
+            address: address,
+            inaccurateWithdrawBalance: BigInt(0),
+            accurateWithdrawBalance: BigInt(0),
+          };
+        }
+
+        // set before
+
+        if (
+          queryTimestamp < firstFixedTimestamp &&
+          item.blockTimestamp > issueStartTimestamp
+        ) {
+          acc[address].inaccurateWithdrawBalance += balance;
+        }
+
+        if (
+          queryTimestamp >= firstFixedTimestamp &&
+          item.blockTimestamp > queryWithdrawTimestamp
+        ) {
+          acc[address].inaccurateWithdrawBalance += balance;
+        }
+
+        if (
+          Number(item.blockTimestamp) + 7 * 24 * 60 * 60 > queryTimestamp &&
+          item.blockTimestamp < queryTimestamp &&
+          item.project === PUFFER_ETH_ADDRESS
+        ) {
+          acc[address].accurateWithdrawBalance += balance;
+        }
+
+        return acc;
+      }, {});
+
+      const result = Object.values<any>(aggregatedData)
+        .map((entry) => {
+          const inaccurateWithdrawBalance = Number(
+            ethers.formatEther(entry.inaccurateWithdrawBalance),
+          ).toFixed(6);
+          const accurateWithdrawBalance = Number(
+            ethers.formatEther(entry.accurateWithdrawBalance),
+          ).toFixed(6);
+          return {
+            address: entry.address,
+            inaccurateWithdrawBalance,
+            accurateWithdrawBalance,
+            slash:
+              Number(inaccurateWithdrawBalance) -
+              Number(accurateWithdrawBalance),
+          };
+        })
+        .filter((item) => item.slash > 0)
+        .sort((a, b) => b.slash - a.slash);
+
+      this.logger.log(`get puffer slash data success at ${query.time}`);
+      return {
+        errno: 0,
+        errmsg: "no error",
+        data: result,
+      };
+    } catch (error) {
+      this.logger.error(
+        `get puffer slash data failed at ${query.time}, ${error.message}`,
+      );
+      return {
+        errno: 1,
+        errmsg: "service internal error",
+        data: [],
+      };
+    }
   }
 
   @Get("puffer/:address")
@@ -601,7 +711,7 @@ export class PointsController {
   })
   public async queryUserPufferHistoricData(
     @Param("address", new ParseAddressPipe()) address: string,
-    @Query() queryOptions: LayerBankPufferPointQueryOptionsDto,
+    @Query() queryOptions: TimeQueryOptionsDto,
   ): Promise<PufferPointUserBalance> {
     let res: PufferPointUserBalance;
     try {
