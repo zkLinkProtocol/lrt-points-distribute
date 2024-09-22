@@ -94,9 +94,10 @@ export class RedistributeBalanceRepository extends BaseRepository<RedistributeBa
       .leftJoinAndSelect(
         "user.withdraws",
         "uw",
-        "uw.timestamp > :withdrawCutoffDate",
+        "uw.timestamp > :withdrawCutoffDate AND uw.tokenAddress IN (:...tokenBuffers)",
         {
           withdrawCutoffDate,
+          tokenBuffers,
         },
       )
       .where("user.userAddress IN (:...userAddresses)", {
@@ -107,25 +108,34 @@ export class RedistributeBalanceRepository extends BaseRepository<RedistributeBa
       .getMany();
 
     // Step 3: Organize data into the desired structure
-    const result = users.map((user) => ({
-      userAddress: user.userAddress,
-      userHolding: user.holdings.map((holding) => ({
-        ...holding,
-        userAddress: holding.userAddress,
-        tokenAddress: holding.tokenAddress,
-      })),
-      userStaked: user.stakes.map((stake) => ({
-        ...stake,
-        userAddress: stake.userAddress,
-        tokenAddress: stake.tokenAddress,
-        poolAddress: stake.poolAddress,
-      })),
-      userWithdraw: user.withdraws.map((withdraw) => ({
-        ...withdraw,
-        userAddress: withdraw.userAddress,
-        tokenAddress: withdraw.tokenAddress,
-      })),
-    }));
+    const result = users
+      .map((user) => ({
+        userAddress: user.userAddress,
+        userHolding: user.holdings.map((holding) => ({
+          ...holding,
+          userAddress: holding.userAddress,
+          tokenAddress: holding.tokenAddress,
+        })),
+        userStaked: user.stakes.map((stake) => ({
+          ...stake,
+          userAddress: stake.userAddress,
+          tokenAddress: stake.tokenAddress,
+          poolAddress: stake.poolAddress,
+        })),
+        userWithdraw: user.withdraws.map((withdraw) => ({
+          ...withdraw,
+          userAddress: withdraw.userAddress,
+          tokenAddress: withdraw.tokenAddress,
+        })),
+      }))
+      .filter(
+        (item) =>
+          ![
+            "0xdd6105865380984716C6B2a1591F9643e6ED1C48".toLowerCase(), // aqua vault
+            "0x4AC97E2727B0e92AE32F5796b97b7f98dc47F059".toLowerCase(), // lbank vault
+            "0xc48F99afe872c2541f530C6c87E3A6427e0C40d5".toLowerCase(), // agx vault
+          ].includes(item.userAddress),
+      );
 
     return result;
   }
