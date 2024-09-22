@@ -221,7 +221,7 @@ export class ElPointsDto {
   public readonly data: ElPointsDtoData;
 }
 
-export class LayerBankPufferPointQueryOptionsDto {
+export class TimeQueryOptionsDto {
   @ApiProperty({
     type: Number,
     description: "date time to query",
@@ -343,4 +343,56 @@ export class UserPufferDateBalanceDto {
     nullable: true,
   })
   public readonly data: UserPufferDateBalanceItem;
+}
+
+export class PufferSlashDataDto {
+  @ApiProperty({
+    type: String,
+    description: "user address",
+    example: "0x3eE43236A3dB189e18650bBE3764B9AdB4751F95",
+  })
+  public readonly address: string;
+
+  @ApiProperty({
+    type: ElPointsDtoItem,
+    description: "accurate withdraw balance",
+    example: "0.000000",
+  })
+  public readonly accurateWithdrawBalance: string;
+
+  @ApiProperty({
+    type: ElPointsDtoItem,
+    description: "inaccurate withdraw balance",
+    example: "2260.200000",
+  })
+  public readonly inaccurateWithdrawBalance: string;
+
+  @ApiProperty({
+    type: ElPointsDtoItem,
+    description: "the data that needs to be slashed",
+    example: 2260.2,
+  })
+  public readonly slash: number;
+}
+
+export class PufferSlashResponseDto {
+  @ApiProperty({
+    type: Number,
+    description: "error code",
+    example: 0,
+  })
+  public readonly errno: number;
+  //errmsg
+  @ApiProperty({
+    type: String,
+    description: "error message",
+    example: "no error",
+  })
+  public readonly errmsg: string;
+
+  @ApiProperty({
+    type: Array<PufferSlashDataDto>,
+    description: "puffer slash data",
+  })
+  public readonly data: PufferSlashDataDto[];
 }

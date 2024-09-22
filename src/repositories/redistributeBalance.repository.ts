@@ -131,8 +131,8 @@ export class RedistributeBalanceRepository extends BaseRepository<RedistributeBa
       .filter(
         (item) =>
           ![
-            "0xdd6105865380984716C6B2a1591F9643e6ED1C48".toLowerCase(), // aqua vault
-            "0x4AC97E2727B0e92AE32F5796b97b7f98dc47F059".toLowerCase(), // lbank vault
+            "0xdd6105865380984716C6B2a1591F9643e6ED1C48".toLowerCase(), // lbank vault
+            "0x4AC97E2727B0e92AE32F5796b97b7f98dc47F059".toLowerCase(), // aqua vault
             "0xc48F99afe872c2541f530C6c87E3A6427e0C40d5".toLowerCase(), // agx vault
           ].includes(item.userAddress),
       );
