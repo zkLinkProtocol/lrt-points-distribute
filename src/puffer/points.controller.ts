@@ -241,6 +241,19 @@ export class PointsController {
     @Query() query: TimeQueryOptionsDto,
   ): Promise<PufferSlashResponseDto> {
     try {
+      const pufferTotalPoint = await this.puffPointsService.getRealPointsData();
+      const stakedPointsMap =
+        await this.puffPointsService.getPufferLPAddressMap(pufferTotalPoint);
+
+      const allStakedAddresses = Array.from(stakedPointsMap.keys());
+      const allUserData =
+        await this.redistributeBalanceRepository.getAllRedistributeUser(
+          [PUFFER_ETH_ADDRESS],
+          allStakedAddresses,
+        );
+
+      const allUserDataSet = new Set([...allUserData]);
+
       const finalFixedTimestamp =
         new Date("2024-09-22T09:44:04Z").getTime() / 1000;
       const firstFixedTimestamp =
@@ -317,10 +330,12 @@ export class PointsController {
               Number(accurateWithdrawBalance),
           };
         })
-        .filter((item) => item.slash > 0)
+        .filter((item) => item.slash > 0 && allUserDataSet.has(item.address))
         .sort((a, b) => b.slash - a.slash);
 
-      this.logger.log(`get puffer slash data success at ${query.time}`);
+      this.logger.log(
+        `get puffer slash data success at ${query.time}, length: ${result.length}`,
+      );
       return {
         errno: 0,
         errmsg: "no error",

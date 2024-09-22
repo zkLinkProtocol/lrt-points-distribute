@@ -18,6 +18,53 @@ export class RedistributeBalanceRepository extends BaseRepository<RedistributeBa
     super(RedistributeBalance, unitOfWork);
   }
 
+  async getAllRedistributeUser(
+    tokenAddresses: string[],
+    poolAddresses: string[],
+  ): Promise<Array<string>> {
+    const entityManager = this.unitOfWork.getTransactionManager();
+    const tokenBuffers = tokenAddresses.map((addr) =>
+      Buffer.from(addr.slice(2), "hex"),
+    );
+    const poolBuffers = poolAddresses.map((addr) =>
+      Buffer.from(addr.slice(2), "hex"),
+    );
+
+    // Step 1: Get unique user addresses from UserHolding and UserStaked, with pagination
+    const userHoldingSubQuery = `
+      SELECT uh."userAddress"
+      FROM "userHolding" uh
+      WHERE uh."tokenAddress" = ANY($1)
+    `;
+
+    const userStakedSubQuery = `
+      SELECT us."userAddress"
+      FROM "userStaked" us
+      WHERE us."tokenAddress" = ANY($1) AND us."poolAddress" = ANY($2)
+    `;
+
+    const combinedSubQuery = `
+      (${userHoldingSubQuery}) 
+      UNION 
+      (${userStakedSubQuery})
+    `;
+
+    const combinedUserAddresses = await entityManager.query(combinedSubQuery, [
+      tokenBuffers,
+      poolBuffers,
+    ]);
+
+    if (combinedUserAddresses.length === 0) {
+      return [];
+    }
+
+    const userAddresses = combinedUserAddresses.map(
+      (row) => "0x" + row.userAddress.toString("hex"),
+    );
+
+    return userAddresses;
+  }
+
   async getPaginatedUserData(
     tokenAddresses: string[],
     poolAddresses: string[],
