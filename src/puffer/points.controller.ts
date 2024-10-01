@@ -534,7 +534,7 @@ export class PointsController {
   public async queryPufferEigenlayerPoints(
     @Query() pagingOptions: PagingOptionsDto,
   ): Promise<ElPointsDto> {
-    const data = this.puffPointsService.getPointsData();
+    const data = await this.puffPointsService.getPointsData();
     const { pools, userPositions } =
       await this.puffPointsService.getPuffElPoints(pagingOptions);
     const addresses = userPositions.map((i) => i.id);
@@ -596,7 +596,14 @@ export class PointsController {
               };
             })
             .filter((i) => !!i);
-
+          if (p.id === "0x020b0d4c844e0dbca51c9ab779df0191978c0359") {
+            console.log(
+              333,
+              userPointData.realPoints,
+              layerbankPoint,
+              aquaPoint,
+            );
+          }
           return {
             userAddress: p.id,
             pufEthAddress: "0x1B49eCf1A8323Db4abf48b2F5EFaA33F7DdAB3FC",

@@ -27,7 +27,7 @@ export class PagingOptionsDto {
   @Type(() => Number)
   @IsInt()
   @Min(1)
-  @Max(500)
+  // @Max(500)
   @IsOptional()
   public readonly limit: number = 100;
 }

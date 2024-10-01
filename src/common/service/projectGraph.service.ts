@@ -94,8 +94,23 @@ export class ProjectGraphService {
         token,
         point.address.toLocaleLowerCase(),
       );
+
       const withdrawTotalPoint =
         this.withdrawService.getWithdrawTotalPoint(token);
+
+      if (
+        point.address === "0x020b0d4c844e0dbca51c9ab779df0191978c0359" &&
+        point.project.indexOf("puffer") > -1
+      ) {
+        console.log(
+          111,
+          GraphQueryService.getPoints(point, now),
+          withdrawPoints,
+          GraphQueryService.getPoints(point, now) + withdrawPoints,
+          localTokenTotalPoint.get(point.project),
+          withdrawTotalPoint,
+        );
+      }
       const newPoint = {
         address: point.address.toLocaleLowerCase(),
         points: GraphQueryService.getPoints(point, now) + withdrawPoints,

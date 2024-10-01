@@ -167,6 +167,13 @@ export class PuffPointsService extends Worker {
     }
     // loop transferFaildData, and added transferFaildPoint to localPoints
     for (const item of transferFaildPoints) {
+      if (
+        item.address === "0x020b0d4c844e0dbca51c9ab779df0191978c0359" &&
+        item.tokenAddress ===
+          "0x1B49eCf1A8323Db4abf48b2F5EFaA33F7DdAB3FC".toLowerCase()
+      ) {
+        console.log("failed", item);
+      }
       const key = `${item.address}_${item.tokenAddress}`;
       const transferFaildTotalPoint =
         this.projectGraphService.getTransferFaildTotalPoint(item.tokenAddress);
@@ -194,10 +201,21 @@ export class PuffPointsService extends Worker {
 
     const localPoints = [];
     for (const [, item] of localPointsMap) {
+      if (
+        item.address === "0x020b0d4c844e0dbca51c9ab779df0191978c0359" &&
+        item.token === "0x1b49ecf1a8323db4abf48b2f5efaa33f7ddab3fc"
+      ) {
+        console.log(
+          222,
+          item.points,
+          item.totalPointsPerToken,
+          item.points / item.totalPointsPerToken,
+        );
+      }
       const realPoints = new BigNumber(item.points.toString())
         .multipliedBy(this.realTotalPoints)
         .div(item.totalPointsPerToken.toString())
-        .toFixed(6);
+        .toFixed(6); // to review
       const _item = {
         address: item.address,
         tokenAddress: item.token,
