@@ -596,19 +596,13 @@ export class PointsController {
               };
             })
             .filter((i) => !!i);
-          if (p.id === "0x020b0d4c844e0dbca51c9ab779df0191978c0359") {
-            console.log(
-              333,
-              userPointData.realPoints,
-              layerbankPoint,
-              aquaPoint,
-            );
-          }
           return {
             userAddress: p.id,
             pufEthAddress: "0x1B49eCf1A8323Db4abf48b2F5EFaA33F7DdAB3FC",
             pufferPoints: (
-              userPointData?.realPoints ?? 0 + layerbankPoint + aquaPoint
+              (userPointData?.realPoints ?? 0) +
+              layerbankPoint +
+              aquaPoint
             ).toString(),
             totalBalance: totalBalance,
             withdrawingBalance: Number(
