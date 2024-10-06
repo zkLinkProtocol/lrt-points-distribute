@@ -636,7 +636,7 @@ export class PointsController {
     const allStakedAddresses = Array.from(stakedPointsMap.keys());
     const userData =
       await this.redistributeBalanceRepository.getPaginatedUserData(
-        [PUFFER_ETH_ADDRESS],
+        PUFFER_ETH_ADDRESS,
         allStakedAddresses,
         (pagingOptions.page ?? 1) - 1,
         pagingOptions.limit,

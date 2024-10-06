@@ -516,37 +516,15 @@ export class PuffPointsService extends Worker {
 
   /**
    *
-   * @param name project name
-   * @returns
-   */
-  public async getPoolInfoByProject() {
-    const poolsInfo = await this.redistributeBalanceRepository.getPoolsByToken(
-      Buffer.from(PUFFER_ETH_ADDRESS.slice(2), "hex"),
-    );
-    return poolsInfo.map((pool) => {
-      if (pool.name === "aqua") {
-        return {
-          vaultAddress: AQUA_VAULT,
-          poolAddress: pool.poolAddress,
-          dappName: pool.name,
-        };
-      }
-      return {
-        vaultAddress: pool.poolAddress,
-        poolAddress: pool.poolAddress,
-        dappName: pool.name,
-      };
-    });
-  }
-
-  /**
-   *
    * @param pufferTotalPoint
    * @returns Promise<Map<string, number>>
    * @description return a Map which key is the poolAddress, value is {points: number, dappName: string}
    */
   public async getPufferLPAddressMap(pufferTotalPoint: number) {
-    const redistributeList = await this.getPoolInfoByProject();
+    const redistributeList =
+      await this.redistributeBalanceRepository.getPoolInfoByProject(
+        PUFFER_ETH_ADDRESS,
+      );
 
     const vaultAddresses = redistributeList.map(
       (config) => config.vaultAddress,
