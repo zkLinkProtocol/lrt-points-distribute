@@ -65,8 +65,35 @@ export class RedistributeBalanceRepository extends BaseRepository<RedistributeBa
     return userAddresses;
   }
 
+  /**
+   *
+   * @param name project name
+   * @returns
+   */
+  public async getPoolInfoByProject(address: string) {
+    const poolsInfo = await this.getPoolsByToken(
+      Buffer.from(address.slice(2), "hex"),
+    );
+    const AQUA_VAULT =
+      "0x4AC97E2727B0e92AE32F5796b97b7f98dc47F059".toLocaleLowerCase();
+    return poolsInfo.map((pool) => {
+      if (pool.name === "aqua") {
+        return {
+          vaultAddress: AQUA_VAULT,
+          poolAddress: pool.poolAddress,
+          dappName: pool.name,
+        };
+      }
+      return {
+        vaultAddress: pool.poolAddress,
+        poolAddress: pool.poolAddress,
+        dappName: pool.name,
+      };
+    });
+  }
+
   async getPaginatedUserData(
-    tokenAddresses: string[],
+    tokenAddress: string,
     poolAddresses: string[],
     page: number = 0,
     pageSize: number = 100,
@@ -79,35 +106,40 @@ export class RedistributeBalanceRepository extends BaseRepository<RedistributeBa
     }>
   > {
     const entityManager = this.unitOfWork.getTransactionManager();
-    const tokenBuffers = tokenAddresses.map((addr) =>
-      Buffer.from(addr.slice(2), "hex"),
-    );
+    const tokenBuffer = Buffer.from(tokenAddress.slice(2), "hex");
     const poolBuffers = poolAddresses.map((addr) =>
       Buffer.from(addr.slice(2), "hex"),
     );
+
+    const poolsInfo = await this.getPoolInfoByProject(tokenAddress);
+    const vaultBuffers = Array.from(
+      new Set(poolsInfo.map((i) => i.vaultAddress)),
+    ).map((addr) => Buffer.from(addr.slice(2), "hex"));
 
     // Step 1: Get unique user addresses from UserHolding and UserStaked, with pagination
     const userHoldingSubQuery = `
       SELECT uh."userAddress"
       FROM "userHolding" uh
-      WHERE uh."tokenAddress" = ANY($1)
+      WHERE uh."tokenAddress" = $1
+        AND uh."userAddress" NOT IN (SELECT address FROM unnest($2::bytea[]) AS address)
     `;
 
     const userStakedSubQuery = `
       SELECT us."userAddress"
       FROM "userStaked" us
-      WHERE us."tokenAddress" = ANY($1) AND us."poolAddress" = ANY($2)
+      WHERE us."tokenAddress" = $1 AND us."poolAddress" = ANY($3)
     `;
 
     const combinedSubQuery = `
       (${userHoldingSubQuery}) 
       UNION 
       (${userStakedSubQuery})
-      LIMIT $3 OFFSET $4
+      LIMIT $4 OFFSET $5
     `;
 
     const combinedUserAddresses = await entityManager.query(combinedSubQuery, [
-      tokenBuffers,
+      tokenBuffer,
+      vaultBuffers,
       poolBuffers,
       pageSize,
       page * pageSize,
@@ -129,22 +161,22 @@ export class RedistributeBalanceRepository extends BaseRepository<RedistributeBa
       .leftJoinAndSelect(
         "user.holdings",
         "uh",
-        "uh.tokenAddress IN (:...tokenBuffers)",
-        { tokenBuffers },
+        "uh.tokenAddress = :tokenBuffer",
+        { tokenBuffer },
       )
       .leftJoinAndSelect(
         "user.stakes",
         "us",
-        "us.tokenAddress IN (:...tokenBuffers) AND us.poolAddress IN (:...poolBuffers)",
-        { tokenBuffers, poolBuffers },
+        "us.tokenAddress = :tokenBuffer AND us.poolAddress IN (:...poolBuffers)",
+        { tokenBuffer, poolBuffers },
       )
       .leftJoinAndSelect(
         "user.withdraws",
         "uw",
-        "uw.timestamp > :withdrawCutoffDate AND uw.tokenAddress IN (:...tokenBuffers)",
+        "uw.timestamp > :withdrawCutoffDate AND uw.tokenAddress = :tokenBuffer",
         {
           withdrawCutoffDate,
-          tokenBuffers,
+          tokenBuffer,
         },
       )
       .where("user.userAddress IN (:...userAddresses)", {
@@ -155,34 +187,25 @@ export class RedistributeBalanceRepository extends BaseRepository<RedistributeBa
       .getMany();
 
     // Step 3: Organize data into the desired structure
-    const result = users
-      .map((user) => ({
-        userAddress: user.userAddress,
-        userHolding: user.holdings.map((holding) => ({
-          ...holding,
-          userAddress: holding.userAddress,
-          tokenAddress: holding.tokenAddress,
-        })),
-        userStaked: user.stakes.map((stake) => ({
-          ...stake,
-          userAddress: stake.userAddress,
-          tokenAddress: stake.tokenAddress,
-          poolAddress: stake.poolAddress,
-        })),
-        userWithdraw: user.withdraws.map((withdraw) => ({
-          ...withdraw,
-          userAddress: withdraw.userAddress,
-          tokenAddress: withdraw.tokenAddress,
-        })),
-      }))
-      .filter(
-        (item) =>
-          ![
-            "0xdd6105865380984716C6B2a1591F9643e6ED1C48".toLowerCase(), // lbank vault
-            "0x4AC97E2727B0e92AE32F5796b97b7f98dc47F059".toLowerCase(), // aqua vault
-            "0xc48F99afe872c2541f530C6c87E3A6427e0C40d5".toLowerCase(), // agx vault
-          ].includes(item.userAddress),
-      );
+    const result = users.map((user) => ({
+      userAddress: user.userAddress,
+      userHolding: user.holdings.map((holding) => ({
+        ...holding,
+        userAddress: holding.userAddress,
+        tokenAddress: holding.tokenAddress,
+      })),
+      userStaked: user.stakes.map((stake) => ({
+        ...stake,
+        userAddress: stake.userAddress,
+        tokenAddress: stake.tokenAddress,
+        poolAddress: stake.poolAddress,
+      })),
+      userWithdraw: user.withdraws.map((withdraw) => ({
+        ...withdraw,
+        userAddress: withdraw.userAddress,
+        tokenAddress: withdraw.tokenAddress,
+      })),
+    }));
 
     return result;
   }
