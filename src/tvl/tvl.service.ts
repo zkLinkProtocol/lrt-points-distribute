@@ -4,6 +4,9 @@ import projectCategoryConfig from "src/config/projectCategory.config";
 import { CategoryTvl } from "src/type/points";
 import BigNumber from "bignumber.js";
 import { TxDataOfPointsRepository } from "src/repositories/txDataOfPoints.repository";
+import { CacheRepository } from "src/repositories/cache.repository";
+
+const HOLDING_TVL_USD = "holdingTvlUsd";
 
 @Injectable()
 export class TvlService {
@@ -12,6 +15,7 @@ export class TvlService {
   public constructor(
     private readonly projectRepository: ProjectRepository,
     private readonly txDataOfPointsRepository: TxDataOfPointsRepository,
+    private readonly cacheRepository: CacheRepository,
   ) {
     this.logger = new Logger(TvlService.name);
   }
@@ -37,6 +41,11 @@ export class TvlService {
       name,
       tvl,
     }));
+    const holdingTvlUsd = await this.cacheRepository.getValue(HOLDING_TVL_USD);
+    categoryTvl.push({
+      name: "holding",
+      tvl: holdingTvlUsd ? new BigNumber(holdingTvlUsd) : new BigNumber(0),
+    });
     return categoryTvl;
   }
 
