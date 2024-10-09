@@ -42,12 +42,10 @@ export class TvlService {
       tvl,
     }));
     const holdingTvlUsd = await this.cacheRepository.getValue(HOLDING_TVL_USD);
-    if (holdingTvlUsd) {
-      categoryTvl.push({
-        name: "holding",
-        tvl: new BigNumber(holdingTvlUsd),
-      });
-    }
+    categoryTvl.push({
+      name: "holding",
+      tvl: holdingTvlUsd ? new BigNumber(holdingTvlUsd) : new BigNumber(0),
+    });
     return categoryTvl;
   }
 
