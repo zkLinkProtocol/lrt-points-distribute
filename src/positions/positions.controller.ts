@@ -99,8 +99,8 @@ export class PositionsController {
         const liquidityPosition = position.liquidityPositions.reduce(
           (acc, cur) =>
             acc +
-            (BigInt(cur.supplied) * BigInt(cur.balance)) /
-              BigInt(cur.totalSupplied),
+            (BigInt(cur.supplied) * BigInt(cur.pool.balance)) /
+              BigInt(cur.pool.totalSupplied),
           BigInt(0),
         );
         const balancePosition = position.balances[0]

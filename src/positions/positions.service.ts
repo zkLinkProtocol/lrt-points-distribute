@@ -65,6 +65,7 @@ export class PositionsService {
           where: {
             and: [
               {
+                id_not_in: ["0x4ac97e2727b0e92ae32f5796b97b7f98dc47f059"]
                 valid: true
               },
               {
