@@ -80,7 +80,7 @@ export class PositionsController {
   @ApiNotFoundResponse({
     description: '{ "errno": 1, "errmsg": "not found" }',
   })
-  public async getRsethBalance(
+  public async getAllBalance(
     @Param("token", new ParseAddressPipe()) token: string,
     @Query() rsethQueryDto: BalanceQueryDto,
   ): Promise<Partial<BalanceReturnDto>> {
@@ -110,8 +110,9 @@ export class PositionsController {
 
         return { account, balance };
       });
-      console.log(
-        data.reduce((acc, cur) => BigInt(cur.balance) + acc, BigInt(0)),
+      const totalBalance = data.reduce(
+        (acc, cur) => BigInt(cur.balance) + acc,
+        BigInt(0),
       );
       const paging = PaginationUtil.paginate(data, page, limit);
       const list = paging.items;
@@ -119,7 +120,7 @@ export class PositionsController {
       return {
         errno: 0,
         errmsg: "no error",
-        data: list,
+        data: { totalBalance: totalBalance.toString(), list },
         meta,
       };
     } catch (err) {
