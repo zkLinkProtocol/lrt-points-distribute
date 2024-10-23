@@ -89,3 +89,47 @@ export class UserPositionsResponseDto {
   })
   public readonly data?: UserPositionsDto[];
 }
+
+export class BalanceQueryDto extends PagingOptionsDto {
+  @ApiProperty({
+    required: true,
+    description: "block number on nova network",
+  })
+  block: number;
+}
+
+export class BalanceReturnDto {
+  @ApiProperty({
+    type: Number,
+    description: "error code",
+    example: 0,
+  })
+  public readonly errno: number;
+
+  @ApiProperty({
+    type: String,
+    description: "error message",
+    example: "no error",
+  })
+  public readonly errmsg: string;
+
+  @ApiProperty({
+    type: Array<{ account: string; balance: string }>,
+    description: "user's balance",
+    example: [
+      {
+        balance: "10000000000",
+        account: "0x22723cc5ae5a1b4514ca41f2466e2ade15cf529b",
+      },
+    ],
+    required: false,
+  })
+  public readonly data?: Array<{ account: string; balance: string }>;
+
+  @ApiProperty({
+    type: PagingMetaDto,
+    description: "page meta",
+    example: 0,
+  })
+  public readonly meta?: PagingMetaDto;
+}
