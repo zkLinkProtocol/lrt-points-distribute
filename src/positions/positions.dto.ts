@@ -116,15 +116,21 @@ export class BalanceReturnDto {
   @ApiProperty({
     type: Array<{ account: string; balance: string }>,
     description: "user's balance",
-    example: [
-      {
-        balance: "10000000000",
-        account: "0x22723cc5ae5a1b4514ca41f2466e2ade15cf529b",
-      },
-    ],
+    example: {
+      totalBalance: "10000000000",
+      list: [
+        {
+          balance: "10000000000",
+          account: "0x22723cc5ae5a1b4514ca41f2466e2ade15cf529b",
+        },
+      ],
+    },
     required: false,
   })
-  public readonly data?: Array<{ account: string; balance: string }>;
+  public readonly data?: {
+    totalBalance: string;
+    list: Array<{ account: string; balance: string }>;
+  };
 
   @ApiProperty({
     type: PagingMetaDto,

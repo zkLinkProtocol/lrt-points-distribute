@@ -55,6 +55,25 @@ export class PositionsService {
     block: number;
   }) {
     const { token, block, limit, page } = params;
+    const { _meta } = await fetchGraphQLData<{
+      _meta: {
+        block: {
+          number: number;
+        };
+      };
+    }>(
+      "https://graph.zklink.io/subgraphs/name/rseth-balance",
+      `
+      query QueryBlock {
+        _meta {
+          block {
+            number
+          }
+        }
+      }
+      `,
+    );
+    if (_meta.block.number < block) return [];
     const data = await fetchGraphQLData<{ userPositions: any[] }>(
       "https://graph.zklink.io/subgraphs/name/rseth-balance", // If more tokens need to be supported, please modify the subgraph
       `query MyQuery($token: Bytes = \"${token}\") {
