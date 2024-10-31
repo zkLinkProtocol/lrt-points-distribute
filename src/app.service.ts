@@ -47,7 +47,7 @@ export class AppService implements OnModuleInit, OnModuleDestroy {
       this.renzoService.start(),
       this.magpieService.start(),
       this.rsethService.start(),
-      this.swethService.start(),
+      // this.swethService.start(),
       this.novaBalanceService.start(),
     ]);
   }
@@ -58,7 +58,7 @@ export class AppService implements OnModuleInit, OnModuleDestroy {
       this.renzoService.stop(),
       this.magpieService.stop(),
       this.rsethService.stop(),
-      this.swethService.stop(),
+      // this.swethService.stop(),
       this.graphQueryService.stop(),
       this.novaBalanceService.stop(),
     ]);
