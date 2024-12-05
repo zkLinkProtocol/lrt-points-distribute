@@ -13,6 +13,7 @@ import { RsethService } from "./rseth/rseth.service";
 import { GraphQueryService } from "./common/service/graphQuery.service";
 import { SwethService } from "./sweth/sweth.service";
 import { NovaBalanceService } from "./nova/nova.balance.service";
+import { ExportAllUserSeaonPoint } from "./data/exportAllUserSeaonPoint";
 
 @Injectable()
 export class AppService implements OnModuleInit, OnModuleDestroy {
@@ -28,11 +29,13 @@ export class AppService implements OnModuleInit, OnModuleDestroy {
     private readonly novaBalanceService: NovaBalanceService,
     private readonly dataSource: DataSource,
     private readonly configService: ConfigService,
+    private readonly exportAllUserSeaonPoint: ExportAllUserSeaonPoint,
   ) {
     this.logger = new Logger(AppService.name);
   }
 
-  public onModuleInit() {
+  public async onModuleInit() {
+    await this.exportAllUserSeaonPoint.output();
     this.startWorkers();
   }
 

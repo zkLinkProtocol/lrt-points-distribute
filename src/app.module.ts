@@ -71,6 +71,7 @@ import { supplementPoint } from "./entities/supplementPoint.entity";
 import { StatisticController } from "./statistics/statistic.controller";
 import { ProtocolDau } from "./entities/dau.entity";
 import { BlockTokenPrice } from "./entities/blockTokenPrice.entity";
+import { ExportAllUserSeaonPoint } from "./data/exportAllUserSeaonPoint";
 
 @Module({
   imports: [
@@ -171,6 +172,7 @@ import { BlockTokenPrice } from "./entities/blockTokenPrice.entity";
     ReferralRepository,
     SeasonTotalPointRepository,
     SupplementPointRepository,
+    ExportAllUserSeaonPoint,
   ],
 })
 export class AppModule {}
