@@ -35,7 +35,6 @@ export class AppService implements OnModuleInit, OnModuleDestroy {
   }
 
   public async onModuleInit() {
-    await this.exportAllUserSeaonPoint.output();
     this.startWorkers();
   }
 
