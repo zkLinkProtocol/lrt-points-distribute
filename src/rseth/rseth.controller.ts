@@ -246,7 +246,7 @@ export class RsethController {
       "Return users' rseth balance at a specific time. Including the withdrawing and staked balance in dapp.",
     type: UserRsethDateBalanceDto,
   })
-  public async queryUserPufferDateBalance(
+  public async queryUserRsethDateBalance(
     @Param("address", new ParseAddressPipe()) address: string,
     @Query("timestamp") timestamp: number,
   ) {
