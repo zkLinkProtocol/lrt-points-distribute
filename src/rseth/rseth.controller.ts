@@ -1,4 +1,4 @@
-import { Controller, Get, Logger, Query } from "@nestjs/common";
+import { Controller, Get, Logger, Param, Query } from "@nestjs/common";
 import {
   ApiBadRequestResponse,
   ApiExcludeController,
@@ -19,7 +19,11 @@ import {
 import { PagingOptionsDto } from "src/common/pagingOptionsDto.dto";
 import { PagingMetaDto } from "src/common/paging.dto";
 import { PaginationUtil } from "src/common/pagination.util";
-import { RsethPointItem, RsethReturnDto } from "./rseth.dto";
+import {
+  RsethPointItem,
+  RsethReturnDto,
+  UserRsethDateBalanceDto,
+} from "./rseth.dto";
 
 @ApiTags("rseth")
 @ApiExcludeController(false)
@@ -234,5 +238,38 @@ export class RsethController {
       result["meta"] = meta;
     }
     return result as RsethReturnDto;
+  }
+
+  @Get("/rseth/:address/balanceOfTimestamp")
+  @ApiOkResponse({
+    description:
+      "Return users' rseth balance at a specific time. Including the withdrawing and staked balance in dapp.",
+    type: UserRsethDateBalanceDto,
+  })
+  public async queryUserPufferDateBalance(
+    @Param("address", new ParseAddressPipe()) address: string,
+    @Query("timestamp") timestamp: number,
+  ) {
+    try {
+      const data = await this.rsethService.getBalanceByAddresses(
+        address,
+        timestamp,
+      );
+      const res = {
+        errno: 0,
+        errmsg: "no error",
+        data: data,
+      };
+      return res;
+    } catch (err) {
+      this.logger.error(
+        `get rseth balance at a specific time failed: ${err.stack}`,
+      );
+      return {
+        errno: 1,
+        errmsg: err.message,
+        data: null,
+      };
+    }
   }
 }

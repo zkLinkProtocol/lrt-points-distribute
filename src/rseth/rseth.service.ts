@@ -11,6 +11,8 @@ import BigNumber from "bignumber.js";
 import waitFor from "src/utils/waitFor";
 import { LocalPointsItem } from "../common/service/projectGraph.service";
 import { Worker } from "src/common/worker";
+import { ethers } from "ethers";
+import { WithdrawService } from "src/common/service/withdraw.service";
 
 export interface RsethPointItemWithBalance {
   address: string;
@@ -43,6 +45,13 @@ export interface RsethData {
   items: RsethPointItemWithBalance[] | RsethPointItemWithoutBalance[];
 }
 
+const RSETH_ETHEREUM = "0x186c0c42C617f1Ce65C4f7DF31842eD7C5fD8260";
+const RSETH_ARBITRUM = "0x4A2da287deB06163fB4D77c52901683d69bD06f4";
+const AQUA_VAULT =
+  "0x4AC97E2727B0e92AE32F5796b97b7f98dc47F059".toLocaleLowerCase();
+const AQUA_RSETH_LP =
+  "0xae8AF9bdFE0099f6d0A5234009b78642EfAC1b00".toLocaleLowerCase();
+
 @Injectable()
 export class RsethService extends Worker {
   private readonly projectName: string = "rseth";
@@ -64,6 +73,7 @@ export class RsethService extends Worker {
     private readonly graphQueryService: GraphQueryService,
     private readonly explorerService: ExplorerService,
     private readonly configService: ConfigService,
+    private readonly withdrawService: WithdrawService,
   ) {
     super();
     this.logger = new Logger(RsethService.name);
@@ -292,5 +302,132 @@ export class RsethService extends Worker {
       }
     }
     return tokensMapBridgeTokens;
+  }
+
+  public async getBalanceByAddresses(address: string, toTimestamp: number) {
+    const rsethEthereum = await this.getBalanceByAddress(
+      address,
+      toTimestamp,
+      RSETH_ETHEREUM,
+    );
+    const rsethArbitrum = await this.getBalanceByAddress(
+      address,
+      toTimestamp,
+      RSETH_ARBITRUM,
+    );
+    return {
+      rsethEthereum,
+      rsethArbitrum,
+    };
+  }
+
+  public async getBalanceByAddress(
+    address: string,
+    toTimestamp: number,
+    tokenAddress: string,
+  ) {
+    const blocks = await this.explorerService.getLastBlocks(toTimestamp);
+    if (!blocks || blocks.length === 0) {
+      throw new Error("Failed to get blocks.");
+    }
+    const blockNumber = blocks[0].number ?? 0;
+    if (blockNumber === 0) {
+      throw new Error("Failed to get block number.");
+    }
+    let directBalance = BigInt(0);
+    let withdrawBalance = BigInt(0);
+    let aquaBalance = BigInt(0);
+
+    const provider = new ethers.JsonRpcProvider("https://rpc.zklink.io");
+    const block = await provider.getBlock(Number(blockNumber));
+    const balanceOfMethod = "0x70a08231";
+    const totalSupplyMethod = "0x18160ddd";
+    const promiseList = [];
+
+    // rsseth balance of address
+    promiseList.push(
+      provider.call({
+        to: tokenAddress,
+        data: balanceOfMethod + address.replace("0x", "").padStart(64, "0"),
+        blockTag: Number(blockNumber),
+      }),
+    );
+
+    // rsseth balance of aqua pairaddress
+    promiseList.push(
+      provider.call({
+        to: tokenAddress,
+        data: balanceOfMethod + AQUA_VAULT.replace("0x", "").padStart(64, "0"),
+        blockTag: Number(blockNumber),
+      }),
+    );
+
+    // aq-lrseth balance of address
+    promiseList.push(
+      provider.call({
+        to: AQUA_RSETH_LP,
+        data: balanceOfMethod + address.replace("0x", "").padStart(64, "0"),
+        blockTag: Number(blockNumber),
+      }),
+    );
+
+    // aq-lrseth total supply
+    promiseList.push(
+      provider.call({
+        to: AQUA_RSETH_LP,
+        data: totalSupplyMethod,
+        blockTag: Number(blockNumber),
+      }),
+    );
+
+    const [
+      rsethEthAddress,
+      rsethEthAqua,
+      aqlrsethAddress,
+      aqlrsethTotalSupply,
+    ] = await Promise.all(promiseList);
+
+    directBalance = BigInt(rsethEthAddress);
+
+    const rsethAquaBigInt = BigNumber(rsethEthAqua);
+    const aqlrsethAddressBigInt = BigNumber(aqlrsethAddress);
+    const aqlrsethTotalSupplyBigInt = BigNumber(aqlrsethTotalSupply);
+
+    // aqua balance
+    const aquaBalanceBg = aqlrsethAddressBigInt
+      .multipliedBy(rsethAquaBigInt)
+      .div(aqlrsethTotalSupplyBigInt);
+    aquaBalance = BigInt(aquaBalanceBg.toFixed(0));
+
+    // withdrawHistory
+    const withdrawHistory = await this.withdrawService.getWithdrawHistory(
+      address,
+      tokenAddress,
+      block.timestamp,
+    );
+    const blockTimestamp = block.timestamp;
+    for (const item of withdrawHistory) {
+      const tmpEndTime = this.withdrawService.findWithdrawEndTime(
+        item.blockTimestamp,
+      );
+      // if withdrawTime is in the future, add balance to withdrawBalance
+      if (tmpEndTime > blockTimestamp) {
+        withdrawBalance = withdrawBalance + BigInt(item.balance);
+      }
+    }
+
+    const totalBalance = directBalance + withdrawBalance + aquaBalance;
+    return {
+      totalBalance: ethers.formatEther(totalBalance).toString(),
+      withdrawingBalance: ethers.formatEther(withdrawBalance).toString(),
+      userBalance: ethers.formatEther(directBalance).toString(),
+      liquidityBalance: ethers.formatEther(aquaBalance).toString(),
+      liquidityDetails: [
+        {
+          dappName: "aqua",
+          balance: ethers.formatEther(aquaBalance).toString(),
+        },
+      ],
+    };
   }
 }
